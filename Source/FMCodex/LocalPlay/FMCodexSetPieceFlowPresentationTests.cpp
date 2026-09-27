@@ -1,5 +1,6 @@
 #include "FMCodexLocalMatchScreenWidget.h"
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
+#include "FMCodexRollReelWidget.h"
 #include "FMCodexMatchFlowPanel.h"
 #include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPlayerUIStyle.h"
@@ -13,6 +14,8 @@
 
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
 #include "Misc/AutomationTest.h"
+#include "Misc/ScopeExit.h"
+#include "HAL/IConsoleManager.h"
 #include "Slate/WidgetRenderer.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Input/Events.h"
@@ -22,6 +25,15 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexSetPieceFlowIsolationTest,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FFMCodexSetPieceFlowIsolationTest::RunTest(const FString&)
 {
+	// The method-card portion below covers the retained Development fallback.
+	// Production Theater ownership is verified by the Type lifecycle and PIE tests.
+	TArray<TPair<IConsoleVariable*, int32>> PreviousModes;
+	for (const TCHAR* Name : {TEXT("NearFreeKick"), TEXT("LongFreeKick"), TEXT("Penalty"), TEXT("CornerSelection"), TEXT("CornerResolution")})
+	{
+		auto* Mode = IConsoleManager::Get().FindConsoleVariable(*(FString(TEXT("fm.UI.ResolutionStageV2.")) + Name));
+		PreviousModes.Emplace(Mode, Mode->GetInt()); Mode->Set(0, ECVF_SetByCode);
+	}
+	ON_SCOPE_EXIT { for (const auto& Mode : PreviousModes) Mode.Key->Set(Mode.Value, ECVF_SetByCode); };
 	auto* Formula = NewObject<UFMCodexInlineResolutionFormulaSurfaceWidget>();
 	const auto FormulaSlate = Formula->TakeWidget();
 	FFMCodexUMGInlineFormulaSurfaceViewModel A;
@@ -59,16 +71,32 @@ bool FFMCodexSetPieceFlowIsolationTest::RunTest(const FString&)
 			&& Diagram->GetVisibility()==ESlateVisibility::HitTestInvisible
 			&& !Diagram->TakeWidget()->SupportsKeyboardFocus());
 	}
-	BeginCleanup(TypeRenderer);
 	TestTrue(TEXT("Existing sole action and focus behavior retained"), Action->GetIsEnabled() && Action->GetIsFocusable());
 	A.PrimaryAction.bVisible = false; A.PrimaryAction.Action.bAvailable = false;
 	Formula->RefreshFromPresentation(A);
 	TestTrue(TEXT("Read-only type view has no enabled footer action"),
 		!Action->GetIsEnabled() && Action->GetParent()->GetVisibility() == ESlateVisibility::Collapsed);
 	A.bDiceRevealVisible = true; A.TacticalPlayerSummaryLabel.Empty();
+	A.RollReel.bVisible = true; A.RollReel.bMoving = true;
+	A.StatusLabel = TEXT("号码滚动中");
 	Formula->RefreshFromPresentation(A);
-	TestTrue(TEXT("Type reel keeps its original host and no static result highlight"),
-		!Frame->IsFlowStyleEnabled() && RuleBody->GetVisibility() == ESlateVisibility::Collapsed);
+	TypeRenderer->DrawWidget(TypeTarget, FormulaSlate, FVector2D(760,430), 0.f);
+	auto* TypeDice = Formula->GetWidgetFromName(TEXT("InlineFormulaDiceBounds"));
+	const FVector2D RollingPosition = TypeDice->GetCachedGeometry().GetAbsolutePosition();
+	A.RouteResultLabel = TEXT("掷点 5 → 近距离任意球"); A.StatusLabel = A.RouteResultLabel;
+	A.RollReel.bMoving = false; A.RollReel.bStaticResult = true; A.RollReel.CenterValue = 5;
+	Formula->RefreshFromPresentation(A);
+	TypeRenderer->DrawWidget(TypeTarget, FormulaSlate, FVector2D(760,430), 0.f);
+	TestTrue(TEXT("Type result text cannot move or resize the fixed CompactBox slot"),
+		TypeDice->GetCachedGeometry().GetAbsolutePosition().Equals(RollingPosition, .1f)
+		&& TypeDice->GetCachedGeometry().GetLocalSize().Equals(FVector2D(84,72), .1f));
+	AddInfo(FString::Printf(TEXT("TYPE_SLOT rolling=%s landed=%s size=%s"), *RollingPosition.ToString(),
+		*TypeDice->GetCachedGeometry().GetAbsolutePosition().ToString(), *TypeDice->GetCachedGeometry().GetLocalSize().ToString()));
+	BeginCleanup(TypeRenderer);
+	TestTrue(TEXT("Type reveal adopts CompactBox in its existing host without selectable reference"),
+		Frame->IsFlowStyleEnabled() && RuleBody->GetVisibility() == ESlateVisibility::Collapsed
+		&& Formula->GetRollReelWidget()->GetVisualVariant() == EFMCodexRollVisualVariant::CompactBox
+		&& CastChecked<USizeBox>(Formula->GetWidgetFromName(TEXT("InlineFormulaDiceBounds")))->GetWidthOverride() == 84.f);
 	FFMCodexUMGInlineFormulaSurfaceViewModel D;
 	D.bVisible=true; D.ContestId=TEXT("Fixture.Formula");
 	D.ContestLabel=TEXT("定位球类型"); // Same localized title cannot opt in.
@@ -77,6 +105,8 @@ bool FFMCodexSetPieceFlowIsolationTest::RunTest(const FString&)
 	D.AttackRow.bKnownNonRollSubtotalResolved=true; D.AttackRow.KnownNonRollSubtotal=5;
 	D.AttackRow.bDisplayedResultResolved=true; D.AttackRow.DisplayedResultLabel=TEXT("5");
 	Formula->RefreshFromPresentation(D);
+	TestEqual(TEXT("Other consumers do not inherit the Type CompactBox variant"),
+		Formula->GetRollReelWidget()->GetVisualVariant(), EFMCodexRollVisualVariant::Legacy);
 	TestTrue(TEXT("Reused formula adopts Tier 2 while retaining original row data"),
 		Frame->IsFlowStyleEnabled() && Formula->GetPresentation().AttackRow.KnownNonRollSubtotal == 5
 		&& CastChecked<UFMCodexMatchFlowButton>(Action)->IsFlowStyleEnabled()

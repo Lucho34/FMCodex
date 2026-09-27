@@ -1,8 +1,12 @@
 #if WITH_DEV_AUTOMATION_TESTS
 #include "FMCodexNetworkSetPieceSelectionTestFixture.h"
 #include "../LocalPlay/FMCodexCardRackWidget.h"
+#include "../LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.h"
+#include "../LocalPlay/FMCodexRollReelWidget.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
+#include "HAL/IConsoleManager.h"
+#include "Misc/ScopeExit.h"
 IMPLEMENT_COMPLEX_AUTOMATION_TEST(FFMCodexSetPieceSelectionUI,"FMCodex.NetworkPlay.SetPieceSelection.SharedUI",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
 void FFMCodexSetPieceSelectionUI::GetTests(TArray<FString>& N,TArray<FString>& C) const
 {for(const TCHAR* S:{TEXT("A"),TEXT("B")})for(int32 D6:{1,3,5,6})for(int32 Method:{1,2}){auto P=FString::Printf(TEXT("%s.%d.%d"),S,D6,Method);N.Add(P);C.Add(P);}}
@@ -10,7 +14,14 @@ bool FFMCodexSetPieceSelectionUI::RunTest(const FString& P)
 {
  using namespace FMCodexSetPieceSelectionTests;
  using namespace FMCodexPlayerFacingOrdinaryUITests;
- TArray<FString> Parts;P.ParseIntoArray(Parts,TEXT("."));const int32 D6=FCString::Atoi(*Parts[1]);const bool Alt=Parts[2]==TEXT("2");FUIFixture F(Parts[0]==TEXT("B"));Access::SetPiecePresentation(*F.Mode);
+ TArray<FString> Parts;P.ParseIntoArray(Parts,TEXT("."));const int32 D6=FCString::Atoi(*Parts[1]);const bool Alt=Parts[2]==TEXT("2");
+ // This existing ownership test targets the retained pre-Theater host widgets.
+ // Type CompactBox itself is shared; production Theater handoff has separate coverage.
+ const TCHAR* ModeName=D6<=2?TEXT("CornerSelection"):D6==3?TEXT("LongFreeKick"):D6==5?TEXT("NearFreeKick"):TEXT("Penalty");
+ auto* Mode=IConsoleManager::Get().FindConsoleVariable(*(FString(TEXT("fm.UI.ResolutionStageV2."))+ModeName));
+ const int32 PreviousMode=Mode->GetInt();Mode->Set(0,ECVF_SetByCode);
+ ON_SCOPE_EXIT { Mode->Set(PreviousMode,ECVF_SetByCode); };
+ FUIFixture F(Parts[0]==TEXT("B"));Access::SetPiecePresentation(*F.Mode);
  auto* PC=F.Attacker();auto* Other=F.Defender();auto* S=PC->GetPlayerMatchScreen();auto* W=Other->GetPlayerMatchScreen();
  const auto Visible=[&](UFMCodexLocalMatchScreenWidget* Screen,const TCHAR* Name)
  {
@@ -28,6 +39,7 @@ bool FFMCodexSetPieceSelectionUI::RunTest(const FString& P)
  {
   auto* Screen=Viewer->GetPlayerMatchScreen();Screen->PauseInlineFormulaRevealTimerForTesting();
   TestTrue(TEXT("Both viewers reuse type Reel"),Screen->IsInlineFormulaRevealInputBlocked());
+  TestEqual(TEXT("Both viewers consume the same Type CompactBox"),Screen->GetInlineFormulaSurface()->GetRollReelWidget()->GetVisualVariant(),EFMCodexRollVisualVariant::CompactBox);
   TestFalse(TEXT("Next type/taker/method panel hidden during reel"),Visible(Screen,TEXT("SetPieceProductionResolutionSurface")));
   const auto Phase=Screen->GetInlineFormulaRevealPhase();Viewer->RefreshPlayerFacingUI();TestEqual(TEXT("Duplicate View does not restart phase"),Screen->GetInlineFormulaRevealPhase(),Phase);
   Screen->AdvanceInlineFormulaRevealForTesting(0.4f);TestTrue(TEXT("Elapsed time cannot skip the reveal"),Screen->IsInlineFormulaRevealInputBlocked());

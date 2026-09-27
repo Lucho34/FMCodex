@@ -506,6 +506,15 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 			? ESlateVisibility::SelfHitTestInvisible
 			: ESlateVisibility::Collapsed);
 	DiceOwnerText->SetText(FText::FromString(Presentation.DiceOwnerLabel));
+	const bool bTypeRoll = Presentation.bVisible && Presentation.bDiceRevealVisible
+		&& Presentation.ContestId == TEXT("SetPiece.Type");
+	RollReel->SetVisualVariant(bTypeRoll ? EFMCodexRollVisualVariant::CompactBox
+		: EFMCodexRollVisualVariant::Legacy);
+	// Type's owner label repeats the heading; Network actor context stays in StatusText.
+	DiceOwnerText->SetVisibility(bTypeRoll ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
+	// One stable phase/result line above the die; StatusText already includes
+	// the gated canonical type result and, for Network, the acting player.
+	if (bTypeRoll) RouteResultText->SetVisibility(ESlateVisibility::Collapsed);
 	RollReel->RefreshFromPresentation(Presentation.RollReel);
 	const FFMCodexPlayerUIStyle& Style = FFMCodexPlayerUIStyle::Get();
 	// Arithmetic mode is semantic, not inferred from a title or a tactic name.
@@ -521,7 +530,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	if (bTypeInformation) TacticalPlayerText->SetVisibility(ESlateVisibility::Collapsed);
 	auto* Frame = CastChecked<UFMCodexMatchFlowPanel>(GetWidgetFromName(TEXT("InlineFormulaSurfaceFrame")));
-	Frame->SetFlowStyleEnabled(bTypeInformation || ((bFormula || bOutcomeFamily) && !bEmbeddedFormulaLayout));
+	Frame->SetFlowStyleEnabled(bTypeInformation || bTypeRoll || ((bFormula || bOutcomeFamily) && !bEmbeddedFormulaLayout));
 	FLinearColor LegacyFrameColor = Style.GetColor(EFMCodexPlayerUIColorRole::PanelBackground);
 	LegacyFrameColor.A = .94f;
 	Frame->SetBrushColor(bEmbeddedFormula ? FLinearColor::Transparent : LegacyFrameColor);
@@ -544,7 +553,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 	auto* ContinueLabel = CastChecked<UTextBlock>(ContinueButton->GetChildAt(0));
 	ContinueLabel->SetAutoWrapText(false);
 	Style.ApplyText(*ContinueLabel, EFMCodexPlayerUITextRole::Body);
-	if (bTypeInformation)
+	if (bTypeInformation || bTypeRoll)
 	{
 		Style.ApplyFlowText(*ContestText, 24);
 		Style.ApplyFlowText(*StatusText, 14, true);
@@ -594,13 +603,14 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 	RollHostBounds->SetVisibility(Presentation.bVisible && Presentation.bDiceRevealVisible
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	auto* RollHostSlot = CastChecked<UVerticalBoxSlot>(RollHostBounds->Slot);
-	RollHostSlot->SetHorizontalAlignment(bFormula ? HAlign_Center : HAlign_Fill);
+	RollHostSlot->SetHorizontalAlignment(bFormula || bTypeRoll ? HAlign_Center : HAlign_Fill);
 	if (bFormula) RollHostBounds->SetWidthOverride(360.f); else RollHostBounds->ClearWidthOverride();
 	auto* RollPanel = CastChecked<UFMCodexMatchFlowPanel>(DiceRevealRegion);
 	RollPanel->SetFormulaRole(bFormula || bOutcomeFamily ? EFMCodexFormulaPanelRole::RollHost : EFMCodexFormulaPanelRole::None);
 	Style.ApplyBorder(*DiceRevealRegion,EFMCodexPlayerUIColorRole::PanelInset,bFormula ? FMargin(20,10) : FMargin(10,7));
+	if (bTypeRoll) DiceRevealRegion->SetBrushColor(FLinearColor::Transparent);
 	auto* DiceBounds = CastChecked<USizeBox>(GetWidgetFromName(TEXT("InlineFormulaDiceBounds")));
-	DiceBounds->SetWidthOverride(bFormula ? 96.f : 68.f);
+	DiceBounds->SetWidthOverride(bTypeRoll ? 84.f : bFormula ? 96.f : 68.f);
 	DiceBounds->SetHeightOverride(bFormula ? 112.f : 72.f);
 	RollReel->SetExpandedChamber(bFormula);
 	Style.ApplyText(*DiceOwnerText,EFMCodexPlayerUITextRole::SectionHeading);

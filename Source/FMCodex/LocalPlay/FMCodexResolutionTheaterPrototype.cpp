@@ -6,6 +6,7 @@
 #include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPlayerUIStyle.h"
 #include "FMCodexRollReelWidget.h"
+#include "FMCodexRollPresentationStyle.h"
 #include "FMCodexPitchWidget.h"
 #include "FMCodexCardRackWidget.h"
 #include "FMCodexPlayerCardWidget.h"
@@ -374,7 +375,7 @@ USizeBox* RollOperand(UWidgetTree& Tree, const FString& Prefix)
 	auto* Unknown=Tree.ConstructWidget<UOverlay>(UOverlay::StaticClass(),Named(Prefix,TEXT("UnknownSlot")));
 	for (const auto Suffix:{TEXT("Pending"),TEXT("RollValue")})
 	{
-		auto* Digit=Text(Tree,Named(Prefix,Suffix),40,FString(Suffix)==TEXT("Pending")?Quiet:Gold); Digit->SetJustification(ETextJustify::Center);
+		auto* Digit=Text(Tree,Named(Prefix,Suffix),40,FString(Suffix)==TEXT("Pending")?Quiet:FMCodexRollPresentationStyle::AuthoritativeLandedValue()); Digit->SetJustification(ETextJustify::Center);
 		if (FString(Suffix)==TEXT("Pending")) Digit->SetText(FText::FromString(TEXT("?")));
 		Unknown->AddChildToOverlay(Digit); AlignEquationText(*Digit,EquationBaseline-10);
 	}
@@ -560,7 +561,7 @@ void RefreshSide(UWidgetTree& Tree, const FString& Prefix, const FFMCodexUMGInli
 	Show(*Tree.FindWidget(Named(Prefix,TEXT("RollValue"))),bResolved && !bReel);
 	SetText(Tree,Named(Prefix,TEXT("RollValue")),bResolved ? FString::FromInt(Roll->RawD6) : FString());
 	auto* RollValue=Find<UTextBlock>(Tree,Named(Prefix,TEXT("RollValue")));
-	RollValue->SetColorAndOpacity(Gold);
+	RollValue->SetColorAndOpacity(FMCodexRollPresentationStyle::AuthoritativeLandedValue());
 	auto RollFont=RollValue->GetFont(); RollFont.OutlineSettings.OutlineSize=0; RollValue->SetFont(RollFont);
 	SetText(Tree,Named(Prefix,TEXT("FinalNumber")),Row.bDisplayedResultResolved ? Row.DisplayedResultLabel : FString(TEXT("?")));
 	auto* Final=Find<UTextBlock>(Tree,Named(Prefix,TEXT("FinalNumber")));

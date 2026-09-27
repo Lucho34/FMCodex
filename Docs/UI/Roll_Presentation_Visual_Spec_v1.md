@@ -1,6 +1,6 @@
 # Roll Presentation Visual Spec v1
 
-Status: **ADOPTED / PRODUCTION LOCKED — Stage 8.10**. Stage 8.10A.1 CompactBox / participant continuity 与 Stage 8.10B.2 HeroRoll USER PIE 均为 **ACCEPTED**。TheaterInline 保留 Stage 8.9A.2 / 8.9B 的既有验收。
+Status: **ADOPTED / PRODUCTION LOCKED**. Stage 8.10A.1 CompactBox / participant continuity 与 Stage 8.10B.2 HeroRoll USER PIE 均为 **ACCEPTED**。TheaterInline 保留 Stage 8.9A.2 / 8.9B 的既有验收。Stage 8.16 Type D6 CompactBox / Roll v2 与 Stage 8.16.1 共享落定色已完成分组验收：**USER PIE PASS**。
 
 本文是 [Match Flow Visual Language](MatchFlow_Visual_Language_v1.md) 下属、跨 Resolution Theater 与主棋盘的 Roll 家族视觉规范。它统一变体职责、数字层级、动作特征与可见揭示关系；[Theater 专项规范](Resolution_Theater_Visual_Spec_v1.md) 负责传中 / 任意球 / 点球 / 角球场景与 Formula / Result 整合，[Match Screen Layout](PlayerFacing_MatchScreen_Layout_v1.md) 负责屏幕布局。生产锁定不表示 Git 已提交，也不授权迁移其他消费方。
 
@@ -10,12 +10,12 @@ Roll 共用既有 viewer-safe projection、Screen phase machine、event identity
 
 | 变体 | 当前实际消费方 | 视觉职责 |
 |---|---|---|
-| Legacy | 未迁移的 generic Inline Formula、Development Formula Broadcast、ThroughBall / LongShot family surfaces ；包括 Set Piece Type D6、未迁移后续 Formula，以及 Development Cross / Free Kick / Penalty / Corner fallback（含旧 Corner participant reel） | 已有 Sports Broadcast Numeric Window；迁移期间继续有效 |
+| Legacy | 未迁移的 generic Inline Formula、Development Formula Broadcast、ThroughBall / LongShot family surfaces；包括未迁移后续 Formula，以及 Development Cross / Free Kick / Penalty / Corner fallback（含旧 Corner participant reel） | 已有 Sports Broadcast Numeric Window；迁移期间继续有效 |
 | TheaterInline | High / Low Cross、Near / Long Direct、常规点球与 Corner High / Low 的攻防 Roll，Near Combination / Long Power 的逐枚双骰槽位，以及 Panenka 的单骰槽位 | 稳定数字槽位；对抗分支嵌入等式，Panenka 单骰不虚构算式 |
-| CompactBox | Resolution Theater 的独立 Cross route、Corner 共享选人及 Corner route D6 | 小型、安静、有边界的只读结果格 |
+| CompactBox | Resolution Theater 的独立 Cross route、Corner 共享选人及 Corner route D6；Stage 8.16 的 Set Piece Type D6 | 小型、安静、有边界的只读结果格 |
 | HeroRoll | 主 Match Board 的 Full D12 / 战术点掷点 | 临时聚焦的大数字事件面板 |
 
-Legacy 的实际 route hosts 还包括 ThroughBall route / anti-offside / chip-shot、PassControl route、LongShot / CutInsideShot dead-corner，以及 generic fallback Formula。枚举值存在不等于所有 D6 / D12 都已迁移：Corner participant 是共享 D6，现采用 CompactBox（旧文档的 D12 称呼有误）；Set Piece 类型 D6 仍为 Legacy。
+Legacy 的实际 route hosts 还包括 ThroughBall route / anti-offside / chip-shot、PassControl route、LongShot / CutInsideShot dead-corner，以及 generic fallback Formula。枚举值存在不等于所有 D6 / D12 都已迁移：Corner participant 是共享 D6，现采用 CompactBox（旧文档的 D12 称呼有误）；Set Piece 类型 D6 的当前迁移合同见 Stage 8.16 补充。
 
 **Legacy 是有效兼容边界，不是新迁移界面的长期视觉目标。** 新消费方先确定 Formula 内嵌、小型独立结果格或主事件焦点的职责，再按独立 Stage 采用对应变体；不自动复制 Hero 的机壳和视觉强度。
 
@@ -38,9 +38,9 @@ UI 不生成 gameplay RNG，不改变骰序、route、Formula、winner、Goal、
 
 ## 4. CompactBox / 独立 D6
 
-CompactBox 是独立 Roll 的只读数字格，用于 Theater Cross route、Corner 共享选人和 Corner route。采用紧凑深蓝玻璃面、细边线、安静内层光和局部顶部反射；数字优先，不使用多层机械外壳、箭头、下划线、额外图标或重复 owner 标签。当前 84 × 72 是实现 token，不是所有未来消费方必须照搬的尺寸。
+CompactBox 是独立 Roll 的只读数字格，用于 Theater Cross route、Corner 共享选人、Corner route 和 Stage 8.16 Set Piece Type D6。采用紧凑深蓝玻璃面、细边线、安静内层光和局部顶部反射；数字优先，不使用多层机械外壳、箭头、下划线、额外图标或重复 owner 标签。当前 84 × 72 是实现 token，不是所有未来消费方必须照搬的尺寸。
 
-CTA 与数字格分离。掷点前沿用现有路线说明、操作身份和独立合法 CTA，reel 隐藏；滚动期间只显示已有等待/操作状态，不制造另一个可点数字按钮。落定为清晰、中性的冷白数字，无残留邻位或持续发光，不暗示成功、Goal 或更优路线。
+CTA 与数字格分离。掷点前沿用现有路线说明、操作身份和独立合法 CTA，reel 隐藏；滚动期间只显示已有等待/操作状态，不制造另一个可点数字按钮。落定为清晰的共享暖色数字（#EED7A6），无残留邻位或持续发光，不暗示成功、Goal 或更优路线。
 
 | 阶段 | 信息栏 |
 |---|---|
@@ -58,7 +58,7 @@ High / Low 来自已经获准显示的实际 route / contest，不能从 UI 中�
 
 接受既有掷点动作后，Hero 在主棋盘上临时出现。真实 Header、卡架、Pitch、部署槽和 Action Dock 的结构保持不变，不切换第二个场景或伪造背景。Focus Mode 降低背景竞争：卡架最明显，Pitch 较轻，比分/上下文最轻；Hero 保持焦点，比分和身份仍可辨认。
 
-面板采用紧凑 navy glass、低对比薄边、沿圆角连续延伸的顶部反射、安静内层深度、两端淡出的分隔线。数字区开放，不嵌套完整输入框；大数字为视觉主角，底部只有一条简短解释。落定数字采用柔和 champagne / ivory gold 与克制的暖色 grounding reflection。金色表示已揭示/锁定数字，低点数或不利结果也使用同样处理，不代表成功或胜利。
+面板采用紧凑 navy glass、低对比薄边、沿圆角连续延伸的顶部反射、安静内层深度、两端淡出的分隔线。数字区开放，不嵌套完整输入框；大数字为视觉主角，底部只有一条简短解释。落定数字统一采用 #EED7A6；原有 grounding reflection 保持，不因数字强调色新增光效。金色表示已揭示/锁定数字，低点数或不利结果也使用同样处理，不代表成功或胜利。
 
 | 阶段 | 玩家文案 |
 |---|---|
@@ -71,16 +71,16 @@ High / Low 来自已经获准显示的实际 route / contest，不能从 UI 中�
 
 解释来自现有 safe route/resource projection，不在 UI 根据 raw D12 划分普通/定位球/罚下，不把“进入罚下判定”说成某球员已经被罚下。缺少语义事实时保留中性锁定文案。数字先落定，再显示语义；不重复“掷点 N → …”或另加第二行状态。
 
-共享 continuous landing 之后保留现有可读 ResultHold。进入、Focus、最后淡出均在既有 presentation budget 内；正常退出或取消时恢复原棋盘颜色、可见性和输入。不能残留暗罩、shell、锁定数字或旧焦点，不能增加新 timer、gameplay wait 或要求玩家再确认。后续 Set Piece D6 等继续交接至其原有 surface / Legacy 变体。
+共享 continuous landing 之后保留现有可读 ResultHold。进入、Focus、最后淡出均在既有 presentation budget 内；正常退出或取消时恢复原棋盘颜色、可见性和输入。不能残留暗罩、shell、锁定数字或旧焦点，不能增加新 timer、gameplay wait 或要求玩家再确认。后续 Set Piece Type D6 保留原有 surface，Stage 8.16 将其 Reel 迁入 CompactBox。
 
 ## 6. 明确后续项
 
 1. 更多独立 route / tactical Roll 可分别评估 CompactBox；本次不迁移其他消费方。
 2. **Match Shell Visual Refresh Lite** 为可选后续工作；当前主 Match Board 结构和 HUD 保持生产基线。
 3. Full Card 在 Near / Long / Penalty 主罚选择与 Corner 候选规划状态采用；Formula / Roll / Outcome 等执行状态继续不采用，不增加姓名/头像 Full Card hover。详见 Theater 专项规范。
-4. Near / Long Free Kick 已在 Stage 8.11 采用现有 Roll family；Stage 8.12 Penalty 已采用既有 TheaterInline；Corner 在 Stage 8.13 采用 CompactBox / TheaterInline；Set Piece Type D6 及其余 Legacy 消费方迁移另行规划。Emphasis 等未实现概念不是本次生产家族，也不预建占位框架。
+4. Near / Long Free Kick 已在 Stage 8.11 采用现有 Roll family；Stage 8.12 Penalty 已采用既有 TheaterInline；Corner 在 Stage 8.13 采用 CompactBox / TheaterInline；Set Piece Type D6 迁移见 Stage 8.16 补充；其余 Legacy 消费方另行规划。Emphasis 等未实现概念不是本次生产家族，也不预建占位框架。
 
-Stage 8.11 只扩展上述 Free Kick 消费关系，不改变 Stage 8.10 Roll 实现、时钟或变体，不新增 FreeKickRoll。Stage 8.12 常规点球与勺子单骰只新增消费关系，不新增 PenaltyRoll / PanenkaRoll，也不改共同运动或揭示时钟。Set Piece Type D6 仍完整保留 Legacy。
+Stage 8.11 只扩展上述 Free Kick 消费关系，不改变 Stage 8.10 Roll 实现、时钟或变体，不新增 FreeKickRoll。Stage 8.12 常规点球与勺子单骰只新增消费关系，不新增 PenaltyRoll / PanenkaRoll，也不改共同运动或揭示时钟。该阶段未迁移 Type D6；当前消费关系见 Stage 8.16 补充。
 
 本规范不自行扩大玩法、Network、Shipping 资源或 UI 迁移范围。Stage 8.10A.1 / B.2 的用户视觉验收与工程自动化、PIE 截图分别记录；收尾只同步规范、检查已接受的实现及其回归。
 
@@ -92,4 +92,18 @@ Stage 8.13A / A.1、B / B.1 USER PIE 均已接受，Development / Shipping 均�
 
 Corner route 同样用 CompactBox：所选意图 1–4 保持、5–6 切换；滚动时“正在判定角球路线”，可见披露后“掷点结果为 {N}，判定为高球 / 低球”。随后攻防 Formula 使用 TheaterInline，进攻先、防守后，已完成侧静态。进攻 0 人或仅防守 0 人直接采用权威专属 Outcome，不播放不存在的玩家共享骰、路线骰或比较骰。内部 scorer 抽取不属于可见 Roll。
 
-仍仅有 Legacy / TheaterInline / CompactBox / HeroRoll 四个变体；Type D6 保留完整 Legacy reveal / hold。Stage 8.13 不修改通用 Reel renderer 或共同运动算法，不新增 CornerRoll。
+仍仅有 Legacy / TheaterInline / CompactBox / HeroRoll 四个变体；Stage 8.13 当时保留 Type D6 Legacy；Stage 8.16 迁移皮肤和运动，保留其 reveal / hold。Stage 8.13 不修改通用 Reel renderer 或共同运动算法，不新增 CornerRoll。
+
+## Stage 8.16 — Set Piece Type D6 CompactBox（USER PIE PASS）
+
+Type D6 在原有 shared Inline host 选择 CompactBox，并在 Theater 尚未激活时显式选择既有 Roll v2 连续运动；不是只换外壳。保持固定 84 × 72 槽位、非顺序装饰数字、0.92s cycling + 0.54s landing。通用 renderer、事件身份、去重、等待权威结果及真实 elapsed-time clock 不变。
+
+D6 落定后仍由 canonical safe projection 给出类型文本；0.18s 披露延迟与其后 2.40s 可读 hold 保持。Local 不重复显示“定位球类型 D6”和确认 helper；Network 原有 actor 状态继续显示。Local 掷前 2×2 参考与唯一 CTA、Network 掷前的 ownership / pending surface 均不重建。完成 Type 可见揭示后才由已有 gate 交接对应 Theater，不从骰点推断类型或提前接管。
+
+仍只有 Legacy / TheaterInline / CompactBox / HeroRoll 四个家族。已锁定 Theater、Full D12、规则映射、RNG、Authority、网络协议与 PassControl 实验均不在本次迁移范围。工程验证与用户视觉/手感验收分别报告。
+
+## Stage 8.16.1 — Authoritative Roll Landed Accent（USER PIE PASS）
+
+**Authoritative Roll Landed Accent = #EED7A6**。语义仅为“权威 Roll 数字已落定”，与战术、点数大小、成功或失败无关。HeroRoll、CompactBox、TheaterInline 的落定数字与 Reel 结束后保留的静态 Roll operand 使用同一共享 token；色值按 sRGB 精确转换，不按截图取样。
+
+未知、cycling、settling 和尚未落定的数字使用既有 neutral / cool-white，不能提前染暖。Formula Base、Current、Final RHS、其他数值、结果/解释文字、ownership、CTA、下划线、边框与背景保留现有样式；Legacy 不接入。仅改变数字状态色，不增加 glow、pulse、scale pop 或其他奖励效果，不调整 motion、disclosure、hold、event identity 或 Theater handoff。

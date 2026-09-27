@@ -1,4 +1,5 @@
 #include "FMCodexRollReelWidget.h"
+#include "FMCodexRollPresentationStyle.h"
 #include "FMCodexLocalMatchScreenWidget.h"
 #include "FMCodexRollPresentationSurface.h"
 #include "Components/TextBlock.h"
@@ -345,11 +346,15 @@ bool FCompactBoxSkinTest::RunTest(const FString&)
 	Reel->RefreshFromPresentation(P);
 	TestEqual(TEXT("CompactBox never inherits Legacy scale pulse"),Reel->GetCenterRenderScale(),1.f);
 	TestTrue(TEXT("Fixed clipped cell contains the shared three digits"),Reel->HasClippedWindow() && Reel->GetRenderedChildCount()==3 && Reel->GetVisibleNeighborDigitCount()==2);
-	TestTrue(TEXT("Route rolling accent is aqua"),Center->GetColorAndOpacity().GetSpecifiedColor().G>Center->GetColorAndOpacity().GetSpecifiedColor().R);
+	P.ScrollAlpha=0; P.NeighborFadeAlpha=1; P.bAuthoritativeValue=true;
+	Reel->RefreshFromPresentation(P);
+	TestEqual(TEXT("Even a known target stays neutral before landing"),Center->GetColorAndOpacity().GetSpecifiedColor(),FLinearColor::FromSRGBColor(FColor(224,243,249)));
 	P.bMoving=false; P.bShowNeighborDigits=false; P.bStaticResult=true; P.bAuthoritativeValue=true; P.NeighborFadeAlpha=1;
 	Reel->RefreshFromPresentation(P);
 	TestTrue(TEXT("Locked value uses the same child without neighbors"),Reel->IsStaticResultTileVisible() && Reel->GetCenterDigitWidget()==Center && Reel->GetCenterVerticalOffset()==0);
-	TestEqual(TEXT("Settled route is neutral white"),Center->GetColorAndOpacity().GetSpecifiedColor(),FLinearColor::FromSRGBColor(FColor(233,245,248)));
+	TestEqual(TEXT("Authoritative landed route uses exact EED7A6"),Center->GetColorAndOpacity().GetSpecifiedColor(),FLinearColor::FromSRGBColor(FColor(238,215,166)));
+	P.bAuthoritativeValue=false; Reel->RefreshFromPresentation(P);
+	TestEqual(TEXT("Static alone cannot claim an authoritative landed value"),Center->GetColorAndOpacity().GetSpecifiedColor(),FMCodexRollPresentationStyle::UnresolvedValue());
 	Reel->RefreshFromPresentation({});
 	TestTrue(TEXT("Unresolved hidden state cannot retain old result"),Center->GetText().IsEmpty() && Reel->GetVisibility()==ESlateVisibility::Collapsed);
 	Reel->SetVisualVariant(EFMCodexRollVisualVariant::Legacy); Reel->SetExpandedChamber(false);
@@ -436,7 +441,7 @@ bool FTheaterRollSkinTest::RunTest(const FString&)
 		TestTrue(TEXT("Same digit holds the authoritative value without replacement"),Theater->IsStaticResultTileVisible() && Theater->GetCenterDigitWidget()==Center);
 		TestEqual(TEXT("Exact zero landing offset"),Theater->GetCenterVerticalOffset(),0.f);
 		TestEqual(TEXT("Revealed digit retains Theater type size"),Center->GetFont().Size,40.f);
-		TestEqual(TEXT("Roll is neutral aqua, not gold winner treatment"),Center->GetColorAndOpacity().GetSpecifiedColor(),FLinearColor::FromSRGBColor(FColor(68,226,216)));
+		TestEqual(TEXT("Theater landed glyph uses exact EED7A6"),Center->GetColorAndOpacity().GetSpecifiedColor(),FLinearColor::FromSRGBColor(FColor(238,215,166)));
 		Theater->RefreshFromPresentation({});
 		TestTrue(TEXT("Reuse clears any prior number"),Center->GetText().IsEmpty());
 	}
@@ -444,6 +449,29 @@ bool FTheaterRollSkinTest::RunTest(const FString&)
 	TestEqual(TEXT("Same widget can return to Legacy without rebuilding roll state"),Theater->GetVisualVariant(),EFMCodexRollVisualVariant::Legacy);
 	TestEqual(TEXT("Legacy compact geometry restored"),Bounds->GetHeightOverride(),72.f);
 	TestFalse(TEXT("Old frame remains isolated"),CastChecked<UFMCodexRollPresentationSurface>(Legacy->GetWidgetFromName(TEXT("RollReelClippedWindow")))->VisualVariant == EFMCodexRollVisualVariant::TheaterInline);
+	FFMCodexUMGRollReelViewModel Landed;
+	Landed.bVisible=true; Landed.bStaticResult=true; Landed.bAuthoritativeValue=true; Landed.CenterValue=9;
+	Theater->SetVisualVariant(EFMCodexRollVisualVariant::HeroRoll); Theater->RefreshFromPresentation(Landed);
+	TestEqual(TEXT("Hero converges on the same exact landed accent"),Center->GetColorAndOpacity().GetSpecifiedColor(),FLinearColor::FromSRGBColor(FColor(238,215,166)));
+	Legacy->RefreshFromPresentation(Landed);
+	TestEqual(TEXT("Legacy retains its original color"),Legacy->GetCenterDigitWidget()->GetColorAndOpacity().GetSpecifiedColor(),FLinearColor(.92f,.67f,.29f,1));
+	// Already-safe Formula facts exercise the static operand after Reel teardown.
+	auto* Screen=NewObject<UFMCodexLocalMatchScreenWidget>(); Screen->TakeWidget();
+	FFMCodexUMGMatchScreenViewModel M;
+	M.InlineFormula.bVisible=true; M.InlineFormula.ContestId=TEXT("Cross.High");
+	M.InlineFormula.bShowFormulaRows=true; M.InlineFormula.bShowAttackRow=true;
+	auto& Row=M.InlineFormula.AttackRow;
+	Row.bKnownNonRollSubtotalResolved=true; Row.KnownNonRollSubtotal=4;
+	Row.bDisplayedResultResolved=true; Row.bDisplayedResultIsFinalValue=true; Row.DisplayedResultLabel=TEXT("9");
+	auto& Roll=Row.Terms.AddDefaulted_GetRef(); Roll.Kind=EFMCodexUMGInlineFormulaTermKind::RawRoll;
+	Roll.bResolved=true; Roll.RawD6=5;
+	Screen->RefreshFromPresentation(M);
+	if (!TestNotNull(TEXT("Production Theater built for safe Formula fixture"), Screen->GetWidgetFromName(TEXT("TheaterAttackRollValue")))) return false;
+	const auto Tint=[&](const TCHAR* Name) { return CastChecked<UTextBlock>(Screen->GetWidgetFromName(Name))->GetColorAndOpacity().GetSpecifiedColor(); };
+	TestEqual(TEXT("Static Theater operand matches the landed Reel"),Tint(TEXT("TheaterAttackRollValue")),FMCodexRollPresentationStyle::AuthoritativeLandedValue());
+	TestEqual(TEXT("Formula Base retains its existing quiet hierarchy"),Tint(TEXT("TheaterAttackNumber")),FLinearColor::FromSRGBColor(FColor(154,180,197)));
+	TestEqual(TEXT("Formula Final RHS retains its distinct existing color"),Tint(TEXT("TheaterAttackFinalNumber")),FLinearColor::FromSRGBColor(FColor(235,214,164)));
+	TestEqual(TEXT("Unknown operand remains neutral"),Tint(TEXT("TheaterAttackPending")),FLinearColor::FromSRGBColor(FColor(154,180,197)));
 	return true;
 }
 

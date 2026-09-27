@@ -2,6 +2,7 @@
 
 #include "FMCodexPlayerUIStyle.h"
 #include "FMCodexRollPresentationSurface.h"
+#include "FMCodexRollPresentationStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -295,14 +296,8 @@ void UFMCodexRollReelWidget::RefreshVisuals()
 		CenterText->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 		bLastShowNeighborDigits = Presentation.bShowNeighborDigits;
 	}
-	FLinearColor ActiveTint = UsesTheaterDigitStyle()
-		? FLinearColor::FromSRGBColor(FColor(68,226,216)) : FLinearColor(.92f,.67f,.29f,1);
-	if (VisualVariant == EFMCodexRollVisualVariant::HeroRoll)
-		ActiveTint = FMath::Lerp(FLinearColor::FromSRGBColor(FColor(224,243,249)),
-			FLinearColor::FromSRGBColor(FColor(242,222,180)), FMath::Clamp(Presentation.NeighborFadeAlpha,0.f,1.f));
-	if (VisualVariant == EFMCodexRollVisualVariant::CompactBox)
-		ActiveTint = FMath::Lerp(ActiveTint, FLinearColor::FromSRGBColor(FColor(233,245,248)),
-			FMath::Clamp(Presentation.NeighborFadeAlpha,0.f,1.f));
+	const FLinearColor ActiveTint = UsesTheaterDigitStyle()
+		? FMCodexRollPresentationStyle::UnresolvedValue() : FLinearColor(.92f,.67f,.29f,1);
 	if (Presentation.bStaticResult)
 	{
 		PreviousText->SetRenderTranslation(FVector2D::ZeroVector);
@@ -313,8 +308,8 @@ void UFMCodexRollReelWidget::RefreshVisuals()
 		NextText->SetRenderOpacity(0.0f);
 		PreviousText->SetRenderScale(FVector2D(1.0f));
 		CenterText->SetRenderScale(FVector2D(1.0f));
-		CenterText->SetColorAndOpacity(FSlateColor(VisualVariant == EFMCodexRollVisualVariant::CompactBox
-			? FLinearColor::FromSRGBColor(FColor(233,245,248)) : ActiveTint));
+		CenterText->SetColorAndOpacity(FSlateColor(UsesTheaterDigitStyle() && Presentation.bAuthoritativeValue
+			? FMCodexRollPresentationStyle::AuthoritativeLandedValue() : ActiveTint));
 		NextText->SetRenderScale(FVector2D(1.0f));
 		LastCenterOffset = 0.0f;
 		LastCenterScale = 1.0f;

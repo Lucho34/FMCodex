@@ -12,7 +12,7 @@ CompactBox is a visual/result cell, not a button. It occupies 84 × 72 Slate uni
 
 One dark navy glass fill, a 1-unit structural edge, 6-unit corner radius and a quiet fixed top accent replace the mechanical multi-shell frame. Stage 8.10A.1 adds a subtle, static inner light wash without changing the 84 × 72 geometry. There are no selector arrows, bevels, animated glow, underline, extra label or icon. The number remains primary: existing Flow font, Medium, 40 points, clipped three-digit strip. Formula's 68 × 76 slot and baseline are unchanged.
 
-CompactBox shares TheaterInline's 56-unit digit travel, distance-based neighbor fading and scale-free landing. Rolling uses the existing aqua family; the shared landing fade moves it to cool white. The settled value is crisp, with no neighbors or persistent effect. This is a neutral route value, not a winner/goal indicator.
+CompactBox shares TheaterInline's 56-unit digit travel, distance-based neighbor fading and scale-free landing. Stage 8.16.1 supersedes the original aqua-to-cool-white treatment: unresolved digits remain neutral / cool-white, and authoritative landed digits use the shared #EED7A6 token. The settled value is crisp, with no neighbors or persistent effect. The accent denotes the landed state, not a winner/goal indicator.
 
 ## One behavior source
 
@@ -75,3 +75,17 @@ VISUAL SPEC UPDATE REQUIRED: YES. VISUAL SPEC UPDATE COMPLETED: YES. The Roll sp
 Corner consumes the existing CompactBox in two places: one shared D6 between ordered Mini Card columns, and one route D6 in the existing action lane. One shared result selects both actual players; its value is not a Formula operand or winner. Position / roll-range labels surround the cell without changing the generic renderer. Existing independent CTAs, safe projections, modern motion, event identity and elapsed-time clock remain in use.
 
 The accepted shared-selection readable hold is approximately 2.40 s, implemented with the existing 2.58 s Formula hold token minus 0.18 s disclosure delay. This replaces only Corner participant selection's old 1.27 s readable window; route and Formula durations remain unchanged. Route uses selected-intent hints, a rolling status and authority-projected actual High / Low result. Corner comparisons use TheaterInline; automatic zero branches show no visible die. Type D6 stays Legacy. Full Card is confined to candidate planning.
+
+## Stage 8.16 Type D6 consumer adoption — USER PIE PASS
+
+The historical Stage 8.10 / 8.13 Legacy Type exclusions above are superseded only for the Type D6 consumer. The shared Inline surface selects CompactBox for the exact visible `SetPiece.Type` reveal and restores Legacy for unrelated consumers. Its fixed 84 × 72 slot uses the existing renderer and flow frame; no new roll family or animation implementation is added.
+
+`UsesTheaterRollMotion` opts the exact SetPieceType / SetPiece.Type identity into existing v2 motion before the Theater-active guard. Cycling/landing are 0.92s / 0.54s. Existing identity, dedupe, safe result ingestion, late-authority wait, .18s semantic disclosure plus 2.40s readable hold, and the Type-to-Theater gate remain unchanged. Local pre-roll reference and Network pre-roll action ownership retain their original hosts.
+
+Focused verification targets the existing FullD12 reveal/central-ownership test, flow mode isolation/reuse, and one Network SharedUI A.5.1 case. The latter two explicitly select and restore the Development fallback for their retained method/ownership host assertions; Type CompactBox is shared in both modes. Production Theater takeover is covered with its normal defaults by the lifecycle test and real PIE. The phase and gated result reuse one text baseline so the die does not shift on disclosure. `FMCodex.PIE.SetPieceType.CompactBoxNearFreeKick` follows real Local PIE with DEV FullD12=9 and TypeD6=5 through natural timer motion and Near FK handoff. No forced presentation time or gameplay outcome is used in PIE. Runtime evidence lives under ignored `Saved/Stage8_16/`; engineering evidence does not establish USER PIE acceptance.
+
+## Stage 8.16.1 landed accent and grouped acceptance
+
+`FMCodexRollPresentationStyle.h` defines Authoritative Roll Landed Accent = #EED7A6 for HeroRoll, CompactBox, TheaterInline and the retained authoritative static Theater Roll operand. Unresolved digits stay neutral / cool-white. Formula Base / Current / Final RHS, result/helper/ownership text, CTA and frames retain their existing styles; Legacy remains isolated. No motion, timing or reward effect is added.
+
+**Stage 8.16 + 8.16.1 USER PIE PASS.** The user accepted Type D6 styling, continuous motion, readable ResultHold, Theater handoff and the shared landed accent, with no obvious snap, duplicate helper or transition problem. Grouped closeout only synchronizes documentation and reuses the successful focused tests, incremental Editor builds and natural Local PIE evidence under `Saved/Stage8_16/` and `Saved/Stage8_16_1/`. Runtime and test implementations remain unchanged; no Shipping-specific gate changed, so no additional build, gameplay test, PIE, Host/Remote or Shipping run is required. Final staging and commit remain the user's responsibility.

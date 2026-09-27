@@ -16,7 +16,7 @@ Match Board → 传中战术确认 → 中性 Resolution Theater → 选择高/�
 
 进入中性“传中”不预告 actual route。选择高/低只是意图；权威路线骰仍决定实际路线。实际高球、低球均在可见披露后继续同一个 Theater，不重播入场，不经过 Match Board 或旧 Low 面板，不增加 Continue。
 
-**CURRENT MIGRATION BOUNDARY**：High / Low Cross 与已披露类型后的 Near / Long Free Kick、Penalty、Corner 已迁移。Set Piece Type D6 仍为 Legacy；其他战术未因此迁移。Recovery、拒绝恢复和 Full-Time 仍由原有流程管理；正常退出恢复棋盘几何、可见性与输入。
+**CURRENT MIGRATION BOUNDARY**：High / Low Cross 与已披露类型后的 Near / Long Free Kick、Penalty、Corner 已迁移。Stage 8.16 的 Set Piece Type D6 改用既有 CompactBox / Roll v2（USER PIE PASS），仍在 Theater 接管前完成揭示和 hold；其他战术未因此迁移。Recovery、拒绝恢复和 Full-Time 仍由原有流程管理；正常退出恢复棋盘几何、可见性与输入。
 
 ## 场景与构图
 
@@ -90,11 +90,11 @@ Shipping 编译为中性 Cross 入口、实际 High / Low 及已披露类型后�
 
 - 更多独立 route / tactical Roll 的 CompactBox 接入另行评估；Cross route 已采用，未迁移消费方保持 Legacy。
 - Full Card 当前仅用于 Near / Long / Penalty 主罚球员选择和 Corner 候选规划状态；Tactical Choice、Formula、Roll、Outcome、Reason 与下一回合不采用完整卡片检查。更广泛的 Theater Full Card 接入另行评估。
-- Set Piece Type D6 现代化、Match Shell Visual Refresh Lite、其余 Legacy 消费方与可选 CJK 字体资源升级分别规划。
+- Set Piece Type D6 的 Stage 8.16 迁移与 Stage 8.16.1 共享落定色已完成 USER PIE 验收；Match Shell Visual Refresh Lite、其余 Legacy 消费方与可选 CJK 字体资源升级分别规划。
 
 ## Free Kick Theater — Stage 8.11 production contract
 
-两种任意球均从 **Legacy Set Piece Type D6 的类型可见揭示（含 ResultHold）之后**进入同一 Theater：主罚球员选择 → 明确确认 → 结算方式 → 分支结算 → Outcome / Reason → 显式下一回合 → Match Board。类型骰本身不迁移；不得借已经存在的未来安全事实提前占用舞台，也不经过旧棋盘弹窗。
+两种任意球均从 **Set Piece Type D6 的类型可见揭示（含 ResultHold）之后**进入同一 Theater：主罚球员选择 → 明确确认 → 结算方式 → 分支结算 → Outcome / Reason → 显式下一回合 → Match Board。Stage 8.11 当时未迁移类型骰；Stage 8.16 仅迁移其 CompactBox / Roll v2 消费关系，不得借已经存在的未来安全事实提前占用舞台，也不经过旧棋盘弹窗。
 
 ### 选择与规划
 
@@ -137,7 +137,7 @@ Near 第二行按 hover 优先的当前检查对象追加“，{PlayerName}可�
 
 ## Penalty Theater — Stage 8.12 production contract
 
-**Legacy Set Piece Type D6 完整可见揭示 / ResultHold → Penalty Theater → 主罚选择与明确确认 → 常规点球 / 勺子点球 → 分支结算 → Outcome / Reason → 下一回合 → Match Board**。类型骰仍为 Legacy；舞台取得所有权后不闪回旧棋盘弹窗。
+**Set Piece Type D6 完整可见揭示 / ResultHold → Penalty Theater → 主罚选择与明确确认 → 常规点球 / 勺子点球 → 分支结算 → Outcome / Reason → 下一回合 → Match Board**。类型骰在 Stage 8.16 采用 CompactBox，既有交接门控不变；舞台取得所有权后不闪回旧棋盘弹窗。
 
 ### 选择、检查与方法
 
@@ -166,7 +166,7 @@ Full Card 仅在主罚选择规划时复用：hover > selected > empty。离开�
 
 ## Corner Theater — Stage 8.13 production contract
 
-**Legacy Type D6 完整可见揭示 / ResultHold → 有序候选规划 → 共享 D6 对位 → 高/低意图与路线 D6 → Formula → Outcome / Reason → 显式下一回合 → Match Board**。零人分支在双方锁定后按权威结果直接进入专属 Outcome，跳过不适用的掷点与 Formula。LocalPlay 与 NetworkPlay 复用此完整流程；舞台取得所有权后不经过旧棋盘弹窗。
+**Type D6 完整可见揭示 / ResultHold → 有序候选规划 → 共享 D6 对位 → 高/低意图与路线 D6 → Formula → Outcome / Reason → 显式下一回合 → Match Board**。零人分支在双方锁定后按权威结果直接进入专属 Outcome，跳过不适用的掷点与 Formula。LocalPlay 与 NetworkPlay 复用此完整流程；舞台取得所有权后不经过旧棋盘弹窗。
 
 ### 候选规划与完整卡片
 
@@ -200,4 +200,4 @@ Full Card 仅在主罚选择规划时复用：hover > selected > empty。离开�
 
 服务器持久化与玩家可见揭示分离。比分、Outcome、Reason 与获胜标识继续使用共同 gate；防守滚动时已落定进攻骰保持静态。等待 viewer 没有可操作 CTA，保留明确动作身份；Local hot-seat 保留既有身份约定。下一回合提交 canonical continuation，只有实际 Runner / Helper（自动进球为实际 scorer）进入 Used，未抽中候选仍 Available；非终局沿用合并 Used 池 Recovery，最后一次机会跳过 Recovery。
 
-不新增 RPC、序列化字段、Roll 变体、玩法 RNG 或第二套规则。既有 safe presentation 的内容扩展不等于网络结构变更。Set Piece Type D6、Match Shell、规划之外 Full Card、其他 Legacy 消费方与可选门将专属轮廓继续延期。
+不新增 RPC、序列化字段、Roll 变体、玩法 RNG 或第二套规则。既有 safe presentation 的内容扩展不等于网络结构变更。Set Piece Type D6 的已验收迁移见 Stage 8.16；Match Shell、规划之外 Full Card、其他 Legacy 消费方与可选门将专属轮廓继续延期。

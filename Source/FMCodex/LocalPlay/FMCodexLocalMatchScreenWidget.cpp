@@ -3965,7 +3965,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		Result.ContestId = TEXT("SetPiece.Type");
 		Result.ContestLabel = TEXT("定位球类型");
 		Result.StatusLabel = bHolding
-			? TEXT("定位球类型已确认")
+			? (bFormulaDisclosed ? Result.RouteResultLabel : TEXT("定位球类型已确认"))
 			: bSettling ? TEXT("掷点落定中") : TEXT("号码滚动中");
 		if (!bFormulaDisclosed)
 		{
@@ -4366,6 +4366,10 @@ bool UFMCodexLocalMatchScreenWidget::UsesTheaterRollMotion() const
 	// retains the existing event-keyed cosmetic shuffle, independent of result.
 	if (ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::TacticalPoint
 		&& ActiveCrossRollReveal.ContestId==TEXT("Match.TacticalPoint")) return true;
+	// Type classification precedes Theater ownership, but consumes the same
+	// continuous CompactBox motion with its existing reveal/hold lifetime.
+	if (ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::SetPieceType
+		&& ActiveCrossRollReveal.ContestId==TEXT("SetPiece.Type")) return true;
 	if (!TheaterMotion.bActive) return false;
 	if (Presentation.SetPiece.Type==ESetPieceSelectedType::Corner && FMCodexResolutionTheaterPrototype::IsCornerResolutionEnabled())
 		return ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection

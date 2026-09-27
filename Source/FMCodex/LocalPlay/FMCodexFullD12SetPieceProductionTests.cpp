@@ -1042,7 +1042,7 @@ bool FFMCodexFullD12RevealAndCentralOwnershipTest::RunTest(
 			World.Controller->GetResolutionFeedback(), FString()));
 	Screen->PauseInlineFormulaRevealTimerForTesting();
 	FormulaSurface = Screen->GetInlineFormulaSurface();
-	TestTrue(TEXT("Set Piece Type uses the ordinary moving D6 Reel"),
+	TestTrue(TEXT("Set Piece Type consumes CompactBox and continuous D6 motion before Theater"),
 		Screen->GetPrimaryActionDispatchCountForTesting() == 1
 			&& Screen->GetLastPrimaryActionDispatchForTesting()
 				== EFMCodexUMGInteractionCategory::RollSetPieceType
@@ -1053,6 +1053,7 @@ bool FFMCodexFullD12RevealAndCentralOwnershipTest::RunTest(
 			&& FormulaSurface->GetPresentation().RollReel.bMoving
 			&& FormulaSurface->GetPresentation().RollReel.DomainMinimum == 1
 			&& FormulaSurface->GetPresentation().RollReel.DomainMaximum == 6
+			&& FormulaSurface->GetRollReelWidget()->GetVisualVariant() == EFMCodexRollVisualVariant::CompactBox
 			&& Screen->GetWidgetFromName(
 				TEXT("TacticalPointRollRevealSurface"))->GetVisibility()
 					== ESlateVisibility::Collapsed
@@ -1060,7 +1061,16 @@ bool FFMCodexFullD12RevealAndCentralOwnershipTest::RunTest(
 	Screen->RequestContinueResolution();
 	TestEqual(TEXT("Reveal gate prevents duplicate type command dispatch"),
 		Screen->GetPrimaryActionDispatchCountForTesting(), 1);
-	Screen->AdvanceInlineFormulaRevealForTesting(1.46f);
+	Screen->AdvanceInlineFormulaRevealForTesting(.919f);
+	const auto BeforeCapture = FormulaSurface->GetPresentation().RollReel;
+	Screen->AdvanceInlineFormulaRevealForTesting(.0011f);
+	const auto Capture = FormulaSurface->GetPresentation().RollReel;
+	TestTrue(TEXT("Type opts into .92s modern capture with continuous position and unchanged visible digit"),
+		Screen->GetInlineFormulaRevealPhase() == EFMCodexUMGInlineFormulaRevealPhase::Settling
+		&& Capture.ContinuousPositionCells >= BeforeCapture.ContinuousPositionCells
+		&& Capture.ContinuousPositionCells - BeforeCapture.ContinuousPositionCells < .02f
+		&& Capture.CenterValue == BeforeCapture.CenterValue);
+	Screen->AdvanceInlineFormulaRevealForTesting(.54f);
 	Screen->AdvanceInlineFormulaRevealForTesting(0.21f);
 	FormulaSurface = Screen->GetInlineFormulaSurface();
 	TestTrue(TEXT("Type ResultHold discloses the authoritative D6 and route"),
@@ -1072,7 +1082,17 @@ bool FFMCodexFullD12RevealAndCentralOwnershipTest::RunTest(
 				== TEXT("掷点 5 → 近距离任意球")
 			&& FormulaSurface->GetPresentation().RollReel.bStaticResult
 			&& FormulaSurface->GetPresentation().RollReel.CenterValue == 5);
-	Screen->AdvanceInlineFormulaRevealForTesting(2.40f);
+	Screen->RefreshFromPresentation(FFMCodexLocalMatchUMGPresentationBuilder::Build(
+		World.Controller->GetInteractionView(), World.Controller->GetResolutionFeedback(), FString()));
+	Screen->PauseInlineFormulaRevealTimerForTesting();
+	TestEqual(TEXT("Repeated authoritative event does not replay Type roll"),
+		Screen->GetInlineFormulaRevealPhase(), EFMCodexUMGInlineFormulaRevealPhase::ResultHold);
+	Screen->AdvanceInlineFormulaRevealForTesting(2.36f);
+	const auto* EarlyTheaterTaker = Screen->GetWidgetFromName(TEXT("TheaterTakerBounds"));
+	TestTrue(TEXT("Original .18s disclosure plus 2.40s readable hold blocks Theater until completion"),
+		Screen->IsInlineFormulaRevealInputBlocked()
+		&& (!EarlyTheaterTaker || EarlyTheaterTaker->GetVisibility() == ESlateVisibility::Collapsed));
+	Screen->AdvanceInlineFormulaRevealForTesting(.02f);
 	SetPieceSurface = Screen->GetWidgetFromName(
 		TEXT("SetPieceProductionResolutionSurface"));
 	TestTrue(TEXT("Type reveal settles into the unique carrier-selection surface"),
@@ -1083,6 +1103,10 @@ bool FFMCodexFullD12RevealAndCentralOwnershipTest::RunTest(
 				: SetPieceSurface->GetVisibility()==ESlateVisibility::SelfHitTestInvisible)
 			&& World.Controller->GetInteractionView().InteractionCategory
 				== ECategory::SelectSetPieceCarrier);
+	Screen->RefreshFromPresentation(FFMCodexLocalMatchUMGPresentationBuilder::Build(
+		World.Controller->GetInteractionView(), World.Controller->GetResolutionFeedback(), FString()));
+	TestFalse(TEXT("Completed event cannot replay or leave a stale Type surface"),
+		Screen->IsInlineFormulaRevealInputBlocked() || Screen->GetInlineFormulaSurface()->GetPresentation().bDiceRevealVisible);
 	return true;
 }
 

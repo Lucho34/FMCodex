@@ -2477,3 +2477,13 @@ Penalty migration 与 Copy / Outcome micro polish；本条取代此前 Penalty d
 CoreRules、Authority、RNG、Full D12、AP domain、RPC、replicated schema、safe projection 与 ThroughBall 规则均不变。恢复必须经单独批准后编辑同一源表、递增内容版本并正常导入，同时恢复部署入口；不手改 generated JSON。后续试玩继续观察高 TP（特别是 TP7）无选项频率、直塞集中度、比赛时长、理解负担、直接性/重复感及球员特色；这些长期问题不阻断提交已正确实现的实验。永久删除或 PassControl 现代化等待该产品决定，最终 staging / commit 仍由用户执行。
 
 Grouped closeout 复用既有内容校验、focused/fixture automation、增量 Development Editor build 与真实 Local PIE 证据，并单独记录用户功能验收。收尾仅同步文档验收状态，不修改已验证的源表、生成内容、runtime 或测试实现，不机械重跑 gameplay、build、PIE、Host/Remote 或 Shipping。
+
+## 2026-09-27 — Stage 8.16 + 8.16.1 Type D6 CompactBox and shared landed accent
+
+Type D6 采用既有 CompactBox，且在 Theater 激活前显式接入既有 Roll v2 motion；只换变体不足以完成迁移。**ADOPTED / PRODUCTION LOCKED — USER PIE PASS**。用户接受 Type D6 外观、连续运动、可读 ResultHold、Theater 交接及共享落定色，无明显 snap、重复 helper 或过渡问题；不重开已锁定 Cross / Near / Long / Penalty / Corner Theater。
+
+保持原有 Local 只读 2×2 类型参考、Network ownership / pending host、typed action、安全结果投影、事件身份与去重。落定后继续 .18s 披露延迟与 2.40s 可读 hold，完成可见 Type 揭示后才由既有 gate 交接 Theater。UI 不自行映射 D6 类型或生成玩法结果，不新增 Roll 家族、时钟、Formula、Full Card 或类型选择按钮。规则、Authority、RNG、Full D12、RPC、schema、safe projection 与 Stage 8.15B 内容配置不变。
+
+Stage 8.16.1 将 **Authoritative Roll Landed Accent = #EED7A6** 定为共享状态色：HeroRoll、CompactBox、TheaterInline 及 Reel 结束后的权威静态 Roll operand 统一消费窄范围 style helper。仅表示数字已落定，不表示成功、Goal、奖励或胜负；未落定数字保持 neutral / cool-white，结果/helper 文字、Formula 其他数值、CTA、边框与 Legacy 保持原样，不增加奖励光效或改变时序。
+
+Grouped closeout 仅同步文档，复用已成功的 focused/affected 验证、增量 Development Editor build 与自然 Local PIE，并单独记录用户验收。实现及测试未再变化，未改 Shipping 专属 gate，不追加 gameplay、build、PIE、Host/Remote 或 Shipping 验证；最终 staging / commit 由用户手动完成。
