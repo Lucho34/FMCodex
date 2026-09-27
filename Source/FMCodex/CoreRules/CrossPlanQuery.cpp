@@ -349,12 +349,12 @@ FCrossPlanQueryResult FCrossPlanQuery::BuildPlan(
 		return Result;
 	}
 
-	if (!RunnerSnapshot.PositionTypes.Contains(EPlayerPositionType::Attack))
+	if (!Input.bRunnerInAttackingForwardArea)
 	{
 		CrossPlanQuery::SetFailure(
 			Result,
 			ECrossPlanQueryErrorCode::RunnerNotForward,
-			TEXT("Cross requires a runner with Attack position."),
+			TEXT("Cross requires authoritative attacking Forward placement proof."),
 			TEXT("RunnerCardId"));
 		return Result;
 	}

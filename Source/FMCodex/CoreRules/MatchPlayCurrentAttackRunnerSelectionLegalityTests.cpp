@@ -37,13 +37,13 @@ bool FRunnerLegalitySkillRulesTest::RunTest(const FString& Parameters)
 		Evaluate(ESkillRuleType::PassControl,
 			RunnerLegalityFixtures::AttackRunnerId).bIsLegal);
 
-	TestTrue(TEXT("Cross multi-position Attack legal"),
+	TestTrue(TEXT("Cross existing Attack runner in Forward remains legal"),
 		Evaluate(ESkillRuleType::Cross,
 			RunnerLegalityFixtures::AttackRunnerId).bIsLegal);
-	TestEqual(TEXT("Cross missing Attack"),
+	TestEqual(TEXT("Cross outside Forward"),
 		Evaluate(ESkillRuleType::Cross,
 			RunnerLegalityFixtures::MidfieldRunnerId).ErrorCode,
-		E::RunnerMissingRequiredPositionType);
+		E::RunnerNotInAttackingForwardArea);
 
 	const auto ThroughForward =
 		Evaluate(ESkillRuleType::ThroughBall,

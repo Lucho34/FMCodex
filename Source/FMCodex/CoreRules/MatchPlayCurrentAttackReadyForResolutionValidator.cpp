@@ -327,17 +327,8 @@ FMatchPlayCurrentAttackReadyForResolutionValidator::Validate(
 				TEXT("PassControl Ready Runner must include Midfield."));
 			return Result;
 		}
-		if (Selected.ActionType == ESkillRuleType::Cross
-			&& !Runner.PositionTypes.Contains(
-				EPlayerPositionType::Attack))
-		{
-			Fail(
-				EMatchPlayCurrentAttackReadyValidationErrorCode
-					::RunnerMissingRequiredPositionType,
-				TEXT("Cross Ready Runner must include Attack."));
-			return Result;
-		}
-		if (Selected.ActionType == ESkillRuleType::ThroughBall)
+		if (Selected.ActionType == ESkillRuleType::ThroughBall
+			|| Selected.ActionType == ESkillRuleType::Cross)
 		{
 			Result.RunnerRelativeZoneResolveResult =
 				FMatchPlayRelativeDeploymentZoneResolver::Resolve(
@@ -359,7 +350,7 @@ FMatchPlayCurrentAttackReadyForResolutionValidator::Validate(
 				Fail(
 					EMatchPlayCurrentAttackReadyValidationErrorCode
 						::RunnerNotInAttackingForwardArea,
-					TEXT("ThroughBall Ready Runner must be in Forward area."));
+					TEXT("Cross and ThroughBall Ready Runner must be in Forward area."));
 				return Result;
 			}
 		}

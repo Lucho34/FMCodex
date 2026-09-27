@@ -1,6 +1,7 @@
 #include "MatchPlayCurrentAttackResolveCrossPostRoutePlanOrchestrator.h"
 
 #include "MatchPlayCardSnapshotAuthority.h"
+#include "MatchPlayDeploymentSlotCatalog.h"
 
 namespace MatchPlayCurrentAttackResolveCrossPostRoutePlan
 {
@@ -152,6 +153,19 @@ namespace MatchPlayCurrentAttackResolveCrossPostRoutePlan
 		Input.CarrierPlayerId = MakeCanonicalPlayerId(Bundle.Carrier.CardId);
 		Input.RunnerCardId = Bundle.Runner.CardId;
 		Input.RunnerPlayerId = MakeCanonicalPlayerId(Bundle.Runner.CardId);
+		int32 RunnerPlacementCount = 0;
+		for (const FMatchPlayDeploymentPlacement& Placement : CurrentAttack.DeploymentPlacements)
+		{
+			if (Placement.PlayerSide != Bundle.CurrentAttackingPlayer
+				|| Placement.CardId != Input.RunnerCardId) continue;
+			++RunnerPlacementCount;
+			const auto Zone = FMatchPlayRelativeDeploymentZoneResolver::Resolve(
+				State.DeploymentSlotCatalog, Placement.SlotId,
+				Bundle.CurrentAttackingPlayer, Bundle.CurrentAttackingPlayer);
+			Input.bRunnerInAttackingForwardArea = Zone.bSuccess
+				&& Zone.RelativeZone == EMatchPlayRelativeDeploymentZone::Forward;
+		}
+		Input.bRunnerInAttackingForwardArea &= RunnerPlacementCount == 1;
 		Input.MarkerCardId = Bundle.Marker.CardId;
 		Input.MarkerPlayerId = MakeCanonicalPlayerId(Bundle.Marker.CardId);
 		Input.bHasHelper = Bundle.bHasHelper;

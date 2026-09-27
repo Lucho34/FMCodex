@@ -210,19 +210,15 @@ FMatchPlayCurrentAttackSkillSelectionLegalityEvaluator::Evaluate(
 						&& Placement.CardId == PreparedRunnerCardId;
 				});
 		bool bCompatible = RunnerQuery.bSuccess && RunnerPlacement != nullptr;
-		if (bCompatible && Result.ResolvedActionType == ESkillRuleType::Cross)
-		{
-			bCompatible = RunnerQuery.Snapshot.PositionTypes.Contains(
-				EPlayerPositionType::Attack);
-		}
-		else if (bCompatible
+		if (bCompatible
 			&& Result.ResolvedActionType == ESkillRuleType::PassControl)
 		{
 			bCompatible = RunnerQuery.Snapshot.PositionTypes.Contains(
 				EPlayerPositionType::Midfield);
 		}
 		else if (bCompatible
-			&& Result.ResolvedActionType == ESkillRuleType::ThroughBall)
+			&& (Result.ResolvedActionType == ESkillRuleType::ThroughBall
+				|| Result.ResolvedActionType == ESkillRuleType::Cross))
 		{
 			const FMatchPlayRelativeDeploymentZoneResolveResult Zone =
 				FMatchPlayRelativeDeploymentZoneResolver::Resolve(

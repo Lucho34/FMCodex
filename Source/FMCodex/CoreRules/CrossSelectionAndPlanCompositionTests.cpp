@@ -133,6 +133,7 @@ namespace CrossSelectionAndPlanCompositionTests
 		Input.CarrierPlayerId = CarrierPlayerId;
 		Input.RunnerCardId = RunnerCardId;
 		Input.RunnerPlayerId = RunnerPlayerId;
+		Input.bRunnerInAttackingForwardArea = true;
 		Input.MarkerCardId = MarkerCardId;
 		Input.MarkerPlayerId = MarkerPlayerId;
 		Input.bHasHelper = bHasHelper;
@@ -188,6 +189,7 @@ namespace CrossSelectionAndPlanCompositionTests
 			&& Left.CarrierPlayerId == Right.CarrierPlayerId
 			&& Left.RunnerCardId == Right.RunnerCardId
 			&& Left.RunnerPlayerId == Right.RunnerPlayerId
+			&& Left.bRunnerInAttackingForwardArea == Right.bRunnerInAttackingForwardArea
 			&& Left.MarkerCardId == Right.MarkerCardId
 			&& Left.MarkerPlayerId == Right.MarkerPlayerId
 			&& Left.bHasHelper == Right.bHasHelper

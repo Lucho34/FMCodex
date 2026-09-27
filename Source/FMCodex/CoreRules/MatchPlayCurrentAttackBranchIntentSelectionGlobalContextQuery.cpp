@@ -1,6 +1,7 @@
 #include "MatchPlayCurrentAttackBranchIntentSelectionGlobalContextQuery.h"
 
 #include "MatchPlayElectiveBranchIntentRules.h"
+#include "MatchPlayDeploymentSlotCatalog.h"
 
 namespace MatchPlayCurrentAttackBranchIntentSelectionGlobalContextImplementation
 {
@@ -356,14 +357,25 @@ FMatchPlayCurrentAttackBranchIntentSelectionGlobalContextQuery::Query(
 				TEXT("Frozen Runner must differ from Carrier."));
 			return Result;
 		}
-		if (!Result.RunnerSnapshotQueryResult.Snapshot.PositionTypes
-				.Contains(EPlayerPositionType::Attack))
+		const FMatchPlayDeploymentPlacement* RunnerPlacement =
+			State.CurrentAttack.DeploymentPlacements.FindByPredicate(
+				[&](const FMatchPlayDeploymentPlacement& Placement)
+				{
+					return Placement.PlayerSide == Result.CurrentAttackingPlayer
+						&& Placement.CardId == Result.Preparation.RunnerCardId;
+				});
+		// The unique attacking-side placement was validated above.
+		const auto RunnerZone = FMatchPlayRelativeDeploymentZoneResolver::Resolve(
+			State.DeploymentSlotCatalog, RunnerPlacement->SlotId,
+			Result.CurrentAttackingPlayer, Result.CurrentAttackingPlayer);
+		if (!RunnerZone.bSuccess
+			|| RunnerZone.RelativeZone != EMatchPlayRelativeDeploymentZone::Forward)
 		{
 			SetError(
 				Result,
 				EMatchPlayCurrentAttackBranchIntentSelectionErrorCode
-					::RunnerMissingRequiredPositionType,
-				TEXT("Cross Runner must include Attack position."));
+					::RunnerDeploymentInvalid,
+				TEXT("Cross Runner must be deployed in the attacking Forward area."));
 			return Result;
 		}
 		if (Result.Preparation.bHasHelper)

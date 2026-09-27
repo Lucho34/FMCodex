@@ -135,6 +135,7 @@ namespace CrossPlanQueryTests
 		Input.CarrierPlayerId = CarrierPlayerId;
 		Input.RunnerCardId = RunnerCardId;
 		Input.RunnerPlayerId = RunnerPlayerId;
+		Input.bRunnerInAttackingForwardArea = true;
 		Input.MarkerCardId = MarkerCardId;
 		Input.MarkerPlayerId = MarkerPlayerId;
 		Input.bHasHelper = bHasHelper;
@@ -163,6 +164,7 @@ namespace CrossPlanQueryTests
 			&& Left.CarrierPlayerId == Right.CarrierPlayerId
 			&& Left.RunnerCardId == Right.RunnerCardId
 			&& Left.RunnerPlayerId == Right.RunnerPlayerId
+			&& Left.bRunnerInAttackingForwardArea == Right.bRunnerInAttackingForwardArea
 			&& Left.MarkerCardId == Right.MarkerCardId
 			&& Left.MarkerPlayerId == Right.MarkerPlayerId
 			&& Left.bHasHelper == Right.bHasHelper
@@ -688,8 +690,12 @@ bool FCrossPlanRunnerAndSelectedGoalkeeperEligibilityTest::RunTest(
 	using namespace CrossPlanQueryTests;
 	FPlayerCardRuleSnapshotSet RunnerSnapshots = MakePlayerCardSnapshots();
 	RunnerSnapshots.Cards[1].PositionTypes = { EPlayerPositionType::Midfield };
+	TestTrue(TEXT("Non-A Runner with authoritative Forward proof can build a plan"),
+		FCrossPlanQuery::BuildPlan(RunnerSnapshots, MakeSkillRules(), MakeInput()).bSuccess);
+	FCrossPlanQueryInput MissingForwardProof = MakeInput();
+	MissingForwardProof.bRunnerInAttackingForwardArea = false;
 	ExpectFailure(
-		*this, MakeInput(), RunnerSnapshots, MakeSkillRules(),
+		*this, MissingForwardProof, MakePlayerCardSnapshots(), MakeSkillRules(),
 		ECrossPlanQueryErrorCode::RunnerNotForward, TEXT("RunnerCardId"));
 	FPlayerCardRuleSnapshotSet GoalkeeperSnapshots = MakePlayerCardSnapshots();
 	GoalkeeperSnapshots.Cards[4] = MakeOutfieldCard(

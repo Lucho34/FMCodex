@@ -64,6 +64,9 @@ struct FMCODEX_API FCrossPlanQueryInput
 	FName CarrierPlayerId = NAME_None;
 	FName RunnerCardId = NAME_None;
 	FName RunnerPlayerId = NAME_None;
+	// Authority-provided placement proof; authored PositionTypes are not a zone.
+	// This standalone query input is neither replicated nor a player payload.
+	bool bRunnerInAttackingForwardArea = false;
 	FName MarkerCardId = NAME_None;
 	FName MarkerPlayerId = NAME_None;
 	bool bHasHelper = false;

@@ -424,7 +424,7 @@ LocalPlay 的“选择盯人球员”交互同样采用场上直选，但结构�
 
 当前进攻中已选定的四种参与角色统一以单值语义投影到场上球员：Carrier=`持球`、Runner=`跑位`、Marker=`盯人`、Helper=`协防`。每名球员最多显示一个角色标签；角色来源只能是当前权威 `CurrentAttack.ActionPreparation`，或在动作冻结后来自 `CurrentAttack.SelectedAction`，不得由 Widget、点击历史或动画状态推断。标签在后续选择与结算阶段继续保留，并在 `CurrentAttack` 清除时一并清除。此标签只表达已选定角色，不扩大 Runner/Helper 的场上选择能力。
 
-LocalPlay 的“选择跑位球员”交互采用场上直选，但 Runner 的结构合法集合必须继续来自 `FMatchPlayCurrentAttackRunnerSelectionAvailability`。候选只能是当前进攻方唯一部署的非门将球员，且不得与已冻结 Carrier 相同；Pass Control 要求 Midfield 位置，Cross 要求 Attack 位置，Through Ball 还要求候选处于进攻方相对 Forward 区域。Presentation 只按稳定 `CardId/RelatedCardId` 投影权威合法候选，不得依据 Tactical Match、TP、属性或战术优劣重算。单击合法 Pitch Mini 立即提交既有 Runner 命令并进入下一权威步骤，Full Card hover 保留，无二次确认或取消；底部不显示 PlayerKey 候选按钮。主动放弃与零合法 Runner 都显示 `不选择跑位球员`，但仍提交各自互斥的 typed command。两者只在权威状态中记录正式 Runner 缺席，不结束进攻、不消费进攻次数或 RNG，并直接进入战术选择；不要求 Runner 的 LongShot/CutInside 可以继续选择，要求 Runner 的 Cross/PassControl/ThroughBall 仍由最终战术合法性拒绝。若已选 Runner，则 Helper 继续使用既有选择合同。
+LocalPlay 的“选择跑位球员”交互采用场上直选，但 Runner 的结构合法集合必须继续来自 `FMatchPlayCurrentAttackRunnerSelectionAvailability`。候选只能是当前进攻方唯一部署的非门将球员，且不得与已冻结 Carrier 相同；Pass Control 要求 Midfield 位置；Cross 与 Through Ball 要求候选当前部署于进攻方相对 Forward（前场）区域，Cross 不以 authored A/M/D 类型判断前场资格。Presentation 只按稳定 `CardId/RelatedCardId` 投影权威合法候选，不得依据 Tactical Match、TP、属性或战术优劣重算。单击合法 Pitch Mini 立即提交既有 Runner 命令并进入下一权威步骤，Full Card hover 保留，无二次确认或取消；底部不显示 PlayerKey 候选按钮。主动放弃与零合法 Runner 都显示 `不选择跑位球员`，但仍提交各自互斥的 typed command。两者只在权威状态中记录正式 Runner 缺席，不结束进攻、不消费进攻次数或 RNG，并直接进入战术选择；不要求 Runner 的 LongShot/CutInside 可以继续选择，要求 Runner 的 Cross/PassControl/ThroughBall 仍由最终战术合法性拒绝。若已选 Runner，则 Helper 继续使用既有选择合同。
 
 LocalPlay 的“选择协防球员”交互采用场上直选。Helper 的结构合法集合必须继续来自 `FMatchPlayCurrentAttackHelperSelectionAvailability`：候选属于当前防守方、已唯一部署、快照有效、非门将、不得与已冻结 Marker 相同，并且必须与已冻结 Runner 位于同一个 canonical shared physical half。半区关系复用 Marker↔Carrier 的 `FMatchPlayDeploymentPhysicalAreaMatchQuery`，不得比较屏幕左右、玩家相对区文字或坐标。该阶段只存在于既有 Pass Control、Cross、Through Ball 参与者合同中；位置类型、TP、Tactical Match、属性或战术优劣仍不构成额外门禁。单击合法 Pitch Mini 立即提交既有 Helper 命令，Full Card hover 保留，无确认或取消；底部不显示 PlayerKey 候选按钮，但保留 DeclineHelper，玩家文案为 `放弃协防`。Marker 被点作 Helper 时必须由 canonical `HelperMatchesMarker` 投影拒绝原因；其他条件成立但与 Runner 不同半区时使用 `HelperNotInRunnerPhysicalArea`，显示 `协防球员必须与跑位球员位于同一半区`，两者均只显示既有非模态反馈且不改变权威状态。生产 Match Flow 中玩家可见 Skill 术语统一为 `战术`，稳定 SkillId 与内部 Skill 命名保持不变。
 
@@ -563,7 +563,7 @@ B. 直射死角：判定公式。
 
 持球球员必须为已部署、持有当前行动点可触发传中技能的进攻方球员，且不得为门将。
 
-跑位球员必须为包含 `A` 类型的进攻方前场球员，且不得为门将；跑位球员必须与持球球员为不同球员。
+跑位球员必须属于当前进攻方，且当前部署于进攻方相对 Forward（前场）区域，不得为门将，并且必须与持球球员为不同球员。前场资格来自权威 CurrentAttack.DeploymentPlacements 与 DeploymentSlotCatalog 的相对区域解析，不来自 authored A/M/D 类型：M/D 球员部署在前场可满足此条件；A 类型球员部署在前场外不能仅凭 authored A 获得资格。其他既有部署、快照、选择阶段与参与者条件保持。
 
 盯人球员为必填的非门将防守参与者。协防球员为可选的非门将防守参与者；未选择协防球员时，继续适用 7.3，协防球员属性和体力均视为 0。盯人球员与协防球员必须为不同球员；二者当前均不新增除非门将之外的其他位置限制。
 

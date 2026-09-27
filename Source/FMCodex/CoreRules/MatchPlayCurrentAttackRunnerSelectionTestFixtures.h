@@ -177,7 +177,9 @@ namespace FMCodex::Tests::MatchPlayCurrentAttackRunnerSelection
 				EMatchPlayNeutralSlotSide::NearPlayerA),
 			MakeSlot(
 				TEXT("Slot.Attack"),
-				EMatchPlayNeutralSlotSide::NearPlayerA),
+				ActionType == ESkillRuleType::Cross
+					? EMatchPlayNeutralSlotSide::NearPlayerB
+					: EMatchPlayNeutralSlotSide::NearPlayerA),
 			MakeSlot(
 				TEXT("Slot.Forward"),
 				EMatchPlayNeutralSlotSide::NearPlayerB),

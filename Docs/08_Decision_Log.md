@@ -2487,3 +2487,11 @@ Type D6 采用既有 CompactBox，且在 Theater 激活前显式接入既有 Rol
 Stage 8.16.1 将 **Authoritative Roll Landed Accent = #EED7A6** 定为共享状态色：HeroRoll、CompactBox、TheaterInline 及 Reel 结束后的权威静态 Roll operand 统一消费窄范围 style helper。仅表示数字已落定，不表示成功、Goal、奖励或胜负；未落定数字保持 neutral / cool-white，结果/helper 文字、Formula 其他数值、CTA、边框与 Legacy 保持原样，不增加奖励光效或改变时序。
 
 Grouped closeout 仅同步文档，复用已成功的 focused/affected 验证、增量 Development Editor build 与自然 Local PIE，并单独记录用户验收。实现及测试未再变化，未改 Shipping 专属 gate，不追加 gameplay、build、PIE、Host/Remote 或 Shipping 验证；最终 staging / commit 由用户手动完成。
+
+## 2026-09-27 — Stage 8.17A Cross Runner current-zone eligibility
+
+Cross Runner 的前场条件以当前权威部署为准，取代旧的 authored Attack 类型门禁。当前进攻方的 M/D 球员部署于相对 Forward 区域时可以满足此条件；authored A 球员在前场外则不能满足。唯一部署、有效快照、非门将、Carrier 排除、选择阶段、ownership 与候选顺序保持。普通生产路径仍是参与者优先：先选 Runner / 可选 Helper，再由 canonical Skill legality 判定 Cross 是否可用，不重排流程。
+
+Runner legality、prepared Runner 的 Skill compatibility、branch intent 与 Ready validation 复用既有相对部署区解析器。独立 Cross plan 查询只接收由权威适配器根据当前部署生成的前场证明，缺少证明即拒绝，不再读取静态位置类型判断前场。此证明仅为非复制的内部 query input，不增加 RPC、State persistence 或 viewer-safe schema；Local / Network 共用同一规则。
+
+本次不改变 Cross 路线、Formula、胜负或消耗，保留已锁定 Theater、Stage 8.16 Roll 表现与 Prototype40_v2 内容。普通 Tactical Choice 的 Full Card 扩展留给 Stage 8.17B；本阶段仍需独立 USER PIE 验收。

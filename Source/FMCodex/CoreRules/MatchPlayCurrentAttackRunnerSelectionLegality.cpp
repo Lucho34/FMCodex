@@ -127,21 +127,9 @@ FMatchPlayCurrentAttackRunnerSelectionLegalityEvaluator::Evaluate(
 			return Result;
 		}
 	}
-	else if (Result.ResolvedActionType == ESkillRuleType::Cross)
-	{
-		if (!Result.ResolvedRunnerSnapshot.PositionTypes.Contains(
-				EPlayerPositionType::Attack))
-		{
-			SetError(
-				Result,
-				EMatchPlayCurrentAttackRunnerSelectionErrorCode
-					::RunnerMissingRequiredPositionType,
-				TEXT("Cross requires a runner with Attack position."));
-			return Result;
-		}
-	}
 	else if (Result.ResolvedActionType
-		== ESkillRuleType::ThroughBall)
+		== ESkillRuleType::ThroughBall
+		|| Result.ResolvedActionType == ESkillRuleType::Cross)
 	{
 		Result.RelativeZoneResolveResult =
 			FMatchPlayRelativeDeploymentZoneResolver::Resolve(
@@ -165,7 +153,7 @@ FMatchPlayCurrentAttackRunnerSelectionLegalityEvaluator::Evaluate(
 				Result,
 				EMatchPlayCurrentAttackRunnerSelectionErrorCode
 					::RunnerNotInAttackingForwardArea,
-				TEXT("ThroughBall requires the runner in the attacking Forward area."));
+				TEXT("Cross and ThroughBall require the runner in the attacking Forward area."));
 			return Result;
 		}
 	}
