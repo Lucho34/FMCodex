@@ -20,6 +20,7 @@ struct FTakerInspection
 	bool bActive = false;
 	bool bLongFreeKick = false;
 	bool bPenalty = false;
+	bool bOrderedMultiSelect = false;
 	FName HoveredId = NAME_None;
 	TMap<FName, bool> CombinationEligibility;
 	uint32 Generation = 0;
@@ -33,6 +34,8 @@ struct FMotion
 	bool bLastNearEnabled = false;
 	bool bLastLongEnabled = false;
 	bool bLastPenaltyEnabled = false;
+	bool bLastCornerEnabled = false;
+	bool bLastCornerResolutionEnabled = false;
 	float Elapsed = 1.f;
 	float FieldProgress = 0.f;
 	float FieldTransitionFrom = 0.f;
@@ -49,13 +52,21 @@ bool IsNearFreeKickEnabled();
 bool IsLongFreeKickEnabled();
 // Production default in all targets; only Development exposes the Penalty fallback.
 bool IsPenaltyEnabled();
+// Production planning in all targets; only Development exposes the selection fallback.
+bool IsCornerSelectionEnabled();
+// Production resolution in all targets; only Development exposes the resolution fallback.
+bool IsCornerResolutionEnabled();
+// Local display copy only, after reveal gating. Never changes the replicated presentation.
+void ApplyCornerDisplayCopy(const FFMCodexUMGMatchScreenViewModel& Screen,
+	FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed);
 bool IsFormulaContest(FName ContestId);
 bool WantsTheater(const FFMCodexUMGMatchScreenViewModel& Screen,
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed);
 UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& Low, UTexture2D* Athletes);
 void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed,
-	const FFMCodexUMGMatchHeaderViewModel& DisplayedHeader, bool bRequestPending, FTakerInspection& Inspection);
+	const FFMCodexUMGMatchHeaderViewModel& DisplayedHeader, bool bRequestPending, FTakerInspection& Inspection,
+	bool bSelectionConfirmationPending = false);
 void RefreshReel(UWidgetTree& Tree, const FFMCodexUMGRollReelViewModel& Reel);
 void SetActive(UWidgetTree& Tree, FMotion& Motion, bool bActive);
 void RefreshHover(UWidgetTree& Tree);

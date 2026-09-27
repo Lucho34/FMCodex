@@ -472,13 +472,17 @@ void UFMCodexLocalMatchScreenWidget::NativeTick(const FGeometry& MyGeometry, flo
 	const bool bNearEnabled = FMCodexResolutionTheaterPrototype::IsNearFreeKickEnabled();
 	const bool bLongEnabled = FMCodexResolutionTheaterPrototype::IsLongFreeKickEnabled();
 	const bool bPenaltyEnabled = FMCodexResolutionTheaterPrototype::IsPenaltyEnabled();
-	if (TheaterMotion.bLastEnabled != bEnabled || TheaterMotion.bLastLowEnabled != bLowEnabled || TheaterMotion.bLastNearEnabled != bNearEnabled || TheaterMotion.bLastLongEnabled != bLongEnabled || TheaterMotion.bLastPenaltyEnabled != bPenaltyEnabled)
+	const bool bCornerEnabled = FMCodexResolutionTheaterPrototype::IsCornerSelectionEnabled();
+	const bool bCornerResolutionEnabled = FMCodexResolutionTheaterPrototype::IsCornerResolutionEnabled();
+	if (TheaterMotion.bLastEnabled != bEnabled || TheaterMotion.bLastLowEnabled != bLowEnabled || TheaterMotion.bLastNearEnabled != bNearEnabled || TheaterMotion.bLastLongEnabled != bLongEnabled || TheaterMotion.bLastPenaltyEnabled != bPenaltyEnabled || TheaterMotion.bLastCornerEnabled != bCornerEnabled || TheaterMotion.bLastCornerResolutionEnabled != bCornerResolutionEnabled)
 	{
 		TheaterMotion.bLastEnabled = bEnabled;
 		TheaterMotion.bLastLowEnabled = bLowEnabled;
 		TheaterMotion.bLastNearEnabled = bNearEnabled;
 		TheaterMotion.bLastLongEnabled = bLongEnabled;
 		TheaterMotion.bLastPenaltyEnabled = bPenaltyEnabled;
+		TheaterMotion.bLastCornerEnabled = bCornerEnabled;
+		TheaterMotion.bLastCornerResolutionEnabled = bCornerResolutionEnabled;
 		RefreshVisuals(); // Same-state comparison; no command or reveal-clock reset.
 	}
 	if (TheaterMotion.Elapsed < 1.f || (TheaterMotion.bActive && !TheaterMotion.bHasFieldGeometry))
@@ -505,6 +509,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 		TheaterSlot->SetHorizontalAlignment(HAlign_Fill); TheaterSlot->SetVerticalAlignment(VAlign_Fill);
 		CastChecked<UButton>(WidgetTree->FindWidget(TEXT("TheaterNearDirect")))->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickDirectRequested);
 		CastChecked<UButton>(WidgetTree->FindWidget(TEXT("TheaterNearCombination")))->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickAlternativeRequested);
+		CastChecked<UButton>(WidgetTree->FindWidget(TEXT("TheaterSelectionReturn")))->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleCornerReturnRequested);
 		CastChecked<UFMCodexCardRackWidget>(WidgetTree->FindWidget(TEXT("TheaterTakers")))->OnCardSelectionRequested.AddUObject(this, &UFMCodexLocalMatchScreenWidget::HandleSetPieceHandCardRequested);
 	}
 	if (bActive)
@@ -512,7 +517,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 		auto TheaterPresentation=Presentation;
 		TheaterPresentation.LocalRack=BuildDisplayedHandRack(Presentation.LocalRack);
 		TheaterPresentation.OpponentRack=BuildDisplayedHandRack(Presentation.OpponentRack);
-		Refresh(*WidgetTree, TheaterPresentation, Displayed, DisplayedHeader, IsScreenRequestPending(), TheaterTakerInspection);
+		const bool bConfirmation=MatchController?MatchController->GetInteractionView().bCornerLockConfirmationPending:bNetworkCornerConfirmation;
+		Refresh(*WidgetTree, TheaterPresentation, Displayed, DisplayedHeader, IsScreenRequestPending(), TheaterTakerInspection, bConfirmation);
 		SetPieceResolutionSurface->SetVisibility(ESlateVisibility::Collapsed);
 		HideDetailOverlay(); HideTacticalDetail(); SelectionFeedbackToast->DismissFeedback();
 		ResolutionOverlay->SetVisibility(ESlateVisibility::Collapsed);
@@ -529,16 +535,20 @@ void UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickDirectRequested()
  if (Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick) HandleLongDirectRequested();
  else if (Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick) HandleShortDirectRequested();
  else if (Presentation.SetPiece.Type==ESetPieceSelectedType::Penalty) HandlePenaltyDirectRequested();
+ else if (Presentation.SetPiece.Type==ESetPieceSelectedType::Corner) HandleCornerHighRequested();
 }
 void UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickAlternativeRequested()
 {
  if (Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick) HandleLongPowerRequested();
  else if (Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick) HandleShortAngledRequested();
  else if (Presentation.SetPiece.Type==ESetPieceSelectedType::Penalty) HandlePenaltyPanenkaRequested();
+ else if (Presentation.SetPiece.Type==ESetPieceSelectedType::Corner) HandleCornerLowRequested();
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleTheaterHighRequested()
 {
+	if (TheaterMotion.bActive && Presentation.SetPiece.Type==ESetPieceSelectedType::Corner)
+	{ HandleCornerHighRequested(); return; }
 	if (TheaterMotion.bActive && Presentation.Interaction.BranchChoices.ContainsByPredicate(
 		[](const auto& Choice) { return Choice.Intent == EFMCodexUMGBranchIntent::CrossHigh; }))
 		RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::CrossHigh);
@@ -546,6 +556,8 @@ void UFMCodexLocalMatchScreenWidget::HandleTheaterHighRequested()
 
 void UFMCodexLocalMatchScreenWidget::HandleTheaterLowRequested()
 {
+	if (TheaterMotion.bActive && Presentation.SetPiece.Type==ESetPieceSelectedType::Corner)
+	{ HandleCornerLowRequested(); return; }
 	if (TheaterMotion.bActive && Presentation.Interaction.BranchChoices.ContainsByPredicate(
 		[](const auto& Choice) { return Choice.Intent == EFMCodexUMGBranchIntent::CrossLow; }))
 		RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::CrossLow);
@@ -1400,7 +1412,7 @@ void UFMCodexLocalMatchScreenWidget::HandleContinueRequested()
 
 void UFMCodexLocalMatchScreenWidget::HandleInlineFormulaContinueRequested()
 {
-	if (TheaterMotion.bActive && (Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick || Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick || Presentation.SetPiece.Type==ESetPieceSelectedType::Penalty) && Presentation.SetPiece.bTakerWait)
+	if (TheaterMotion.bActive && (Presentation.SetPiece.bTakerWait || Presentation.SetPiece.bCornerDraft))
 	{
 		HandleSetPiecePrimaryRequested();
 		return;
@@ -3762,7 +3774,18 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 			== EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection
 		&& IsInlineFormulaRevealInputBlocked())
 	{
-		return {}; // The confrontation board owns this single shared reel.
+		if (!FMCodexResolutionTheaterPrototype::IsCornerResolutionEnabled()) return {};
+		FFMCodexUMGInlineFormulaSurfaceViewModel Draw;
+		Draw.bVisible = Draw.bSuppressLegacyResolution = Draw.bDiceRevealVisible = true;
+		Draw.ContestId = TEXT("Corner.Participants");
+		Draw.bShowFormulaRows = Draw.bShowAttackRow = Draw.bShowDefenseRow = false;
+		Draw.RevealPhase = InlineFormulaRevealPhase;
+		Draw.RollReel = BuildActiveRollReelPresentation();
+		Draw.DiceOwnerLabel = TEXT("进攻方共同选人掷点");
+		if (InlineFormulaRevealPhase == EFMCodexUMGInlineFormulaRevealPhase::ResultHold
+			&& InlineFormulaRevealPhaseElapsed >= FormulaDisclosureDelay)
+			Draw.RouteResultLabel = TEXT("实际球员已确认");
+		return Draw;
 	}
 	if (ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::CornerRoute
 		&& IsInlineFormulaRevealInputBlocked())
@@ -3783,7 +3806,18 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 			&& InlineFormulaRevealPhaseElapsed >= FormulaDisclosureDelay;
 		Route.StatusLabel = bDisclosed ? TEXT("路线已确认") : TEXT("判定角球路线");
 		Route.RollHelperLabel = bDisclosed ? FString() : CachedRouteRollHelperLabel;
-		if (bDisclosed && MatchController != nullptr)
+		if (FMCodexResolutionTheaterPrototype::IsCornerResolutionEnabled())
+		{
+			// Keep disclosed identities through route motion, never future operands/results.
+			Route.AttackRow.SideLabel = Presentation.InlineFormula.AttackRow.SideLabel;
+			Route.AttackRow.Participants = Presentation.InlineFormula.AttackRow.Participants;
+			Route.DefenseRow.SideLabel = Presentation.InlineFormula.DefenseRow.SideLabel;
+			Route.DefenseRow.Participants = Presentation.InlineFormula.DefenseRow.Participants;
+		}
+		if (bDisclosed && FMCodexResolutionTheaterPrototype::IsCornerResolutionEnabled() && Presentation.SetPiece.CornerActualRoute != EMatchPlayCornerRouteIntent::None)
+			Route.RouteResultLabel = FString::Printf(TEXT("掷点结果为 %d，判定为%s"), Presentation.SetPiece.CornerRouteD6,
+				Presentation.SetPiece.CornerActualRoute == EMatchPlayCornerRouteIntent::High ? TEXT("高球") : TEXT("低平球"));
+		else if (bDisclosed && MatchController != nullptr)
 		{
 			const auto& View = MatchController->GetInteractionView();
 			Route.RouteResultLabel = FString::Printf(TEXT("掷点 %d → %s"), View.CornerRouteD6,
@@ -3793,6 +3827,9 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 	}
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& Source =
 		ActiveFormula(Presentation);
+	if (!FMCodexResolutionTheaterPrototype::IsCornerResolutionEnabled()
+		&& (Source.ContestId==TEXT("Corner.Participants") || Source.ContestId==TEXT("Corner.Setup")))
+		return {}; // Legacy confrontation/choice owns these states when the preview is disabled.
 	if (!IsInlineFormulaRevealInputBlocked()
 		|| !ActiveCrossRollReveal.IsValid())
 	{
@@ -4322,6 +4359,11 @@ bool UFMCodexLocalMatchScreenWidget::UsesTheaterRollMotion() const
 	if (ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::TacticalPoint
 		&& ActiveCrossRollReveal.ContestId==TEXT("Match.TacticalPoint")) return true;
 	if (!TheaterMotion.bActive) return false;
+	if (Presentation.SetPiece.Type==ESetPieceSelectedType::Corner && FMCodexResolutionTheaterPrototype::IsCornerResolutionEnabled())
+		return ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection
+			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::CornerRoute
+			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::SetPieceAttack
+			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::SetPieceDefense;
 	if ((Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick && FMCodexResolutionTheaterPrototype::IsNearFreeKickEnabled())
 		|| (Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick && FMCodexResolutionTheaterPrototype::IsLongFreeKickEnabled())
 		|| (Presentation.SetPiece.Type==ESetPieceSelectedType::Penalty && FMCodexResolutionTheaterPrototype::IsPenaltyEnabled()))
@@ -4427,7 +4469,11 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 		if (InlineFormulaRevealPhase
 			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold)
 		{
-			const float HoldDuration = ActiveCrossRollReveal.Kind
+			// The shared participant reveal needs time to read BOTH selected identities.
+			// Reuse the existing readable-result token and elapsed-time clock; no new timer.
+			const bool bReadableCornerParticipants = ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection
+				&& FMCodexResolutionTheaterPrototype::IsCornerResolutionEnabled();
+			const float HoldDuration = bReadableCornerParticipants ? FormulaResultHoldDuration : ActiveCrossRollReveal.Kind
 					== EFMCodexUMGCrossRollRevealKind::InitialRoute
 				|| ActiveCrossRollReveal.Kind
 					== EFMCodexUMGCrossRollRevealKind
@@ -5236,6 +5282,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	if (bSetPieceResolutionSurface && !CentralPrompt.IsEmpty())
 		StandaloneInlineFormula.StatusLabel = CentralPrompt.ToString()
 			+ (StandaloneInlineFormula.StatusLabel.IsEmpty() ? FString() : TEXT("\n") + StandaloneInlineFormula.StatusLabel);
+	FMCodexResolutionTheaterPrototype::ApplyCornerDisplayCopy(Presentation,StandaloneInlineFormula);
 	InlineFormulaSurface->RefreshFromPresentation(StandaloneInlineFormula);
 	LongShotResolutionSurface->SetActionPromptText(CentralPrompt);
 	LongShotResolutionSurface->RefreshFromPresentation(DisplayedLongShot);
@@ -5251,7 +5298,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 			: StandaloneInlineFormula.bVisible && StandaloneInlineFormula.bNarrativeAvailable;
 	if ((Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick
 		|| Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick
-		|| Presentation.SetPiece.Type==ESetPieceSelectedType::Penalty)
+		|| Presentation.SetPiece.Type==ESetPieceSelectedType::Penalty
+		|| Presentation.SetPiece.Type==ESetPieceSelectedType::Corner)
 		&& FMCodexResolutionTheaterPrototype::WantsTheater(Presentation,StandaloneInlineFormula))
 		bOutcomeDisclosed = FMCodexOutcomePresentation::IsFinalReady(StandaloneInlineFormula.bNarrativeAvailable,StandaloneInlineFormula.bDiceRevealVisible);
 	MatchHeader->RefreshFromPresentation(BuildDisplayedHeader(bOutcomeDisclosed));

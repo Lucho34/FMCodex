@@ -11,7 +11,7 @@
 #include "Components/RichTextBlock.h"
 #include "HAL/IConsoleManager.h"
 
-namespace
+namespace FMCodexLongTheaterTests
 {
 using namespace FMCodexLongFreeKickTests;
 using namespace FMCodexPlayerFacingOrdinaryUITests;
@@ -32,7 +32,6 @@ FString Tip(UFMCodexLocalMatchScreenWidget* S,const TCHAR* Name)
 void Click(UFMCodexLocalMatchScreenWidget* S,const TCHAR* Name)
 {
 	CastChecked<UButton>(S->GetWidgetFromName(Name))->OnClicked.Broadcast();
-}
 }
 
 IMPLEMENT_COMPLEX_AUTOMATION_TEST(FLongTheaterLifecycle,"FMCodex.LocalPlay.ResolutionTheater.LongFreeKick.Lifecycle",
@@ -185,7 +184,9 @@ bool FLongTheaterScope::RunTest(const FString&)
  FFMCodexUMGMatchScreenViewModel P; P.SetPiece.bVisible=true; P.SetPiece.Type=Type::LongFreeKick;
  TestTrue(TEXT("Long selection enters"),WantsTheater(P,{}));
  Mode->Set(0,ECVF_SetByCode); TestFalse(TEXT("Long fallback retains old path"),WantsTheater(P,{})); Mode->Set(1,ECVF_SetByCode);
- for (auto T:{Type::Corner}) {P.SetPiece.Type=T;TestFalse(TEXT("Unmigrated routes remain excluded"),WantsTheater(P,{}));}
+ P.InlineFormula.bVisible=true; P.InlineFormula.ContestId=TEXT("SetPiece.Type");
+ TestFalse(TEXT("Type D6 reveal retains Legacy ownership"),WantsTheater(P,P.InlineFormula));
  return true;
+}
 }
 #endif

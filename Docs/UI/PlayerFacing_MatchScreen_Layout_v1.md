@@ -5,9 +5,9 @@ Scope: 1920×1080 player-facing LocalPlay Golden visual prototype
 
 Match Flow visual styling follows [Match Flow Visual Language v1](MatchFlow_Visual_Language_v1.md). This document owns layout, geometry and screen composition; stage-specific styling notes below are implementation history, not a second visual-rule authority.
 
-## Current production layout — Cross / Free Kick / Penalty Theater and Roll family
+## Current production layout — Cross / Free Kick / Penalty / Corner Theater and Roll family
 
-High / Low Cross, Near / Long Free Kick and Penalty Resolution Theater and the Stage 8.10 Roll family are **PRODUCTION LOCKED**. Stage 8.11A / B and Stage 8.12A / A.1 USER PIE are **ACCEPTED**.
+High / Low Cross, Near / Long Free Kick, Penalty and Corner Resolution Theater and the Stage 8.10 Roll family are **PRODUCTION LOCKED**. Stage 8.11A / B, Stage 8.12A / A.1 and Stage 8.13A / A.1 / B / B.1 USER PIE are **ACCEPTED**.
 Stage 8.10A.1 and Stage 8.10B.2 USER PIE are **ACCEPTED**, preserving the earlier Theater / Inline acceptance.
 The [Resolution Theater Visual Spec](Resolution_Theater_Visual_Spec_v1.md) owns the accepted
 Cross composition: Attack left / Defense right / central VS, protected inner content,
@@ -16,7 +16,7 @@ The neutral entrance does not predict the route; both actual High and Low contin
 the same Theater until normal continuation restores Match Board.
 
 The [Roll Presentation Visual Spec](Roll_Presentation_Visual_Spec_v1.md) owns the four-variant
-family. Theater uses a compact standalone Cross route cell and stable inline Formula slots.
+family. Theater uses CompactBox for Cross route and Corner shared-selection / route D6, and stable TheaterInline Formula slots.
 Route CTA and result cell remain separate. Already disclosed actual goalkeeper identity
 continues from selection through route to Formula using safe participant projection.
 
@@ -37,8 +37,17 @@ with the selection row / method choices / duel region; actor helper and CTA are 
 below it. Peer selection summaries do not use result-reason typography. Pure duplicate
 roll-owner helpers use Hidden to preserve geometry; meaningful ownership stays visible.
 
+Corner planning uses the same candidate rack / Full Card composition, scaled together to fit.
+It preserves ordered selection badges, a stable one-line warning allocation, peer rule summaries
+and independent lock / return controls. After both locks, two ordered Mini Card columns flank
+one shared D6 cell; position and roll-range labels are distinct from shirt numbers. The revealed
+actual pair stays readable through the shared hold. Route choice uses peer High / Low buttons
+and short attribute hints with no large information-bar allocation. Route / Formula / Outcome
+retain actual Runner, Helper and goalkeeper identities where applicable; zero branches never
+invent a defense or Formula. The inspector is cleared outside planning.
+
 Match Shell Visual Refresh Lite is optional future work. Full Card inspection is adopted
-only for Near / Long / Penalty taker planning; execution keeps existing Base tooltips, without
+only for Near / Long / Penalty taker planning and Corner candidate planning; execution keeps existing Base tooltips, without
 Full Card hover in methods, Formula, Roll, Outcome, Reason or Next Round.
 Older adoption-pending and High-only sections below are historical review checkpoints,
 not competing production status, current consumer maps or permission to redesign the family.

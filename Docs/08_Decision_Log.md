@@ -2443,3 +2443,17 @@ Penalty migration 与 Copy / Outcome micro polish；本条取代此前 Penalty d
 - 明确延期：Corner、Set Piece Type D6 现代化、Match Shell Visual Refresh Lite、规划之外
   的 Theater Full Card 与其余 Legacy 消费方。收尾只进行必要生产锁定、文档、focused
   回归和 Shipping 验证，不追加新视觉设计或架构重构。
+
+## 2026-09-27 — Stage 8.13 Corner Resolution Theater production lock
+
+**ADOPTED / PRODUCTION LOCKED. Stage 8.13A / A.1 and 8.13B / B.1 USER PIE: ACCEPTED.** 用户接受候选规划、完整结算及 commercial consistency polish。本条取代此前 Corner deferred 的迁移边界；最终 staging / commit 仍由用户手动完成。
+
+- Legacy Type D6 完整揭示后，Corner 复用同一 Theater：0–3 人有序规划、双方锁定后的共享 D6、路线选择与 route D6、High / Low Formula、专属 Outcome / Reason、显式下一回合与棋盘恢复。零人分支直接显示权威结果，不补不存在的骰或 Formula。
+- Full Card 只扩展到 Corner 候选规划；hover > 最近仍选中 > empty，离开即清空。规划 #1 徽标与对位“1号位 / 掷点区间”各司其职；零人后果及未选满警告复用 Danger token，规则两行同级。
+- 一个共享 CompactBox D6 同时选择实际 Runner / Helper。披露后的可读 hold 采用既有 elapsed-time clock 与约 2.40 秒 token，重复 View / ACK 不重播。高/低选择沿用传中按钮家族、简短属性提示并移除该页大型信息栏；route 复用 CompactBox，攻防比较复用 TheaterInline。
+- B.1 统一玩家术语为“低球”，对抗结果采用“{Name}接角球高球 / 低球攻门得分！”或“未能得分。”；文案只消费 gated actual route、权威进攻身份和结果，不改变 scorer 或零人分支叙事。
+- 实际 Runner、Helper 和门将身份连续，Base tooltip 区分固定防守 +2 与候选人数 +2 / +3。快速压制优先，普通总值平局且门将参与则防守胜；门将无体力。UMG 不计算 Formula、胜负、scorer 或 Recovery。Outcome、Reason、比分遵循共同可见 gate；只有实际参与者在推进中消费，未抽中候选不消费。
+- Shipping 固定开启 CornerSelection 与 CornerResolution，并编译已验收的安全 projection；Development 默认开启，保留两个独立 fallback 与主开关。DEV cvar / evidence driver 不成为 Shipping 玩家路径依赖。
+- 整组 Stage 8.13 的既有 bounded presentation **payload 内容有扩展**；RPC、序列化结构、replicated owner-view schema **没有变化**。B.1 文案变更仅作用于 gated displayed copy；Closeout 将相同 production projection 启用于 Shipping，不改变 Development 的网络语义。Local / Network 继续共享安全读写与权威玩法。
+- [Theater](UI/Resolution_Theater_Visual_Spec_v1.md)、[Match Flow](UI/MatchFlow_Visual_Language_v1.md)、[Layout](UI/PlayerFacing_MatchScreen_Layout_v1.md) 与 [Roll](UI/Roll_Presentation_Visual_Spec_v1.md) 已同步稳定产品合同。工程测试与自然 PIE / 双进程证据不冒充用户验收。
+- 明确延期：Set Piece Type D6 现代化、Match Shell Visual Refresh Lite、规划外 Full Card、其余 Legacy 消费方及可选门将专属轮廓。没有 Corner 专用 Roll 变体、新 Blueprint 或额外视觉设计。

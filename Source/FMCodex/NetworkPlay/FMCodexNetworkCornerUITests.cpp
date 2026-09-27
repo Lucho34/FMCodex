@@ -1,5 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 #include "FMCodexNetworkNearFreeKickTestFixture.h"
+#include "../LocalPlay/FMCodexResolutionTheaterPrototype.h"
+#include "Components/Button.h"
 namespace FMCodexCornerNetworkUI
 {
 using namespace FMCodexSetPieceSelectionTests;
@@ -11,6 +13,7 @@ void FCornerUI::GetTests(TArray<FString>& N,TArray<FString>& C) const
 bool FCornerUI::RunTest(const FString& P)
 {
  const bool ZeroA=P.Contains(TEXT("AttackZero")),ZeroD=P.Contains(TEXT("DefenseZero")),Final=P.EndsWith(TEXT("Final"));
+ const bool Theater=FMCodexResolutionTheaterPrototype::IsCornerResolutionEnabled();
  FUIFixture F(P.StartsWith(TEXT("B")),Final);Access::SetPiecePresentation(*F.Mode,false);
  for(int32 Turn=0;Turn<(Final?2:1);++Turn)
  {
@@ -64,9 +67,11 @@ bool FCornerUI::RunTest(const FString& P)
    if(!RollUI(Actor,Kind::RequestCornerParticipantSelectionRoll,4))return false;
    const auto Published=Actor->GetOwnerView().SetPiece;
    TestFalse(TEXT("Runner and Helper selected from public lists"),Published.CornerRunner.IsNone()||Published.CornerHelper.IsNone());
-   TestEqual(TEXT("Attacker chooses high through existing button callback"),S->GetWidgetFromName(TEXT("CornerHighIntent"))->GetVisibility(),ESlateVisibility::Visible);
-   TestEqual(TEXT("Defender sees no route CTA"),W->GetWidgetFromName(TEXT("CornerHighIntent"))->GetVisibility(),ESlateVisibility::Collapsed);
-   S->DevSetPieceAction(TEXT("CornerHigh"),NAME_None);TestEqual(TEXT("Typed Corner intent"),F.Backend(Actor).Last.IntentKind,Kind::SubmitCornerIntent);
+   const TCHAR* HighButton=Theater?TEXT("TheaterHigh"):TEXT("CornerHighIntent");
+   TestEqual(TEXT("Attacker chooses high through the active surface"),S->GetWidgetFromName(HighButton)->GetVisibility(),ESlateVisibility::Visible);
+   if(Theater)TestFalse(TEXT("Waiting viewer cannot choose a route"),CastChecked<UButton>(W->GetWidgetFromName(HighButton))->GetIsEnabled());
+   else TestEqual(TEXT("Defender sees no route CTA"),W->GetWidgetFromName(HighButton)->GetVisibility(),ESlateVisibility::Collapsed);
+   CastChecked<UButton>(S->GetWidgetFromName(HighButton))->OnClicked.Broadcast();TestEqual(TEXT("Typed Corner intent"),F.Backend(Actor).Last.IntentKind,Kind::SubmitCornerIntent);
    if(!RollUI(Actor,Kind::RequestCornerRouteRoll,1))return false;
    for(auto* Screen:{S,W})TestTrue(TEXT("Canonical known subtotal before attack"),Screen->GetInlineFormulaSurface()->GetPresentation().AttackRow.bDisplayedResultResolved&&Screen->GetInlineFormulaSurface()->GetPresentation().DefenseRow.bDisplayedResultResolved);
    if(!RollUI(Actor,Kind::RequestCornerAttackRoll,6))return false;

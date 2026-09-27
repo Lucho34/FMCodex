@@ -15,7 +15,7 @@
 #include "Serialization/MemoryReader.h"
 #include "Serialization/MemoryWriter.h"
 
-namespace
+namespace FMCodexNearTheaterTests
 {
 using namespace FMCodexNearFreeKickTests;
 using namespace FMCodexPlayerFacingOrdinaryUITests;
@@ -36,7 +36,6 @@ FString Tip(UFMCodexLocalMatchScreenWidget* S,const TCHAR* Name)
 void Click(UFMCodexLocalMatchScreenWidget* S,const TCHAR* Name)
 {
 	CastChecked<UButton>(S->GetWidgetFromName(Name))->OnClicked.Broadcast();
-}
 }
 
 IMPLEMENT_COMPLEX_AUTOMATION_TEST(FNearTheaterLifecycle,"FMCodex.LocalPlay.ResolutionTheater.NearFreeKick.Lifecycle",
@@ -177,8 +176,8 @@ bool FNearTheaterScope::RunTest(const FString&)
 	FFMCodexUMGMatchScreenViewModel P; P.SetPiece.bVisible=true; P.SetPiece.Type=Type::ShortFreeKick;
 	TestTrue(TEXT("Disclosed selection enters"),WantsTheater(P,{}));
 	Mode->Set(0,ECVF_SetByCode); TestFalse(TEXT("Practical same-state fallback"),WantsTheater(P,{})); Mode->Set(1,ECVF_SetByCode);
-	for (auto T:{Type::Corner})
-	{ P.SetPiece.Type=T; P.InlineFormula.bVisible=true; P.InlineFormula.ContestId=TEXT("SetPiece.Opposed"); TestFalse(TEXT("Other set pieces retain scope"),WantsTheater(P,P.InlineFormula)); }
+	P.InlineFormula.bVisible=true; P.InlineFormula.ContestId=TEXT("SetPiece.Type");
+	TestFalse(TEXT("Type D6 reveal retains Legacy ownership"),WantsTheater(P,P.InlineFormula));
 	FUIFixture F; F.Entropy->Word=8; F.Attacker()->GetPlayerMatchScreen()->RequestRollTacticalPoints(); F.Settle();
 	F.Entropy->Word=4; F.Attacker()->GetPlayerMatchScreen()->DevSetPieceAction(TEXT("SetPieceType"),NAME_None); F.Settle();
 	auto* S=F.Attacker()->GetPlayerMatchScreen();
@@ -297,6 +296,7 @@ bool FNearTheaterSelectionPolish::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Combination availability remains authority-projected"),CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterNearCombination")))->GetIsEnabled(),Combo);
 	if (!Combo) TestTrue(TEXT("Unavailable method has visible reason without a click"),Text(S,TEXT("TheaterDetail")).Contains(TEXT("不可用：需射门 + 传球 ≥ 8")));
 	return true;
+
 }
 
 IMPLEMENT_COMPLEX_AUTOMATION_TEST(FNearTakerProjection,"FMCodex.NetworkPlay.SetPieceSelection.NearTakerProjection",
@@ -343,4 +343,5 @@ bool FNearTakerProjection::RunTest(const FString& Side)
  return true;
 }
 
+}
 #endif

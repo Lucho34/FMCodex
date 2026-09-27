@@ -1,8 +1,9 @@
-# Resolution Theater — Cross / Free Kick / Penalty production adoption
+# Resolution Theater — Cross / Free Kick / Penalty / Corner production adoption
 
-Status: **ADOPTED / PRODUCTION LOCKED — High / Low Cross + Near / Long Free Kick + Penalty**. Stage 8.9B Low Cross USER PIE: **ACCEPTED**. Stage 8.8F.3 USER PIE: **ACCEPTED**.
+Status: **ADOPTED / PRODUCTION LOCKED — High / Low Cross + Near / Long Free Kick + Penalty + Corner**. Stage 8.9B Low Cross USER PIE: **ACCEPTED**. Stage 8.8F.3 USER PIE: **ACCEPTED**.
 Stage 8.11A / B, including their accepted polish passes, USER PIE: **ACCEPTED**.
 Stage 8.12A / A.1 Penalty USER PIE: **ACCEPTED**; Development and Shipping are production locked.
+Stage 8.13A / A.1 and B / B.1 Corner USER PIE: **ACCEPTED**; planning and full resolution are production locked in Development and Shipping.
 The current authoritative contract is [Resolution Theater Visual Spec v1](../UI/Resolution_Theater_Visual_Spec_v1.md).
 This file retains implementation notes and historical stage checkpoints. Earlier pending-PIE,
 procedural-art and no-new-asset descriptions below describe their stage, not the final state.
@@ -37,7 +38,7 @@ follow-up notes are superseded by its visual spec.
 
 ResolutionStageV2 defaults to **1** in Development. FormulaV2 remains **0**.
 Neither switch adds persistent config. Shipping compiles the theater and always
-selects it for the scoped Cross entry/High/Low and disclosed Near/Long/Penalty paths, with no theater cvar. FormulaV2
+selects it for the scoped Cross entry/High/Low and disclosed Near/Long/Penalty/Corner paths, with no theater cvar. FormulaV2
 remains a non-Shipping comparison override. Turning the theater off in Development
 restores the comparison selected by FormulaV2 at the same authoritative state.
 The normal Editor console accepts each command separately.
@@ -348,3 +349,17 @@ runtime art asset. Stable product copy and hierarchy belong to the Theater visua
   established Win64 BuildCookRun Entry-map package, resource inventory and launch smoke.
   Exact current results and hashes stay in ignored `Saved/Stage8_12_Closeout/` and the final
   closeout report; these notes do not turn engineering captures into USER PIE acceptance.
+
+## Stage 8.13 Corner implementation reconciliation — production locked
+
+The existing shared Theater owns Corner planning and full resolution after Legacy Type D6 disclosure. `IsCornerSelectionEnabled()` and `IsCornerResolutionEnabled()` are always true in Shipping; all Corner safe presentation construction, participant / goalkeeper rows, authoritative scorer narrative and reasons compile in every target. Non-Shipping `fm.UI.ResolutionStageV2.CornerSelection` and `.CornerResolution` default to 1 and provide separate same-state planning / execution fallbacks. The master Theater switch remains effective in Development. No Shipping player setting or DEV evidence driver is required.
+
+Planning reuses the ordered candidate rack and transient Full Card inspector; hover wins over the latest still-selected candidate. Empty / underfilled warnings use the existing Danger token and stable allocation. Execution clears inspection. Shared selection uses one CompactBox between two Mini Card columns with position / D6-range labels. Route choice uses the existing High / Low buttons with short hints and no large info bar; route uses CompactBox and comparisons use TheaterInline. No second scene, Roll variant, clock or gameplay implementation is added.
+
+`BuildDisplayedInlineFormula` retains the existing reveal gates and known actual identities. Shared participant ResultHold reuses `FormulaResultHoldDuration` (2.58 s), with 0.18 s disclosure delay: approximately 2.40 s readable identity hold. Other event durations are unchanged. B.1 natural Local PIE measured 2.478 s readable game time; this engineering measurement is distinct from the user's visual acceptance.
+
+Grouped Stage 8.13 changes the content of existing bounded viewer-safe presentation payloads (`Corner.Participants`, `Corner.Setup`, actual GK / reasons); it does not change RPC signatures, serialization shape, owner-view schema, authority or RNG. B.1 terminology / narrative polish operates on the local displayed copy after gating. Closeout removes Shipping-only exclusions from the already-tested projection without changing Development semantics. Production outcomes and scorer remain authoritative, including zero-candidate branches; Next uses the shared terminal / Recovery lifecycle.
+
+The current product contract, zero precedence and deferrals are in the authoritative Theater spec. Historical Corner-deferred notes above are superseded by this adoption. Type D6 modernization, Match Shell, execution-stage Full Card, other Legacy consumers and optional goalkeeper-specific silhouettes remain separate work.
+
+Engineering references remain in ignored `Saved/`: `Stage8_13B/NetworkVerification.json` records one independent Host / Remote generated-RPC path through terminal, Advance, Recovery and the next sequence; `Stage8_13B_1/Verification.log`, `FocusedFix.log` and `FinalPIE.log` record the accepted implementation's focused and natural-PIE evidence. Closeout's `Stage8_13Closeout/AcceptedEvidenceReuse.json` compares post-B projection hashes and effective Development branches, while its verification report and Shipping package / resource / launch audits describe final-tree checks. Reuse is justified by unchanged Development semantics, not by matching only a stage label. Shipping validation is a package-and-launch smoke, not a claimed full packaged gameplay playthrough.

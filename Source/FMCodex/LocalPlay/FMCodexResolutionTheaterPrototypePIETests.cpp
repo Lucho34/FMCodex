@@ -1199,6 +1199,142 @@ private:
 };
 
 }
+class FCornerPlanningPIE final : public IAutomationLatentCommand
+{
+public:
+ explicit FCornerPlanningPIE(FAutomationTestBase* T):Test(T){}
+ bool Update() override
+ {
+  if(FPlatformTime::Seconds()-Start>120){Test->AddError(TEXT("Corner planning PIE timed out"));return true;}
+  if(!GEditor || !GEditor->PlayWorld)return false;
+  auto* C=Cast<AFMCodexLocalMatchPlayerController>(GEditor->PlayWorld->GetFirstPlayerController());
+  auto* S=C?C->GetPlayerMatchScreen():nullptr;if(!S)return false;
+  auto Shown=[&](const TCHAR* N){const auto* W=S->GetWidgetFromName(N);return W&&W->GetVisibility()!=ESlateVisibility::Collapsed&&W->GetVisibility()!=ESlateVisibility::Hidden;};
+  auto Text=[&](const TCHAR* N){return CastChecked<UTextBlock>(S->GetWidgetFromName(N))->GetText().ToString();};
+  auto Click=[&](const TCHAR* N){auto* B=CastChecked<UButton>(S->GetWidgetFromName(N));Test->TestTrue(TEXT("Real CTA enabled"),B->GetIsEnabled());B->OnClicked.Broadcast();};
+  const float Game=GEditor->PlayWorld->GetTimeSeconds();
+  if(S->IsInlineFormulaRevealInputBlocked())
+  {if(Step==3)Test->TestFalse(TEXT("Corner cannot skip Type D6 hold"),Shown(TEXT("ResolutionTheater")));return false;}
+  if(Game-Changed<.7f)return false;
+  if(Step>=4 && Step<=13)
+  {
+   const auto& Stage=S->GetWidgetFromName(TEXT("ResolutionTheater"))->GetCachedGeometry();
+   for(const TCHAR* N:{TEXT("TheaterPrimaryBounds"),TEXT("TheaterSelectionReturnBounds")})
+    if(Shown(N))
+    {
+     const auto& G=S->GetWidgetFromName(N)->GetCachedGeometry();
+     const FVector2D End=Stage.AbsoluteToLocal(G.LocalToAbsolute(G.GetLocalSize()));
+     Test->TestTrue(TEXT("Real planning CTA stays inside viewport with bottom margin"),End.Y<=Stage.GetLocalSize().Y-12.f);
+    }
+  }
+  auto Next=[&](){++Step;Changed=Game;Test->AddInfo(FString::Printf(TEXT("CORNER_PLANNING_PIE step=%d game=%.3f"),Step,Game));};
+  auto Override=[&](EFMCodexLocalDevRollTarget Target,int32 D6){FFMCodexLocalDevRollOverrideRequest R;R.Target=Target;R.Value=D6;return Test->TestTrue(TEXT("DEV provider accepted"),C->SetLocalDevRollOverride(R).bSuccess);};
+  if(Step==0){S->RequestStartNewMatch();Next();return false;}
+  if(Step==1){if(!Override(EFMCodexLocalDevRollTarget::FullD12,9))return true;S->RequestRollTacticalPoints();Next();return false;}
+  if(Step==2){if(!Override(EFMCodexLocalDevRollTarget::SetPieceType,1))return true;S->DevSetPieceAction(TEXT("SetPieceType"),NAME_None);Next();return false;}
+  if(Step==3)
+  {
+   if(!Shown(TEXT("ResolutionTheater"))){Test->AddError(TEXT("Corner missing Theater after real reveal"));return true;}
+   if(S->GetWidgetFromName(TEXT("TheaterBottom"))->GetRenderOpacity()<.99f)return false;
+   if(!Ready){Ready=true;Changed=Game;return false;}
+   Test->TestTrue(TEXT("Real actor can confirm zero"),Shown(TEXT("TheaterPrimaryBounds")));
+   Test->TestTrue(TEXT("Real empty count"),Text(TEXT("TheaterSubtitle")).Contains(TEXT("0 / 3")));
+   Test->TestTrue(TEXT("Real zero consequence is attack-specific"),Hint(S).Contains(TEXT("若进攻方锁定 0 人，本次角球直接不进球")));
+   Capture(TEXT("01_Corner_ZeroSelection"));auto* R=CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")));
+   if(R->GetRenderedCardWidgets().Num()<4){Test->AddError(TEXT("Insufficient real pool"));return true;}
+   Ids=C->GetInteractionView().LegalSetPieceCardIds;
+   Click(TEXT("TheaterContinue"));Next();return false;
+  }
+  if(Step==4)
+  {
+   Test->TestTrue(TEXT("Real zero confirmation is explicit"),Hint(S).Contains(TEXT("本次角球直接不进球</>；确认继续锁定，或返回补充")));
+   Capture(TEXT("07_Corner_ZeroConfirmation"));Click(TEXT("TheaterSelectionReturn"));
+   Next();return false;
+  }
+  if(Step==5)
+  {
+   // Returning from confirmation rebuilds the rack. Wait for a real layout pass
+   // before resolving the card's pointer coordinates, then allow hover to tick.
+   if(!bHoverRequested)
+   {
+    auto* R=CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")));
+    auto* Card=R->GetRenderedCardWidgets()[0].Get();HoverId=Card->GetPresentation().CardId;
+    MoveTo(Card);bHoverRequested=true;Changed=Game;return false;
+   }
+   Test->TestEqual(TEXT("Real pointer Full Card subject"),CastChecked<UFMCodexPlayerCardWidget>(S->GetWidgetFromName(TEXT("TheaterTakerFullCard")))->GetPresentation().CardId,HoverId);
+   MoveTo(S->GetWidgetFromName(TEXT("TheaterTitle")));
+   CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")))->OnCardSelectionRequested.Broadcast(Ids[0]);
+   Click(TEXT("TheaterContinue"));Next();return false;
+  }
+  if(Step==6)
+  {
+   Test->TestTrue(TEXT("Real one-person warning"),Hint(S).Contains(TEXT("已选 1/3，<Danger>未选满 3 人</>")));
+   for(const TCHAR* N:{TEXT("TheaterTakerBounds"),TEXT("TheaterTakerInspector"),TEXT("TheaterBottomBounds"),TEXT("TheaterPrimaryBounds")})
+   {const auto& G=S->GetWidgetFromName(N)->GetCachedGeometry();StableGeometry.Add(FVector4(G.GetAbsolutePosition().X,G.GetAbsolutePosition().Y,G.GetAbsoluteSize().X,G.GetAbsoluteSize().Y));}
+   Capture(TEXT("08_Corner_OnePersonWarning"));Click(TEXT("TheaterSelectionReturn"));
+   CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")))->OnCardSelectionRequested.Broadcast(Ids[1]);Next();return false;
+  }
+  if(Step==7){Capture(TEXT("02_Corner_Underfilled_OneOrTwo"));Click(TEXT("TheaterContinue"));Next();return false;}
+  if(Step==8)
+  {
+   Test->TestTrue(TEXT("Real underfull confirmation in place"),Shown(TEXT("TheaterSelectionReturnBounds")));
+   Test->TestTrue(TEXT("Real two-person warning"),Hint(S).Contains(TEXT("已选 2/3，<Danger>未选满 3 人</>")));
+   int32 Index=0;
+   for(const TCHAR* N:{TEXT("TheaterTakerBounds"),TEXT("TheaterTakerInspector"),TEXT("TheaterBottomBounds"),TEXT("TheaterPrimaryBounds")})
+   {const auto& G=S->GetWidgetFromName(N)->GetCachedGeometry();const FVector4 Now(G.GetAbsolutePosition().X,G.GetAbsolutePosition().Y,G.GetAbsoluteSize().X,G.GetAbsoluteSize().Y);Test->TestTrue(TEXT("One/two warning preserves roster inspector bar and CTA geometry"),Now.Equals(StableGeometry[Index++],.5f));}
+   Capture(TEXT("03_Corner_Underfilled_Warning"));Click(TEXT("TheaterSelectionReturn"));
+   CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")))->OnCardSelectionRequested.Broadcast(Ids[2]);Next();return false;
+  }
+  if(Step==9){Test->TestTrue(TEXT("Real maximum"),Text(TEXT("TheaterSubtitle")).Contains(TEXT("3 / 3")));Test->TestFalse(TEXT("Full state removes warning"),Hint(S).Contains(TEXT("未选满")));Capture(TEXT("04_Corner_Full_3of3"));Click(TEXT("TheaterContinue"));Next();return false;}
+  if(Step==10)
+  {
+   Test->TestTrue(TEXT("Hot-seat defense stays in Theater"),Shown(TEXT("ResolutionTheater"))&&Text(TEXT("TheaterSubtitle")).Contains(TEXT("选择防守")));
+   Test->TestTrue(TEXT("Hot-seat sealed attack list"),C->GetInteractionView().CornerAttackerNominees.IsEmpty());
+   Test->TestTrue(TEXT("Real defense zero helper is conditional"),Hint(S).Contains(TEXT("若防守方锁定 0 人且进攻方有候选，对方直接进球")));
+   Capture(TEXT("05_Corner_DefenseSelection"));Click(TEXT("TheaterContinue"));Next();return false;
+  }
+  if(Step==11)
+  {
+   Capture(TEXT("09_Corner_DefenseZeroConfirmation"));Click(TEXT("TheaterSelectionReturn"));
+   const auto Pool=C->GetInteractionView().LegalSetPieceCardIds;
+   auto* R=CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")));
+   R->OnCardSelectionRequested.Broadcast(Pool[1]);R->OnCardSelectionRequested.Broadcast(Pool[0]);Next();return false;
+  }
+  if(Step==12){Click(TEXT("TheaterContinue"));Next();return false;}
+  if(Step==13){Test->TestTrue(TEXT("Defense shares underfilled warning"),Hint(S).Contains(TEXT("<Danger>未选满 3 人</>")));Click(TEXT("TheaterContinue"));Next();return false;}
+  Test->TestEqual(TEXT("Real authoritative pre-resolution handoff"),C->GetInteractionView().CornerStage,EMatchPlaySetPieceCornerRouteStage::AwaitingParticipantSelectionRoll);
+  Test->TestFalse(TEXT("No shared D6 consumed"),C->GetInteractionView().bHasCornerSharedParticipantD6);
+  Test->TestTrue(TEXT("Theater draw retains ordered nominees"),Shown(TEXT("TheaterParticipantDraw"))&&C->GetInteractionView().CornerAttackerNominees.Num()==3&&C->GetInteractionView().CornerDefenderNominees.Num()==2);
+  Test->TestFalse(TEXT("Planning inspection cleared at handoff"),Shown(TEXT("TheaterTakerInspector")));
+  Capture(TEXT("06_Corner_TheaterHandoff"));return true;
+ }
+ FString Hint(UFMCodexLocalMatchScreenWidget* S) const
+ {return CastChecked<URichTextBlock>(S->GetWidgetFromName(TEXT("TheaterSelectionHint")))->GetText().ToString();}
+ void MoveTo(UWidget* W)
+ {
+  const FVector2D At=W->GetCachedGeometry().GetAbsolutePosition()+W->GetCachedGeometry().GetAbsoluteSize()*.5f;
+  const FVector2D Before=FSlateApplication::Get().GetCursorPos();FSlateApplication::Get().SetCursorPos(At);
+  FPointerEvent Event(0,At,Before,TSet<FKey>(),EKeys::Invalid,0,FModifierKeysState());FSlateApplication::Get().ProcessMouseMoveEvent(Event,false);
+ }
+ void Capture(const TCHAR* Name)
+ {
+  TArray<FColor> Pixels;FIntVector Size=FIntVector::ZeroValue;
+  if(!Test->TestTrue(TEXT("Corner real frame captured"),TheaterPIEWindow.IsValid()&&FSlateApplication::Get().TakeScreenshot(TheaterPIEWindow->GetContent(),Pixels,Size)))return;
+  const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_13A_1/PIE");IFileManager::Get().MakeDirectory(*Dir,true);
+  TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
+  Test->TestTrue(TEXT("Corner frame saved"),FFileHelper::SaveArrayToFile(PNG,*(Dir/(FString(Name)+TEXT(".png")))));
+ }
+ FAutomationTestBase* Test;int32 Step=0;float Changed=0;double Start=FPlatformTime::Seconds();bool Ready=false;bool bHoverRequested=false;TArray<FName> Ids;FName HoverId;TArray<FVector4> StableGeometry;
+};
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCornerPlanningPIETest,"FMCodex.PIE.ResolutionTheater.CornerPlanning",
+ EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FCornerPlanningPIETest::RunTest(const FString&)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FCornerPlanningPIE(this)));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
+}
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FResolutionTheaterPIETest,"FMCodex.PIE.ResolutionTheater.HighCross",
  EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FResolutionTheaterPIETest::RunTest(const FString&)
@@ -1275,5 +1411,158 @@ bool FPenaltyTheaterPIETest::RunTest(const FString& P)
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FPenaltyTheaterPIE(this,P.StartsWith(TEXT("Panenka")),P==TEXT("PanenkaMiss"))));
  ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
  return true;
+}
+
+namespace FMCodexCornerResolutionPIE
+{
+class FRun final : public IAutomationLatentCommand
+{
+public:
+ FRun(FAutomationTestBase* T,FString M):Test(T),Mode(M){}
+ bool Update() override
+ {
+  if(FPlatformTime::Seconds()-Start>150){Test->AddError(FString::Printf(TEXT("Corner full PIE timed out step=%d"),Step));return true;}
+  if(!GEditor||!GEditor->PlayWorld)return false;
+  auto* C=Cast<AFMCodexLocalMatchPlayerController>(GEditor->PlayWorld->GetFirstPlayerController());auto* S=C?C->GetPlayerMatchScreen():nullptr;if(!S)return false;
+  auto Shown=[&](const TCHAR* N){auto* W=S->GetWidgetFromName(N);return W&&W->GetVisibility()!=ESlateVisibility::Collapsed&&W->GetVisibility()!=ESlateVisibility::Hidden;};
+  auto Text=[&](const TCHAR* N){return CastChecked<UTextBlock>(S->GetWidgetFromName(N))->GetText().ToString();};
+  auto Click=[&](const TCHAR* N){auto* B=CastChecked<UButton>(S->GetWidgetFromName(N));Test->TestTrue(TEXT("Production CTA enabled"),B->GetIsEnabled());B->OnClicked.Broadcast();};
+  const float Game=GEditor->PlayWorld->GetTimeSeconds();
+  auto Next=[&](){++Step;Changed=Game;Test->AddInfo(FString::Printf(TEXT("CORNER_FULL_PIE %s step=%d game=%.3f"),*Mode,Step,Game));};
+  auto Override=[&](EFMCodexLocalDevRollTarget Target,int32 Value){FFMCodexLocalDevRollOverrideRequest R;R.Target=Target;R.Value=Value;return Test->TestTrue(TEXT("Server-controlled Local DEV roll seam"),C->SetLocalDevRollOverride(R).bSuccess);};
+  const bool Low=Mode==TEXT("LowSwitch"),Zero=Mode==TEXT("Zero");
+  if(Low && Step==6 && Game-LastMotionGame>=.125f)
+  {
+   const FString Frame=FString::Printf(TEXT("Motion/frame_%04d"),MotionFrame++);
+   const double FrameWall=FPlatformTime::Seconds()-Start;
+   Capture(*Frame); LastMotionGame=Game;
+   MotionTimes+=FString::Printf(TEXT("%s.png,%.6f,%.6f\n"),*Frame,Game,FrameWall);
+  }
+  if(S->IsInlineFormulaRevealInputBlocked())
+  {
+   if(Step==6)
+   {
+    const auto& P=S->GetInlineFormulaSurface()->GetPresentation();
+    if(!CapturedRolling && S->GetInlineFormulaRevealPhase()==EFMCodexUMGInlineFormulaRevealPhase::Cycling)
+    {Capture(TEXT("02_SharedD6_Rolling"));CapturedRolling=true;Test->TestFalse(TEXT("No future choice during shared roll"),Shown(TEXT("TheaterChoices")));}
+    if(!CapturedLanding && !P.RouteResultLabel.IsEmpty())
+    {HighlightGame=Game;HighlightWall=FPlatformTime::Seconds();Capture(TEXT("03_Participants_Selected"));CapturedLanding=true;}
+   }
+   if(Step==8 && !CapturedRoute && S->GetInlineFormulaRevealPhase()==EFMCodexUMGInlineFormulaRevealPhase::Cycling)
+   {Capture(TEXT("05_RouteRoll"));CapturedRoute=true;}
+   if(Step==10 && !CapturedDefense)
+   {Test->TestFalse(TEXT("Settled attack reel stays static"),Shown(TEXT("TheaterAttackReelHost")));Test->TestFalse(TEXT("Outcome waits for defense hold"),Shown(TEXT("TheaterOutcome")));Capture(TEXT("08_DefenseRolling"));CapturedDefense=true;}
+   return false;
+  }
+  if(Game-Changed<.8f)return false;
+  // Wait for the existing Theater entrance to paint the footer before comparing
+  // warning geometry or capturing it; world time can advance before Slate ticks.
+  if(Low && (Step==3 || Step==4) && S->GetWidgetFromName(TEXT("TheaterBottom"))->GetRenderOpacity()<.99f)return false;
+  if(Step==0){S->RequestStartNewMatch();Next();return false;}
+  if(Step==1){if(!Override(EFMCodexLocalDevRollTarget::FullD12,9))return true;S->RequestRollTacticalPoints();Next();return false;}
+  if(Step==2){if(!Override(EFMCodexLocalDevRollTarget::SetPieceType,1))return true;S->DevSetPieceAction(TEXT("SetPieceType"),NAME_None);Next();return false;}
+  auto Lock=[&](int32 Count)
+  {
+   auto* Rack=CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")));const auto Options=C->GetInteractionView().LegalSetPieceCardIds;
+   if(Options.Num()<Count){Test->AddError(TEXT("Insufficient candidate pool"));return;}
+   for(int32 I=0;I<Count;++I)Rack->OnCardSelectionRequested.Broadcast(Options[I]);
+   Click(TEXT("TheaterContinue"));if(Count<3)
+   {
+    if(Low && Count>0)Capture(TEXT("09_UnderfilledWarning"));
+    Click(TEXT("TheaterContinue"));
+   }
+  };
+  if(Step==3)
+  {
+   if(Low)
+   {
+    if(WarningStep==0){Click(TEXT("TheaterContinue"));WarningStep=1;Changed=Game;return false;}
+    if(WarningStep==1)
+    {
+     Capture(TEXT("07_AttackZeroWarning"));
+     for(const TCHAR* N:{TEXT("TheaterTakers"),TEXT("TheaterSelectionHintBounds"),TEXT("TheaterBottomBounds"),TEXT("TheaterActionBounds")})
+     {const auto& G=S->GetWidgetFromName(N)->GetCachedGeometry();WarningLayout.Add(FVector4(G.GetAbsolutePosition().X,G.GetAbsolutePosition().Y,G.GetAbsoluteSize().X,G.GetAbsoluteSize().Y));}
+     Click(TEXT("TheaterSelectionReturn"));
+     CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")))->OnCardSelectionRequested.Broadcast(C->GetInteractionView().LegalSetPieceCardIds[0]);
+     Click(TEXT("TheaterContinue"));WarningStep=2;Changed=Game;return false;
+    }
+    Capture(TEXT("09_UnderfilledWarning"));int32 I=0;
+    for(const TCHAR* N:{TEXT("TheaterTakers"),TEXT("TheaterSelectionHintBounds"),TEXT("TheaterBottomBounds"),TEXT("TheaterActionBounds")})
+    {const auto& G=S->GetWidgetFromName(N)->GetCachedGeometry();Test->TestTrue(FString::Printf(TEXT("Zero and underfilled warnings preserve %s layout"),N),WarningLayout[I++].Equals(FVector4(G.GetAbsolutePosition().X,G.GetAbsolutePosition().Y,G.GetAbsoluteSize().X,G.GetAbsoluteSize().Y),.5f));}
+    Click(TEXT("TheaterContinue"));Next();return false;
+   }
+   Lock(Zero?0:Low?1:2);Next();return false;
+  }
+  if(Step==4)
+  {
+   if(Low)
+   {
+    if(WarningStep==2){Click(TEXT("TheaterContinue"));WarningStep=3;Changed=Game;return false;}
+    Capture(TEXT("08_DefenseZeroWarning"));Click(TEXT("TheaterSelectionReturn"));
+   }
+   Lock(3);Next();return false;
+  }
+  if(Zero&&Step==5)
+  {Test->TestTrue(TEXT("Automatic no-goal Theater"),Shown(TEXT("TheaterOutcome")));Test->TestFalse(TEXT("Zero skips formula and shared draw"),Shown(TEXT("TheaterAttackValue"))||Shown(TEXT("TheaterParticipantDraw")));Capture(TEXT("10_Zero_Result"));Click(TEXT("TheaterContinue"));Step=11;Changed=Game;return false;}
+  if(Step==5)
+  {
+   Test->TestTrue(TEXT("Post-lock Theater draw owns lifecycle"),Shown(TEXT("TheaterParticipantDraw"))&&Shown(TEXT("ResolutionTheater")));
+   Capture(TEXT("01_SharedD6_Pending"));if(!Override(EFMCodexLocalDevRollTarget::CornerParticipantSelection,4))return true;Click(TEXT("TheaterContinue"));Next();return false;
+  }
+  if(Step==6)
+  {
+   const float Hold=Game-HighlightGame;
+   Test->TestTrue(TEXT("Real participant highlight hold uses readable 2.4-second token"),HighlightGame>=0 && Hold>=2.2f && Hold<2.8f);
+   Test->AddInfo(FString::Printf(TEXT("CORNER_PARTICIPANT_HOLD %s readable_game=%.3f wall=%.3f target=2.400"),*Mode,Hold,FPlatformTime::Seconds()-HighlightWall));
+   if(Low)
+   {
+    const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_13B_1/PIE")/Mode;
+    Test->TestTrue(TEXT("Motion timestamps saved"),FFileHelper::SaveStringToFile(MotionTimes,*(Dir/TEXT("Motion/timing.csv"))));
+   }
+   Test->TestTrue(TEXT("Actual participants selected"),C->GetInteractionView().CornerRunner.bIsBound&&C->GetInteractionView().CornerHelper.bIsBound);
+   Test->TestEqual(TEXT("Keeper named at route choice"),Text(TEXT("TheaterDefenseRole1")),FString(TEXT("门将")));
+   Test->TestEqual(TEXT("Corner uses production tactical choice labels"),Text(TEXT("TheaterLowLabel")),FString(TEXT("低球")));
+   Test->TestEqual(TEXT("Entire Corner choice button accepts pointer hits"),S->GetWidgetFromName(TEXT("TheaterHigh"))->GetVisibility(),ESlateVisibility::Visible);
+   Test->TestEqual(TEXT("No route-choice information bar"),S->GetWidgetFromName(TEXT("TheaterInfoBar"))->GetParent()->GetVisibility(),ESlateVisibility::Collapsed);
+   Capture(TEXT("04_RouteChoice"));Click(TEXT("TheaterHigh"));Next();return false;
+  }
+  if(Step==7){if(!Override(EFMCodexLocalDevRollTarget::CornerRoute,Low?6:1))return true;Click(TEXT("TheaterContinue"));Next();return false;}
+  if(Step==8)
+  {
+   Test->TestEqual(TEXT("Authoritative route after real D6"),C->GetInteractionView().CornerActualRoute,Low?EMatchPlayCornerRouteIntent::Low:EMatchPlayCornerRouteIntent::High);
+   Test->TestTrue(TEXT("Both formulas visible"),Shown(TEXT("TheaterAttackValue"))&&Shown(TEXT("TheaterDefenseValue")));
+   Test->TestEqual(TEXT("Formula route terminology"),Text(TEXT("TheaterTitle")),FString(Low?TEXT("角球 · 低球"):TEXT("角球 · 高球")));
+   Capture(TEXT("06_Formula_Unresolved"));if(!Override(EFMCodexLocalDevRollTarget::CornerAttack,Low?1:6))return true;Click(TEXT("TheaterContinue"));Next();return false;
+  }
+  if(Step==9){Capture(TEXT("07_Attack_Settled"));if(!Override(EFMCodexLocalDevRollTarget::CornerDefense,Low?6:1))return true;Click(TEXT("TheaterContinue"));Next();return false;}
+  if(Step==10)
+  {
+   Test->TestTrue(TEXT("Real terminal Outcome"),Shown(TEXT("TheaterOutcome")));Test->TestEqual(TEXT("Goal fact from authority"),C->GetInteractionView().bSetPieceGoal,!Low);
+   Test->TestTrue(TEXT("Reason explains special resolution"),CastChecked<URichTextBlock>(S->GetWidgetFromName(TEXT("TheaterReasonPrimary")))->GetText().ToString().Contains(TEXT("压制")));
+   Capture(TEXT("09_Result"));Click(TEXT("TheaterContinue"));Next();return false;
+  }
+  Test->TestFalse(TEXT("Advance restores Match Board"),Shown(TEXT("ResolutionTheater")));Capture(TEXT("11_Return"));return true;
+ }
+ void Capture(const TCHAR* Name)
+ {
+  TArray<FColor> Pixels;FIntVector Size=FIntVector::ZeroValue;
+  if(!Test->TestTrue(TEXT("Actual PIE frame captured"),TheaterPIEWindow.IsValid()&&FSlateApplication::Get().TakeScreenshot(TheaterPIEWindow->GetContent(),Pixels,Size)))return;
+  const FString File=FPaths::ProjectSavedDir()/TEXT("Stage8_13B_1/PIE")/Mode/(FString(Name)+TEXT(".png"));
+  IFileManager::Get().MakeDirectory(*FPaths::GetPath(File),true);
+  TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);Test->TestTrue(TEXT("Frame saved"),FFileHelper::SaveArrayToFile(PNG,*File));
+ }
+ FAutomationTestBase* Test;FString Mode;int32 Step=0;float Changed=0;double Start=FPlatformTime::Seconds();bool CapturedRolling=false,CapturedLanding=false,CapturedRoute=false,CapturedDefense=false;
+ float LastMotionGame=-1,HighlightGame=-1;double HighlightWall=0;int32 MotionFrame=0;
+ FString MotionTimes=TEXT("file,game_seconds,wall_seconds\n");
+ int32 WarningStep=0;TArray<FVector4> WarningLayout;
+};
+IMPLEMENT_COMPLEX_AUTOMATION_TEST(FCornerFull,"FMCodex.PIE.ResolutionTheater.CornerFull",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+void FCornerFull::GetTests(TArray<FString>& N,TArray<FString>& C) const
+{for(const TCHAR* M:{TEXT("High"),TEXT("LowSwitch"),TEXT("Zero")}){N.Add(M);C.Add(M);}}
+bool FCornerFull::RunTest(const FString& P)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FRun(this,P)));ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
+}
 }
 #endif

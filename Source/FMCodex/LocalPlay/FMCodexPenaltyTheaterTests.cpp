@@ -208,7 +208,8 @@ bool FPenaltyTheaterScope::RunTest(const FString&)
  FFMCodexUMGMatchScreenViewModel P;P.SetPiece.bVisible=true;P.SetPiece.Type=ESetPieceSelectedType::Penalty;
  TestTrue(TEXT("Penalty enters Theater"),WantsTheater(P,{}));
  Mode->Set(0,ECVF_SetByCode);TestFalse(TEXT("Fallback retains old path"),WantsTheater(P,{}));Mode->Set(1,ECVF_SetByCode);
- P.SetPiece.Type=ESetPieceSelectedType::Corner;TestFalse(TEXT("Corner is not migrated"),WantsTheater(P,{}));
+ P.InlineFormula.bVisible=true;P.InlineFormula.ContestId=TEXT("SetPiece.Type");
+ TestFalse(TEXT("Type D6 reveal retains Legacy ownership"),WantsTheater(P,P.InlineFormula));
  return true;
 }
 #endif

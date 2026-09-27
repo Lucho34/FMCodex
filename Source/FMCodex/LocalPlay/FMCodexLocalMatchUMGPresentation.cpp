@@ -1190,7 +1190,8 @@ namespace FMCodexLocalMatchUMGPresentation
 				? FText::FromString(PlayerFacingName(InteractionView, InteractionView.CornerRunner.OwnerSide,
 					InteractionView.CornerRunner.CardId)) : FText::GetEmpty();
 			if (InteractionView.bSetPieceGoal)
-				return Sentence(FText::Format(NSLOCTEXT("FMCodexCorner", "GoalPrefix", "{0}角球"), AttackerName),
+				return Sentence(FText::Format(NSLOCTEXT("FMCodexCorner", "GoalPrefix", "{0}角球"),
+					FText::FromString(PlayerFacingName(InteractionView, InteractionView.CurrentAttackingPlayer, InteractionView.SetPieceGoalScorerCardId))),
 					NSLOCTEXT("FMCodexOutcome", "GoalKeyword", "破门"), Bang);
 			// Aggregate NoGoal proves neither a save nor a shot wide. Name the
 			// actual attacker and known route without inventing a finishing event.
@@ -1298,6 +1299,30 @@ namespace FMCodexLocalMatchUMGPresentation
 
 		const bool bTypeRollPending =
 			InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollSetPieceType;
+		const bool bCornerSetup = InteractionView.SetPieceType == ESetPieceSelectedType::Corner
+			&& (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollCornerParticipantSelection
+				|| InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::SelectCornerIntent
+				|| InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollCornerRoute);
+		if (bCornerSetup)
+		{
+			Result.bVisible = true;
+			Result.bSuppressLegacyResolution = true;
+			Result.ContestId = InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollCornerParticipantSelection
+				? TEXT("Corner.Participants") : InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::SelectCornerIntent
+					? TEXT("Corner.Setup") : TEXT("Corner.Route");
+			Result.ContestLabel = TEXT("角球");
+			Result.AttackRow.SideLabel = TEXT("进攻方"); Result.DefenseRow.SideLabel = TEXT("防守方");
+			AddSetPieceParticipant(Result.AttackRow, InteractionView, InteractionView.CornerRunner, TEXT("进攻球员"));
+			AddSetPieceParticipant(Result.DefenseRow, InteractionView, InteractionView.CornerHelper, TEXT("防守球员"));
+			if (InteractionView.CornerHelper.bIsBound)
+				AddSetPieceGoalkeeperParticipant(Result.DefenseRow, InteractionView, OtherSide(InteractionView.CurrentAttackingPlayer));
+			Result.bShowFormulaRows = Result.bShowAttackRow = Result.bShowDefenseRow = false;
+			if (Result.ContestId == TEXT("Corner.Route"))
+				Result.RollHelperLabel = FFMCodexTacticalDetailPresentationBuilder::BuildCornerRouteHint(InteractionView.CornerIntendedRoute).ToString();
+			ClaimPrimaryAction(Result.PrimaryAction, PrimaryAction);
+			Result.bCanContinue = Result.PrimaryAction.bVisible;
+			return Result;
+		}
 		if (InteractionView.InteractionCategory == EFMCodexLocalMatchInteractionCategory::RollCornerRoute)
 		{
 			Result.bVisible = true;
@@ -1543,6 +1568,7 @@ namespace FMCodexLocalMatchUMGPresentation
 					InteractionView.CornerRunner, TEXT("进攻球员"));
 				AddSetPieceParticipant(Result.DefenseRow, InteractionView,
 					InteractionView.CornerHelper, TEXT("防守球员"));
+				AddSetPieceGoalkeeperParticipant(Result.DefenseRow, InteractionView, Defender);
 			}
 			else
 			{
@@ -1668,6 +1694,8 @@ namespace FMCodexLocalMatchUMGPresentation
 					: InteractionView.SetPieceAttackKnownSubtotal;
 				Result.AttackRow.DisplayedResultLabel = CompactNumber(
 					Result.AttackRow.DisplayedResult);
+				if (InteractionView.SetPieceType == ESetPieceSelectedType::Corner && InteractionView.bHasSetPieceAttackD6)
+					Result.AttackRow.bDisplayedResultIsFinalValue = true;
 				if ((InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick || InteractionView.SetPieceType == ESetPieceSelectedType::Penalty || (InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick && Result.bShowDefenseRow)) && InteractionView.bHasSetPieceAttackD6)
 					Result.AttackRow.bDisplayedResultIsFinalValue = true;
 			}
@@ -1716,6 +1744,19 @@ namespace FMCodexLocalMatchUMGPresentation
 			&& InteractionView.bHasSetPieceAttackD6 && !InteractionView.bHasSetPieceFormula && !bCompactMethod)
 			Result.ResolutionReasonLabel=FText::Format(NSLOCTEXT("FMCodexLong", "EarlyMissReason", "进攻方掷点 {0}：直接射偏\n进攻掷点 1–2 时结束，不进行攻防比较"),FText::AsNumber(InteractionView.SetPieceAttackD6)).ToString();
 
+		if (InteractionView.SetPieceType == ESetPieceSelectedType::Corner)
+		{
+			if (InteractionView.bHasSetPieceFormula)
+				Result.ResolutionReasonLabel = FormulaReason(InteractionView.SetPieceFormula, Result.AttackRow, Result.DefenseRow);
+			else if (Result.bNarrativeAvailable)
+			{
+				Result.AttackRow.SideLabel = TEXT("进攻方");
+				AddSetPieceParticipant(Result.AttackRow, InteractionView, InteractionView.CornerRunner, TEXT("进球球员"));
+				Result.ResolutionReasonLabel = InteractionView.bSetPieceGoal
+					? NSLOCTEXT("FMCodexCorner", "AutomaticGoalReason", "防守方未派候选，进攻方直接进球").ToString()
+					: NSLOCTEXT("FMCodexCorner", "AutomaticNoGoalReason", "进攻方未派候选，本次角球不进球").ToString();
+			}
+		}
 		ClaimPrimaryAction(Result.PrimaryAction, PrimaryAction);
 		Result.bCanContinue = Result.PrimaryAction.bVisible;
 		Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
@@ -2728,7 +2769,10 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	FFMCodexUMGMatchScreenViewModel Result;
 	if (InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick
 		|| InteractionView.SetPieceType == ESetPieceSelectedType::LongFreeKick
-		|| InteractionView.SetPieceType == ESetPieceSelectedType::Penalty)
+		|| InteractionView.SetPieceType == ESetPieceSelectedType::Penalty
+		// Existing bounded Corner facts drive the shared production Theater in every target.
+		|| InteractionView.SetPieceType == ESetPieceSelectedType::Corner
+		)
 		Result.SetPiece = FFMCodexSetPieceSelectionPresentation::Build(InteractionView, LocalViewerSide);
 	const bool bProjectOnPitchPlayerSelection =
 		InteractionView.InteractionCategory

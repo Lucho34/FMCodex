@@ -4,7 +4,7 @@ Status: **ADOPTED / PRODUCTION LOCKED — Stage 8.10**. The grouped closeout pro
 
 ## Scope and selection
 
-Stage 8.10A introduced explicit Legacy, TheaterInline and CompactBox variants. The Theater's standalone Cross route reel selects CompactBox. High / Low Formula reels continue to select TheaterInline. Non-Theater routes and unrelated consumers keep Legacy; Stage 8.10B adds HeroRoll for the main-board tactical-point popup as described below. The generic renderer knows only its variant and projected reel; it does not branch on tactics.
+Stage 8.10A introduced explicit Legacy, TheaterInline and CompactBox variants. The Theater's standalone Cross route reel and Stage 8.13 Corner shared-selection / route D6 select CompactBox. High / Low Formula reels continue to select TheaterInline. Non-Theater routes and unrelated consumers keep Legacy; Stage 8.10B adds HeroRoll for the main-board tactical-point popup as described below. The generic renderer knows only its variant and projected reel; it does not branch on tactics.
 
 CompactBox is a visual/result cell, not a button. It occupies 84 × 72 Slate units within the existing Theater action lane, centered under the route explanation and the existing operation/wait label. This is a current implementation token, not a permanent dimension for every future consumer. The old adjacent duplicate owner label is removed. The route CTA remains the existing separate Theater button. Before the action the reel remains hidden, matching the existing unresolved contract; no fake result is displayed.
 
@@ -69,3 +69,9 @@ The grouped closeout confirms B.2 visual USER PIE acceptance as well as the prio
 Stage 8.10 Closeout runs the 7 RollPresentation, 8 ResolutionTheater, 1 FullD12 reveal/ownership and 1 UnifiedCoveredRolls checks: **17 succeeded, 0 failed, 0 warnings**. Accepted A.1 CompactBox / TheaterInline and B.2 HeroRoll runtime captures plus the completed incremental Editor build are reused; closeout makes no source changes. No new runtime asset, UHT schema, authority, transport or Shipping behavior is introduced, so no new Host/Remote run, cook or broad suite is warranted. The exact evidence and worktree audit are delivered in the closeout response.
 
 VISUAL SPEC UPDATE REQUIRED: YES. VISUAL SPEC UPDATE COMPLETED: YES. The Roll spec, Theater integration, MatchFlow, MatchScreen layout and Decision Log are synchronized. Final commit belongs to the user in GitHub Desktop; Codex performs no staging or commit.
+
+## Stage 8.13 Corner adoption
+
+Corner consumes the existing CompactBox in two places: one shared D6 between ordered Mini Card columns, and one route D6 in the existing action lane. One shared result selects both actual players; its value is not a Formula operand or winner. Position / roll-range labels surround the cell without changing the generic renderer. Existing independent CTAs, safe projections, modern motion, event identity and elapsed-time clock remain in use.
+
+The accepted shared-selection readable hold is approximately 2.40 s, implemented with the existing 2.58 s Formula hold token minus 0.18 s disclosure delay. This replaces only Corner participant selection's old 1.27 s readable window; route and Formula durations remain unchanged. Route uses selected-intent hints, a rolling status and authority-projected actual High / Low result. Corner comparisons use TheaterInline; automatic zero branches show no visible die. Type D6 stays Legacy. Full Card is confined to candidate planning.
