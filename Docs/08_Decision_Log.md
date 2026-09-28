@@ -2509,3 +2509,41 @@ Runner legality、prepared Runner 的 Skill compatibility、branch intent 与 Re
 当前安全投影已展示的 Hand / Pitch 复用同一 inspector，检查不意味着候选合法，也不选择球员、改变焦点、ownership、TP 或提交 gameplay。选择完成及刷新立即清理；进入下一个获准决策状态可重新检查。专用定位球规划 inspector 维持已锁定合同，方法/路线选择仍不开放 generic Full Card。无玩法、Authority、RPC、schema 或披露变更。
 
 **Stage 8.17B + 8.17B.1 — USER PIE PASS。** 用户已手动确认最终检查范围与交互符合预期。Grouped closeout 复用既有通过的 focused/affected 测试、增量 Development Editor build 与真实 Local PIE；运行时及测试实现未在验证后改变，本次仅审计分组 diff、边界和文档，并同步用户验收状态，未重复执行 gameplay、build、PIE、Network、Host/Remote 或 Shipping。最终 staging / commit 仍由用户通过 GitHub Desktop 手动完成。
+
+## 2026-09-27 — Stage 8.18B LongShot / CutInside DirectShot presentation convergence
+
+**历史实现记录；当时 PENDING USER PIE，已由下文 8.18B–E 分组验收取代。** 两种普通 DirectShot 按 consumer + state 明确接入现有 Resolution Theater Formula 与 TheaterInline / Roll v2；消费已投影 Base / Final / composition 与权威胜因，不重算公式、参与者、体力或 GK 参与。Base 保留 tooltip 下划线，Roll 无下划线，已落定 Roll 使用共享 #EED7A6，RHS 保持既有数值层级。防守掷点期间进攻已落定值保持静态。
+
+权威 ImmediateMiss 仍只有一枚进攻骰；同一现代攻击槽位继续滚动/落定与原有 hold，不显示未执行的防守、VS、Formula Final 比较或胜因。现有 Outcome / narrative 语义和显式 Advance 合同保留，LongShot Coordinator 与 CutInside transaction terminal 差异不变。
+
+分支选择不迁移，DeadCorner 留给独立 8.18C；ThroughBall、dormant PassControl、Full Card scope、CoreRules / Authority / RNG、RPC、safe projection schema 与网络操作权不变。本条记录实现范围，不代表 USER PIE 接受、分组收尾或可提交结论。
+
+## 2026-09-27 — Stage 8.18C LongShot / CutInside Theater completion and UX repair
+
+**历史实现记录；当时 PENDING USER PIE，已由下文 8.18B–E 分组验收取代。** 根据 8.18B 用户实测反馈，在原 dirty worktree 上继续完成两个共享消费者的 BranchChoice / DeadCorner Theater 接入；分支选择复用已有对等方法组件，DeadCorner 当时采用两个现有 CompactBox / Roll v2（8.18D 已改用 TheaterPair / TheaterInline），保持一个 typed pair request、逐枚 reveal / hold、A 静态保留及原有 Outcome / terminal continuation。不创建 Formula 或新 Roll family。
+
+ImmediateMiss 的权威 skipped 标记不再提前改变攻击滚动布局；真实落点可见后才收起未执行比较，攻击 Reel 全程只有一个可见 owner，结果仍按原门控出现。DirectShot Formula、规则、比分和事件去重不变。射门按钮按原文测量宽度；战术点底栏按钮为双方共用的有界文字适配，不改变动作或文案。
+
+新增普通 pre-TP planning 的只读 Full Card 许可：同状态已展示的 Hand / Pitch 都可检查；Roll 一开始即清理并禁止检查，不开放 branch choice、Formula、Outcome、Reason 或 terminal。通过既有 viewer-safe model 与动作 adapter 工作，不修改 CoreRules、Authority、RNG、AP/TP、RPC、schema 或网络操作权；ThroughBall / dormant PassControl 保持隔离。
+
+## 2026-09-27 — Stage 8.18D Shot presentation reuse polish
+
+**历史实现记录；当时 PENDING USER PIE，已由下文 8.18B–E 分组验收取代。** 根据 8.18C 用户实测，LongShot / CutInside 分支页复用 FK 的持球攻击卡、双选项说明与不可用／等待栏。真实身份来自已有安全字段，说明来自 canonical Rule Description；普通射门不继承 Near FK 属性门槛。DeadCorner 从 8.18C 独立 CompactBox 布局改用现有 Near Combination 攻击卡内 TheaterInline 双骰行，保留逐枚揭示、静态 A、显示用点数和与原有结果门控。布局复用不表示 Formula contest 或玩法合并。
+
+ImmediateMiss 原先随 `bShowFormulaRows` 收起导致人物高度从 178 切到 128，并压缩数值行；改为保留其几何占位，隐藏未执行比较及命中目标。攻击 Roll 揭示前保持普通布局，真实落定后才表达射偏；不改 RNG、阈值、Authority、比分、RPC、safe projection schema 或网络操作权。不扩大 Full Card 范围，不影响 ThroughBall / dormant PassControl 或既有 FK 玩法。
+
+## 2026-09-28 — Stage 8.18E DirectShot / DeadCorner presentation polish follow-up
+
+**历史实现记录；当时 PENDING USER PIE，已由下文 8.18B–E 分组验收取代。** 本轮四张用户截图仅作为视觉证据，采用书面产品要求：分支页保留攻击上下文，DirectShot 摘要移除固定 +2 和门将行，DeadCorner 摘要只保留双骰概念及 11–12 成功条件；完整规则与实际 Formula 不变。
+
+DirectShot 的 ResultHold 不再因 reveal 仍活动而显示“掷点中”，使用现有可见权威落定标记给出中性“掷点已落定”，保留悬念、原有 hold 和几何稳定。DeadCorner 继续复用 TheaterPair / TheaterInline，滚动底栏增加成功条件，结果保留算式并依据已披露 Goal / NoGoal 说明达到／未达到范围，不从骰子重新判定结果。两个普通射门消费者共享修复，无新增权威事实、schema、RPC、规则、Roll family、Full Card 范围或新架构；不涉及 ThroughBall / dormant PassControl，不做 grouped closeout。
+
+## 2026-09-28 — Stage 8.18B / C / D / E grouped closeout
+
+**USER PIE PASS — grouped closeout complete; ready for manual staging / commit。** 用户已接受最终组合的分支选择及精简说明、攻击上下文、DirectShot Formula / TheaterInline、ImmediateMiss 悬念及几何稳定、落定状态、DeadCorner 逐枚双骰与成功条件／结果原因，以及转换、CTA 和结果流程。当前合同以最终 8.18E 实现和对应 UI 规范为准；上文各阶段的待验收状态及被替代布局只保留为历史。
+
+分组范围包含已批准的普通 pre-TP 只读 Full Card 和双方 TP CTA 文字适配；普通结算的检查禁区不变。DeadCorner 仍是双骰 OutcomeDecision，不是 FormulaContest；显示用点数和复用既有 formatter，进球、Formula、参与者、比分和推进继续由原权威合同决定。ThroughBall、dormant PassControl、Stage 8.15B 内容、Stage 8.16 Roll 家族及 Stage 8.17 已验收行为保持隔离。
+
+收尾已复核完整 tracked diff、未跟踪 PIE 文件、共享消费者／Network／Shipping 边界及文档一致性。沿用 B/C/D/E 已通过的 focused/affected、增量 Development Editor build 和真实 Local PIE 证据，以及本次用户验收；收尾只同步文档，运行时和测试实现未发生实质变更。本轮新增 gameplay tests / build / PIE / Network tests / Host-Remote / Shipping 均为 0；未改变公共权威、网络、披露或 Shipping 条件分支，不重复 broad suites。REGRESSION SCOPE JUSTIFIED: YES。
+
+未 staging 或 commit；最终提交由用户在 GitHub Desktop 手动完成。未启动 ThroughBall、8.18F 或新 polish。

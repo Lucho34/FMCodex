@@ -11,6 +11,7 @@ struct FFMCodexUMGMatchScreenViewModel;
 struct FFMCodexUMGMatchHeaderViewModel;
 struct FFMCodexUMGInlineFormulaSurfaceViewModel;
 struct FFMCodexUMGRollReelViewModel;
+struct FFMCodexUMGLongShotResolutionViewModel;
 
 namespace FMCodexResolutionTheaterPrototype
 {
@@ -60,6 +61,10 @@ bool IsCornerResolutionEnabled();
 void ApplyCornerDisplayCopy(const FFMCodexUMGMatchScreenViewModel& Screen,
 	FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed);
 bool IsFormulaContest(FName ContestId);
+// Ordinary shots opt in through explicit existing tactic and presentation states.
+bool IsDirectShotContest(FName ContestId);
+bool IsDeadCornerContest(FName ContestId);
+bool IsOrdinaryShotConsumer(const FFMCodexUMGLongShotResolutionViewModel& Shot);
 bool WantsTheater(const FFMCodexUMGMatchScreenViewModel& Screen,
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed);
 UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& Low, UTexture2D* Athletes);

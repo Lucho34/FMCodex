@@ -60,6 +60,22 @@ CompactBox 置于现有路线 action lane，CTA 与只读数字格分离。信�
 
 当前参数与实现边界见 [Roll v2](../Dev/Resolution_Theater_Roll_v2.md) 及 [CompactBox / HeroRoll notes](../Dev/Resolution_Theater_CompactBox_v1.md)。
 
+## LongShot / CutInside 接入（Stage 8.18B–E，USER PIE PASS）
+
+LongShot / CutInside 的 BranchChoice、DirectShot 与 DeadCorner 按 consumer + state 接入同一生产 Theater；不以共享宿主类型全局换肤。两种战术的 DirectShot 复用 `Base + ? = Current` / `Base + Roll = Final`、Base 下划线与原生 tooltip、TheaterInline 和 Roll v2。Base、小计、Final、属性/系数/修正、参与者及胜因均来自已有安全投影；LongShot 远射、CutInside 射门/盘带组合，以及各自可选 GK 贡献保持权威差异。RHS 仍为主要数字焦点；仅已落定 Roll 使用 #EED7A6，Roll 无下划线。
+
+攻击 D6 的合法 1–2 提前射偏由权威 `ImmediateMiss` / skipped Formula 标记决定。权威结果到达不提前改变待定布局：保持普通攻击的已投影候选组成及同一 Roll 槽位，直到真实落点可见，再隐藏未执行的防守、VS、Base / Final 比较与 winner 标识，不显示体力或 GK 平局理由，也不叠放独立骰子。保留原有 hold；正常攻击完成后，防守 Roll 使用同一时间线，攻击已落定值持续可读。已合法公开的合并快照仍按当前事件顺序遮蔽后续防守值。
+
+分支选择按 Stage 8.18D 复用 FK 的信息结构：标题／副标题 → 已投影的持球攻击卡 → 对等双方法按钮及白色说明 → 不可用／等待提示。8.18D 曾展示较完整的系数、防守固定项、条件门将项与双骰结果范围；8.18E 按用户反馈精简为持球属性、盯人抢断和 1–2 射偏提示，双骰仅保留依次掷两枚骰子与总和 11–12 进球。说明仍读取 canonical Rule Description；省略固定 +2、门将和失败范围仅影响决策页摘要，不改变详细战术信息或实际 Formula。可用性只读取当前 viewer 的合法 choices，不复制 FK 的属性门槛，也不由说明推算 legality。上下文卡不是 Full Card，不提供额外检查入口。
+
+8.18C 曾以独立 CompactBox 双骰承载 DeadCorner。8.18D 根据用户反馈改为复用 Near Combination 的攻击卡内 `TheaterPair` / TheaterInline 槽位及结果层次：A 落定后静态保留，B 及显示用点数和按既有 gate 揭示。该显示用加法只重用已接受骰点的格式化，不创建 Base、Formula contest、VS、防守参与者或本地 Goal 判断。真实持球身份保持普通“持球”，不改称“主罚球员”。
+
+ImmediateMiss 在真实落点揭示后隐藏未执行比较时，保留攻击卡内容占位、数值行 padding 及人物尺寸；隐藏部分无命中目标，不以压缩人物或重新缩放卡片表达射偏。8.18C 的揭示顺序、单一 Reel、hold 与 Outcome 门控保持不变。
+
+Stage 8.18E：DirectShot 底栏以现有 Reel 的可见权威落定标记切换为“进攻方／防守方掷点已落定”，不能把整个 ResultHold 仍写作“掷点中”；该中性状态不提前表达 terminal outcome。DeadCorner 滚动及 hold 的底栏保留骰子次序，并持续显示“两枚掷点总和达到 11–12：进球”；结果主行保留算式，次行根据已披露结果说明总和达到／未达到进球范围，不在 UI 比较总和判定进球。8.18E 的四张反馈截图仅用于问题定位；用户随后完成最终组合验收，Stage 8.18B–E 已获 USER PIE PASS。
+
+结果继续消费现有 Shared Outcome 语义句和 canonical narrative，沿用既有 narrative / Reel 退出门控与显式 CTA；理由只格式化已有事实。射门 CTA 保留投影文案，宽度适应文字、图标和内边距。ThroughBall、dormant PassControl 及 gameplay / network schema 不变。8.18B USER PIE 发现的提前单侧布局、重复骰子和 Legacy 后续路径由 8.18C 修复，最终 B–E 组合已通过用户复验；分组收尾完成，等待用户手动 staging / commit。
+
 ## 理由栏与 CTA
 
 理由栏使用图标、竖向分隔线、左对齐主解释与更小的次解释。允许语义适当的数值强调。普通总值比较、快速压制、体力总和平局和门将特殊平局必须保持区分。
@@ -82,7 +98,7 @@ High / Low Cross 体力理由读取 `ResolvedResult` 的权威参与球员总和
 
 Development 默认 `fm.UI.ResolutionStageV2=1`、`fm.UI.ResolutionStageV2.LowCross=1`、`fm.UI.ResolutionStageV2.NearFreeKick=1`、`fm.UI.ResolutionStageV2.LongFreeKick=1`、`fm.UI.ResolutionStageV2.Penalty=1`、`fm.UI.ResolutionStageV2.CornerSelection=1` 与 `fm.UI.ResolutionStageV2.CornerResolution=1`。Near / Long / Penalty 各自开关关闭只回退对应家族。CornerSelection 只回退候选规划，CornerResolution 只回退锁定后的完整结算；主开关仍控制 Theater 总入口。Low 开关关闭只回退 Low；关闭主开关使用旧界面，此时 `fm.UI.FormulaV2=0/1` 选择相应历史比较层。这些开关仅用于 non-Shipping 对照，不是玩家产品设置。
 
-Shipping 编译为中性 Cross 入口、实际 High / Low 及已披露类型后的 Near / Long / Penalty / Corner（规划及结算）Theater 始终开启，无 cvar、控制台命令或 prototype 配置依赖。实现中的 Prototype 命名属于历史，不表示生产路径尚待采用。
+Shipping 编译为中性 Cross 入口、实际 High / Low、LongShot / CutInside（分支选择及结算）及已披露类型后的 Near / Long / Penalty / Corner（规划及结算）Theater 始终开启，无 cvar、控制台命令或 prototype 配置依赖。实现中的 Prototype 命名属于历史，不表示生产路径尚待采用。8.18B–E 已获 USER PIE PASS；本组复用既有 Shipping 入口，无新增 Shipping 专属分支或 Development 依赖。
 
 资源来源、字体限制及历史参数见 [实现说明](../Dev/Resolution_Theater_Prototype_v1.md)。TheaterInline 与 CompactBox 均已纳入当前传中生产家族；Stage 8.10 未增加运行时美术资源。
 

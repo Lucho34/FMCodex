@@ -515,11 +515,14 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 	if (bActive)
 	{
 		auto TheaterPresentation=Presentation;
+		TheaterPresentation.LongShotResolution=BuildDisplayedLongShotResolution();
 		TheaterPresentation.LocalRack=BuildDisplayedHandRack(Presentation.LocalRack);
 		TheaterPresentation.OpponentRack=BuildDisplayedHandRack(Presentation.OpponentRack);
 		const bool bConfirmation=MatchController?MatchController->GetInteractionView().bCornerLockConfirmationPending:bNetworkCornerConfirmation;
 		Refresh(*WidgetTree, TheaterPresentation, Displayed, DisplayedHeader, IsScreenRequestPending(), TheaterTakerInspection, bConfirmation);
 		SetPieceResolutionSurface->SetVisibility(ESlateVisibility::Collapsed);
+		if (IsOrdinaryShotConsumer(TheaterPresentation.LongShotResolution))
+			LongShotResolutionSurface->SetVisibility(ESlateVisibility::Collapsed);
 		HideDetailOverlay(); HideTacticalDetail(); SelectionFeedbackToast->DismissFeedback();
 		ResolutionOverlay->SetVisibility(ESlateVisibility::Collapsed);
 	}
@@ -532,6 +535,9 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 
 void UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickDirectRequested()
 {
+ if (TheaterMotion.bActive && FMCodexResolutionTheaterPrototype::IsOrdinaryShotConsumer(Presentation.LongShotResolution)
+  && Presentation.LongShotResolution.Stage==EFMCodexUMGLongShotStage::BranchChoice)
+ { RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::DirectShot); return; }
  if (Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick) HandleLongDirectRequested();
  else if (Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick) HandleShortDirectRequested();
  else if (Presentation.SetPiece.Type==ESetPieceSelectedType::Penalty) HandlePenaltyDirectRequested();
@@ -539,6 +545,9 @@ void UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickDirectRequested()
 }
 void UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickAlternativeRequested()
 {
+ if (TheaterMotion.bActive && FMCodexResolutionTheaterPrototype::IsOrdinaryShotConsumer(Presentation.LongShotResolution)
+  && Presentation.LongShotResolution.Stage==EFMCodexUMGLongShotStage::BranchChoice)
+ { RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::DeadCorner); return; }
  if (Presentation.SetPiece.Type==ESetPieceSelectedType::LongFreeKick) HandleLongPowerRequested();
  else if (Presentation.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick) HandleShortAngledRequested();
  else if (Presentation.SetPiece.Type==ESetPieceSelectedType::Penalty) HandlePenaltyPanenkaRequested();
@@ -1417,7 +1426,10 @@ void UFMCodexLocalMatchScreenWidget::HandleInlineFormulaContinueRequested()
 		HandleSetPiecePrimaryRequested();
 		return;
 	}
-	if (!DoesInlineFormulaOwnCurrentPrimaryAction())
+	const bool bShotAction = TheaterMotion.bActive
+		&& FMCodexResolutionTheaterPrototype::IsOrdinaryShotConsumer(Presentation.LongShotResolution)
+		&& DoesLongShotOwnCurrentPrimaryAction();
+	if (!DoesInlineFormulaOwnCurrentPrimaryAction() && !bShotAction)
 	{
 		return;
 	}
@@ -2229,7 +2241,8 @@ bool UFMCodexLocalMatchScreenWidget::CanInspectOrdinaryFullCard() const
 	// Explicit ordinary decision allowlist. Set Piece method/route choices and
 	// future selection categories do not inherit generic inspection permission.
 	const bool bApprovedContext =
-		Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::Deploy
+		Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::TacticalPointRoll
+		|| Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::Deploy
 		|| Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::SelectCarrier
 		|| Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::SelectRunner
 		|| Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::SelectMarker
@@ -4053,8 +4066,24 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		return Result;
 	}
 
+	// A published ImmediateMiss must not change the pre-reveal composition.
+	// These are the existing projected candidate rows, still pending, not an
+	// executed comparison. Drop them only after the actual attack value is visible.
+	if (FMCodexResolutionTheaterPrototype::IsDirectShotContest(Result.ContestId)
+		&& ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Attack
+		&& !bFormulaDisclosed && !Result.bShowFormulaRows)
+	{
+		Result.bShowFormulaRows = Result.bShowAttackRow = Result.bShowDefenseRow = true;
+	}
 	if (!Result.bShowFormulaRows)
 	{
+		if (FMCodexResolutionTheaterPrototype::IsDirectShotContest(Result.ContestId))
+		{
+			// The canonical skipped gate removes the comparison, not its one
+			// accepted attack roll. Retain the same displayed operand and clock.
+			if (!bFormulaDisclosed)
+				StageRowForReveal(Result.AttackRow, !bHolding, bAuthoritativeVisible, VisibleD6);
+		}
 		Result.bAttackRowActive = false;
 		Result.bDefenseRowActive = false;
 		return Result;
@@ -4065,7 +4094,8 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 			== EFMCodexUMGCrossRollRevealKind::SetPieceAttack;
 	Result.bAttackRowActive = bAttack;
 	Result.bDefenseRowActive = !bAttack;
-	if (bSetPieceAttackPrefix)
+	if (bSetPieceAttackPrefix || (bAttack
+		&& FMCodexResolutionTheaterPrototype::IsDirectShotContest(Result.ContestId)))
 		StageRowForReveal(Result.DefenseRow, false, false, 0); // A coalesced terminal cannot reveal the defense roll during attack A.
 	if (!bFormulaDisclosed)
 	{
@@ -4345,6 +4375,8 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedLongShotResolution() const
 	Result.bDeadCornerBVisible = bSecond && bHolding;
 	const bool bPairDisclosed = bSecond && bHolding
 		&& InlineFormulaRevealPhaseElapsed >= FormulaDisclosureDelay;
+	Result.Formula.AttackRow.bFinalValueResolved=bPairDisclosed;
+	if (!bPairDisclosed) Result.Formula.AttackRow.FinalValueLabel.Empty();
 	Result.OutcomeHintLabel = bPairDisclosed ? FString()
 		: FFMCodexPlayerUIPresentationText::LongShotDeadCornerOutcomeHint().ToString();
 	Result.PairedRollResultLabel = bPairDisclosed
@@ -4380,6 +4412,11 @@ bool UFMCodexLocalMatchScreenWidget::UsesTheaterRollMotion() const
 	if (ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::SetPieceType
 		&& ActiveCrossRollReveal.ContestId==TEXT("SetPiece.Type")) return true;
 	if (!TheaterMotion.bActive) return false;
+	if (FMCodexResolutionTheaterPrototype::IsDeadCornerContest(ActiveCrossRollReveal.ContestId))
+		return ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA
+			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerB
+			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::CutInsideShotDeadCornerA
+			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::CutInsideShotDeadCornerB;
 	if (Presentation.SetPiece.Type==ESetPieceSelectedType::Corner && FMCodexResolutionTheaterPrototype::IsCornerResolutionEnabled())
 		return ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection
 			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::CornerRoute
@@ -4396,7 +4433,8 @@ bool UFMCodexLocalMatchScreenWidget::UsesTheaterRollMotion() const
 	// own unchanged disclosure/hold gates in the shared phase machine.
 	if (ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::InitialRoute
 		&& ActiveCrossRollReveal.ContestId == TEXT("Cross.Route")) return true;
-	return FMCodexResolutionTheaterPrototype::IsFormulaContest(ActiveCrossRollReveal.ContestId)
+	return (FMCodexResolutionTheaterPrototype::IsFormulaContest(ActiveCrossRollReveal.ContestId)
+		|| FMCodexResolutionTheaterPrototype::IsDirectShotContest(ActiveCrossRollReveal.ContestId))
 		&& (ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Attack
 			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Defense);
 }
@@ -5459,7 +5497,9 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 			: ESlateVisibility::SelfHitTestInvisible);
 	MainScreen->SetIsEnabled(!Presentation.FullTime.bVisible);
 	FullTimePanel->RefreshFromPresentation(Presentation.FullTime);
-	RefreshResolutionTheater(StandaloneInlineFormula, BuildDisplayedHeader(bOutcomeDisclosed));
+	const auto& TheaterFormula = FMCodexResolutionTheaterPrototype::IsOrdinaryShotConsumer(DisplayedLongShot)
+		? DisplayedInlineFormula : StandaloneInlineFormula;
+	RefreshResolutionTheater(TheaterFormula, BuildDisplayedHeader(bOutcomeDisclosed));
 #if !UE_BUILD_SHIPPING
 	HandoffAuditRefresh.Broadcast(true);
 #endif

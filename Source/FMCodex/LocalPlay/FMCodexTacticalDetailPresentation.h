@@ -21,4 +21,6 @@ public:
 	/** Compact branch copy derived from the canonical tactical description. */
 	static FText BuildBranchChoiceHint(
 		ESkillRuleType SkillType, FName BranchId);
+	/** Expanded static explanation for ordinary shot Theater choices only. */
+	static FText BuildShotBranchExplanation(ESkillRuleType SkillType, bool bDirect);
 };

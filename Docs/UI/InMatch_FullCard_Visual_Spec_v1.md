@@ -3,6 +3,7 @@
 Status: **FROZEN — Stage 8.2C / C.1–C.5 USER PIE ACCEPTED**, committed at `b9774ec5e7b0af401618c716ace59d3f65d863e3`. Earlier pending/open wording below is checkpoint history. The accepted C.5 follow-up is the current Full contract; roster migration must preserve it.
 Scope: read-only In-Match Full Card inspection during explicitly approved decision/planning contexts
 Decision/planning inspection scope: **Stage 8.17B + 8.17B.1 — USER PIE PASS**.
+Stage 8.18C adds ordinary pre-TP planning inspection; **Stage 8.18B–E grouped closeout — USER PIE PASS**.
 Stage: `6.13.1.3.11.8`
 
 Data contract integrated by: `6.13.2.2`
@@ -19,14 +20,17 @@ Deployment clears it immediately without requiring mouse leave.
 Full Card is a player-information inspector for approved decision/planning
 contexts. The ordinary allowlist is explicit: Deployment (`Deploy`), Carrier
 (`SelectCarrier`), Runner (`SelectRunner`), Marker (`SelectMarker`), Helper
-(`SelectHelper`) and Tactical Choice (`SelectSkill` / 选择战术). Where present,
+(`SelectHelper`), Tactical Choice (`SelectSkill` / 选择战术), and ordinary pre-TP
+planning (`TacticalPointRoll`, only before the reveal starts). Where present,
 Hand and deployed Pitch cards share the same read-only inspector, independent
 of candidate legality. Inspection does not select a role/tactic, change focus,
 alter availability or submit gameplay. Canonical candidate styling and clicks remain.
 
 Selection completion and presentation refresh clear the inspector without mouse
 leave. Moving to another approved decision context permits fresh inspection;
-stale card identity does not persist. Set Piece method/route choices and future
+stale card identity does not persist. Starting the tactical-point Roll immediately
+clears and denies inspection even if the pending category has not advanced yet.
+Set Piece method/route choices and future
 selection categories do not automatically inherit this explicit allowlist.
 
 Other approved exposure is limited to the existing Near/Long Free Kick and Penalty

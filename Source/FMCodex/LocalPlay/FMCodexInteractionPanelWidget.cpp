@@ -413,14 +413,22 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 		*WidgetTree, TEXT("InteractionTacticalPointRollButton"), RollLabel,
 		EFMCodexPlayerUIActionRole::Primary);
 	Style.ApplyText(*RollLabel, EFMCodexPlayerUITextRole::SectionHeading);
+	// This dock action is shared by both acting sides. Fit its unchanged label
+	// inside the actual padded button allocation at every viewport/DPI scale.
+	RollLabel->RemoveFromParent();
+	auto* RollLabelFit=WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(),TEXT("TacticalPointLabelFit"));
+	RollLabelFit->SetStretch(EStretch::ScaleToFit);
+	RollLabelFit->SetStretchDirection(EStretchDirection::DownOnly);
+	RollLabelFit->AddChild(RollLabel);
+	TacticalPointRollButton->AddChild(RollLabelFit);
 	TacticalPointRollButton->OnClicked.AddDynamic(
 		this,
 		&UFMCodexInteractionPanelWidget::HandleTacticalPointRollClicked);
 	USizeBox* TacticalPointRollBounds =
 		WidgetTree->ConstructWidget<USizeBox>(
 			USizeBox::StaticClass(), TEXT("TacticalPointPrimaryActionBounds"));
-	TacticalPointRollBounds->SetMinDesiredWidth(196.0f);
-	TacticalPointRollBounds->SetMinDesiredHeight(66.0f);
+	TacticalPointRollBounds->SetWidthOverride(246.0f);
+	TacticalPointRollBounds->SetHeightOverride(66.0f);
 	TacticalPointRollBounds->AddChild(TacticalPointRollButton);
 	if (UHorizontalBoxSlot* RollSlot =
 		PrimaryActions->AddChildToHorizontalBox(TacticalPointRollBounds))
@@ -591,6 +599,8 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 		Presentation.PrimaryAction.Label);
 	SetButton(TacticalPointRollButton, Presentation.bCanRollTacticalPoints,
 		Presentation.PrimaryAction.Label);
+	CastChecked<UTextBlock>(GetWidgetFromName(TEXT("InteractionTacticalPointRollButtonLabel")))->SetText(
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(Presentation.PrimaryAction.Label));
 	if (UWidget* RollBounds = TacticalPointRollButton->GetParent())
 	{
 		RollBounds->SetVisibility(Presentation.bCanRollTacticalPoints

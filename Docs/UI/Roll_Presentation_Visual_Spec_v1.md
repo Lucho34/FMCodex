@@ -10,12 +10,16 @@ Roll 共用既有 viewer-safe projection、Screen phase machine、event identity
 
 | 变体 | 当前实际消费方 | 视觉职责 |
 |---|---|---|
-| Legacy | 未迁移的 generic Inline Formula、Development Formula Broadcast、ThroughBall / LongShot family surfaces；包括未迁移后续 Formula，以及 Development Cross / Free Kick / Penalty / Corner fallback（含旧 Corner participant reel） | 已有 Sports Broadcast Numeric Window；迁移期间继续有效 |
-| TheaterInline | High / Low Cross、Near / Long Direct、常规点球与 Corner High / Low 的攻防 Roll，Near Combination / Long Power 的逐枚双骰槽位，以及 Panenka 的单骰槽位 | 稳定数字槽位；对抗分支嵌入等式，Panenka 单骰不虚构算式 |
-| CompactBox | Resolution Theater 的独立 Cross route、Corner 共享选人及 Corner route D6；Stage 8.16 的 Set Piece Type D6 | 小型、安静、有边界的只读结果格 |
+| Legacy | 未迁移的 generic Inline Formula、Development Formula Broadcast、ThroughBall、dormant PassControl，以及 Development Theater fallback（含旧 Corner participant reel） | 已有 Sports Broadcast Numeric Window；迁移期间继续有效 |
+| TheaterInline | High / Low Cross、Near / Long Direct、常规点球、Corner High / Low 与 LongShot / CutInside DirectShot 的攻防 Roll，Near Combination / Long Power / LongShot 与 CutInside DeadCorner 的逐枚双骰槽位，以及 Panenka 的单骰槽位 | 稳定数字槽位；对抗分支嵌入等式，双骰只表达已揭示点数和，单骰结果不虚构算式；8.18B–E USER PIE PASS |
+| CompactBox | Resolution Theater 的独立 Cross route、Corner 共享选人及 Corner route D6；Set Piece Type D6 | 小型、安静、有边界的只读结果格 |
 | HeroRoll | 主 Match Board 的 Full D12 / 战术点掷点 | 临时聚焦的大数字事件面板 |
 
-Legacy 的实际 route hosts 还包括 ThroughBall route / anti-offside / chip-shot、PassControl route、LongShot / CutInsideShot dead-corner，以及 generic fallback Formula。枚举值存在不等于所有 D6 / D12 都已迁移：Corner participant 是共享 D6，现采用 CompactBox（旧文档的 D12 称呼有误）；Set Piece 类型 D6 的当前迁移合同见 Stage 8.16 补充。
+Legacy 的实际 route hosts 还包括 ThroughBall route / anti-offside / chip-shot、PassControl route，以及 generic fallback Formula。枚举值存在不等于所有 D6 / D12 都已迁移：Corner participant 是共享 D6，现采用 CompactBox（旧文档的 D12 称呼有误）；Set Piece 类型 D6 的当前迁移合同见 Stage 8.16 补充。
+
+Stage 8.18B 将 LongShot / CutInside DirectShot 接入 TheaterInline / Roll v2；8.18C–E 根据 USER PIE 反馈完成修复与复用，最终组合已获 USER PIE PASS。正常比较保留攻先守后与静态进攻值。ImmediateMiss 的权威结果到达不能提前改变攻击滚动布局：仍显示已投影的待定组成，真实落点可见后才隐藏未执行的 Base / Final 比较、防守及 VS；同一攻击槽位全程独占 Roll，不附加独立骰子。已落定 Roll 使用 #EED7A6；Base / RHS 不使用该 Roll 状态色。
+
+Stage 8.18C DeadCorner 曾采用独立 CompactBox 双骰；8.18D 根据用户实测改为复用 Near Combination 攻击卡内的 TheaterInline 双骰行。顺序继续由原有 A/B reveal identity 与 hold 驱动：A 滚动 → A 落定 → B 滚动且 A 静态保留 → B 落定 → 既有 Outcome。不可提前显示 B 或显示用点数和，不创建防守、Formula Final、比较胜因或第五种 Roll family。ImmediateMiss 隐藏未执行比较时保留攻击卡与人物几何，不改变 v2 轨迹或时钟。8.18E 的中性落定状态、DeadCorner 滚动成功条件与已披露结果原因见 [Theater 规范](Resolution_Theater_Visual_Spec_v1.md)。ThroughBall / dormant PassControl 不变。**8.18B–E 分组验收及收尾完成，等待用户手动 staging / commit**。
 
 **Legacy 是有效兼容边界，不是新迁移界面的长期视觉目标。** 新消费方先确定 Formula 内嵌、小型独立结果格或主事件焦点的职责，再按独立 Stage 采用对应变体；不自动复制 Hero 的机壳和视觉强度。
 

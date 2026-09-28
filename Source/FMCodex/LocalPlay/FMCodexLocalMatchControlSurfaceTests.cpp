@@ -15539,7 +15539,7 @@ IMPLEMENT_COMPLEX_AUTOMATION_TEST(FFMCodexTacticalChoiceFullCardTest,
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 void FFMCodexTacticalChoiceFullCardTest::GetTests(TArray<FString>& Names, TArray<FString>& Commands) const
 {
-    for (const TCHAR* Case : {TEXT("Hand"), TEXT("Pitch"), TEXT("Transition"), TEXT("Roles")})
+    for (const TCHAR* Case : {TEXT("Hand"), TEXT("Pitch"), TEXT("Transition"), TEXT("Roles"), TEXT("PreTP")})
     { Names.Add(Case); Commands.Add(Case); }
 }
 bool FFMCodexTacticalChoiceFullCardTest::RunTest(const FString& Parameters)
@@ -15584,8 +15584,9 @@ bool FFMCodexTacticalChoiceFullCardTest::RunTest(const FString& Parameters)
     Choice.PitchRegions = Screen->GetPresentation().PitchRegions;
     Choice.Interaction.Category = Parameters == TEXT("Transition")
         ? EFMCodexUMGInteractionCategory::SelectRunner : EFMCodexUMGInteractionCategory::SelectSkill;
+    if (Parameters == TEXT("PreTP")) Choice.Interaction.Category=EFMCodexUMGInteractionCategory::TacticalPointRoll;
     Screen->RefreshFromPresentation(Choice);
-    bool bInspectHand = Parameters == TEXT("Hand");
+    bool bInspectHand = Parameters == TEXT("Hand") || Parameters == TEXT("PreTP");
     auto FindSource = [&]() -> UFMCodexPlayerCardWidget*
     {
         if (bInspectHand)
@@ -15612,6 +15613,37 @@ bool FFMCodexTacticalChoiceFullCardTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("Inspector copies hovered identity"), Screen->GetDetailOverlayCard()->GetPresentation().CardId,
         FindSource()->GetPresentation().CardId);
     TestFalse(TEXT("Inspection permission does not require a CTA"), Screen->GetPresentation().Interaction.PrimaryAction.bAvailable);
+    if (Parameters == TEXT("PreTP"))
+    {
+        for (bool bHand : {true, false})
+        {
+            bInspectHand=bHand;
+            Screen->RefreshFromPresentation(Choice);
+            if (!Hover()) return false;
+            TestTrue(TEXT("Pre-TP planning permits both visible Hand and Pitch cards"),Screen->IsDetailOverlayVisible());
+        }
+        for (const auto Category : {EFMCodexUMGInteractionCategory::RollLongShotDirectAttack,
+            EFMCodexUMGInteractionCategory::RollCutInsideShotDeadCorner, EFMCodexUMGInteractionCategory::AdvanceAfterTerminal,
+            EFMCodexUMGInteractionCategory::SelectBranchIntent})
+        {
+            auto Denied=Choice; Denied.Interaction.Category=Category;
+            Screen->RefreshFromPresentation(Denied);
+            TestFalse(TEXT("Leaving planning clears inspector without mouse leave"),Screen->IsDetailOverlayVisible());
+            if (!Hover()) return false;
+            TestFalse(TEXT("Execution/result/branch states cannot reopen inspection"),Screen->IsDetailOverlayVisible());
+        }
+        auto Rolling=Choice;
+        Rolling.Header.AttackSequence=2; // A fresh valid presentation event, not the already-settled setup D12.
+        Rolling.Interaction.CrossRollRevealKind=EFMCodexUMGCrossRollRevealKind::TacticalPoint;
+        Rolling.Interaction.CrossRollContestId=TEXT("Match.TacticalPoint");
+        Rolling.Interaction.CrossRollSequenceIndex=0;
+        Rolling.Interaction.CrossRollOwnerSide=EInitialTurnOrderPlayer::PlayerA;
+        Screen->RefreshFromPresentation(Rolling);
+        Screen->BeginPendingCrossRollRevealForTesting(); Screen->PauseInlineFormulaRevealTimerForTesting();
+        TestTrue(TEXT("Pre-TP fixture entered the real shared reveal gate"),Screen->IsInlineFormulaRevealInputBlocked());
+        if (!Hover()) return false;
+        TestFalse(TEXT("A pending pre-TP category never permits inspection once its actual reveal starts"),Screen->IsDetailOverlayVisible());
+    }
     if (Parameters == TEXT("Roles"))
     {
         auto* Inspector = Screen->GetDetailOverlayCard();

@@ -317,7 +317,12 @@ FText FFMCodexPlayerUIPresentationText::PairedRollResult(
 	// Display arithmetic over accepted dice only; never a Formula or goal decision.
 	return FText::Format(LOCTEXT("PairedRollResult", "D6 {0} + D6 {1} = {2}"),
 		FText::AsNumber(FirstD6), FText::AsNumber(SecondD6),
-		FText::AsNumber(FirstD6 + SecondD6));
+		PairedRollTotal(FirstD6, SecondD6));
+}
+
+FText FFMCodexPlayerUIPresentationText::PairedRollTotal(const int32 FirstD6, const int32 SecondD6)
+{
+	return FText::AsNumber(FirstD6 + SecondD6);
 }
 
 FText FFMCodexPlayerUIPresentationText::LongShotBranchChoiceStage()
@@ -907,6 +912,18 @@ FText FFMCodexPlayerUIPresentationText::TacticalDetailParticipantRole(
 FText FFMCodexPlayerUIPresentationText::TacticalOutcome(
 	const FName BranchId, const FName OutcomeId)
 {
+	if (BranchId == TEXT("LongShot.DeadCorner")
+		|| BranchId == TEXT("CutInside.DeadCorner"))
+	{
+		if (OutcomeId == TEXT("Miss"))
+		{
+			return LOCTEXT("ShotDeadCornerOutcomeMiss", "未进球");
+		}
+		if (OutcomeId == TEXT("Goal"))
+		{
+			return LOCTEXT("ShotDeadCornerOutcomeGoal", "进球");
+		}
+	}
 	if (BranchId == TEXT("ThroughBall.AntiOffside"))
 	{
 		if (OutcomeId == TEXT("Offside"))

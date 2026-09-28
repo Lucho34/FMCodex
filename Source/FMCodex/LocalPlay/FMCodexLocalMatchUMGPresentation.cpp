@@ -2047,9 +2047,14 @@ namespace FMCodexLocalMatchUMGPresentation
 				&& PrimaryAction.bAvailable;
 		if (bNarrativeReady)
 		{
-			if (bResolvedCross)
+			if (bResolvedCross || (bResolvedElectiveDirect && !bElectiveDirectImmediateMiss))
 			{
 				Result.ResolutionReasonLabel = FormulaReason(Contest->ResolvedResult, Result.AttackRow, Result.DefenseRow);
+			}
+			else if (bElectiveDirectImmediateMiss)
+			{
+				Result.ResolutionReasonLabel = NSLOCTEXT("FMCodexTheater", "ShotImmediateMissReason",
+					"进攻掷点 1–2：直接射偏\n本次进攻结束，不进行攻防比较").ToString();
 			}
 			Result.bNarrativeAttackSuccess = bResolvedElectiveDirect
 				? ElectiveDirectDecision->Outcome
@@ -2507,6 +2512,19 @@ namespace FMCodexLocalMatchUMGPresentation
 				? FFMCodexPlayerUIPresentationText::CutInsideTitle().ToString()
 				: FFMCodexPlayerUIPresentationText::LongShotTitle().ToString();
 		Result.InteractionCategory = Interaction.Category;
+		if (bLongShot || bCutInside)
+		{
+			// Identity-only context for the existing attack card. This invisible
+			// Formula container carries no contest or computed gameplay result.
+			auto& Context=Result.Formula.AttackRow;
+			const auto* Carrier=FindParticipant(Facts, EMatchPlayResolutionParticipantRole::Carrier);
+			const FName CardId=Carrier?Carrier->CardId:InteractionView.SelectedCarrierCardId;
+			Context.Side=Carrier?Carrier->Side:InteractionView.CurrentAttackingPlayer;
+			Context.SideLabel=NSLOCTEXT("FMCodexTheater", "ShotAttack", "进攻").ToString();
+			if (!CardId.IsNone()) Context.Participants.Add({
+				FFMCodexPlayerUIPresentationText::ResolutionParticipantRole(EMatchPlayResolutionParticipantRole::Carrier).ToString(),
+				PlayerFacingName(InteractionView,Context.Side,CardId)});
+		}
 		if (bChoosingBranch)
 		{
 			Result.Stage = EFMCodexUMGLongShotStage::BranchChoice;
@@ -2642,7 +2660,11 @@ namespace FMCodexLocalMatchUMGPresentation
 			Result.bDeadCornerBVisible = B != nullptr && B->bResolved;
 			Result.DeadCornerB = Result.bDeadCornerBVisible ? B->RawD6 : 0;
 			if (Result.bDeadCornerAVisible && Result.bDeadCornerBVisible)
+			{
 				Result.OutcomeRollDetail = FMCodexOutcomeText::PairedRollDetail(Result.DeadCornerA, Result.DeadCornerB).ToString();
+				Result.Formula.AttackRow.bFinalValueResolved=true;
+				Result.Formula.AttackRow.FinalValueLabel=FFMCodexPlayerUIPresentationText::PairedRollTotal(Result.DeadCornerA,Result.DeadCornerB).ToString();
+			}
 			if (Result.bDeadCornerAVisible)
 			{
 				Result.PairedRollResultLabel = Result.bDeadCornerBVisible

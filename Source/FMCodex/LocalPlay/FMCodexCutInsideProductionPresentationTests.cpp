@@ -7,6 +7,15 @@
 #include "FMCodexLocalMatchResolutionFeedback.h"
 #include "FMCodexLocalMatchScreenWidget.h"
 #include "FMCodexLongShotResolutionSurfaceWidget.h"
+#include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
+#include "FMCodexResolutionTheaterPrototype.h"
+#include "FMCodexRollReelWidget.h"
+#include "FMCodexRollPresentationStyle.h"
+#include "Components/Border.h"
+#include "Components/TextBlock.h"
+#include "Components/RichTextBlock.h"
+#include "Components/Button.h"
+#include "Components/SizeBox.h"
 
 #include "HAL/FileManager.h"
 #include "Misc/AutomationTest.h"
@@ -249,6 +258,7 @@ bool FFMCodexCutInsideProductionBranchSurfaceTest::RunTest(
 	(void)Parameters;
 	FFMCodexLocalMatchInteractionView View = BaseView(
 		ECategory::SelectBranchIntent);
+	View.SelectedCarrierCardId=CarrierId;
 	View.BranchIntentOptions = {
 		EMatchPlayElectiveBranchIntent::DirectShot,
 		EMatchPlayElectiveBranchIntent::DeadCorner
@@ -293,6 +303,36 @@ bool FFMCodexCutInsideProductionBranchSurfaceTest::RunTest(
 				.bVisible
 			&& MatchScreen->GetInteractionPanel()->GetVisibility()
 				== ESlateVisibility::Collapsed);
+	for (const auto Skill : {ESkillRuleType::LongShot, ESkillRuleType::CutInsideShot})
+	{
+		auto Variant=View; Variant.PresentedActionType=Skill;
+		Variant.InteractionCategory=Skill==ESkillRuleType::LongShot?ECategory::SelectLongShotBranch:ECategory::SelectBranchIntent;
+		auto Choice=Build(Variant);
+		MatchScreen->RefreshFromPresentation(Choice);
+		auto Text=[MatchScreen](const TCHAR* Name){return CastChecked<UTextBlock>(MatchScreen->GetWidgetFromName(Name))->GetText().ToString();};
+		TestEqual(TEXT("Shared attack context uses canonical selected Carrier"),Text(TEXT("TheaterAttackName0")),FString(TEXT("萨卡")));
+		TestEqual(TEXT("Context keeps ordinary Carrier role"),Text(TEXT("TheaterAttackRole0")),FString(TEXT("持球")));
+		TestTrue(TEXT("Direct summary keeps attributes and miss range without modifier or GK exposition"),
+			Text(TEXT("TheaterNearDirectHint")).Contains(Skill==ESkillRuleType::LongShot?TEXT("远射"):TEXT("盘带 × 0.5"))
+			&& Text(TEXT("TheaterNearDirectHint")).Contains(TEXT("对抗盯人：抢断\n进攻掷点 1–2：射门偏出"))
+			&& !Text(TEXT("TheaterNearDirectHint")).Contains(TEXT("+ 2"))
+			&& !Text(TEXT("TheaterNearDirectHint")).Contains(TEXT("门将")));
+		TestEqual(TEXT("Pair explanation contains only the two-dice concept and success range"),
+			Text(TEXT("TheaterNearCombinationHint")),FString(TEXT("进攻方依次掷两枚骰子\n总和 11–12：进球")));
+		TestEqual(TEXT("Both shot branch consumers enter Theater"),MatchScreen->GetWidgetFromName(TEXT("ResolutionTheater"))->GetVisibility(),ESlateVisibility::SelfHitTestInvisible);
+		TestEqual(TEXT("Legacy branch modal is hidden"),MatchScreen->GetLongShotResolutionSurface()->GetVisibility(),ESlateVisibility::Collapsed);
+		TestTrue(TEXT("Both projected branch choices remain enabled"),MatchScreen->GetWidgetFromName(TEXT("TheaterNearDirect"))->GetIsEnabled()
+			&& MatchScreen->GetWidgetFromName(TEXT("TheaterNearCombination"))->GetIsEnabled());
+		Choice.LongShotResolution.BranchChoices.RemoveAll([](const auto& C){return C.Intent==EFMCodexUMGBranchIntent::DeadCorner;});
+		MatchScreen->RefreshFromPresentation(Choice);
+		TestFalse(TEXT("Absent safe choice stays disabled"),MatchScreen->GetWidgetFromName(TEXT("TheaterNearCombination"))->GetIsEnabled());
+		TestTrue(TEXT("Unavailable strip names the disabled option without inventing a threshold"),Text(TEXT("TheaterDetail")).Contains(TEXT("当前不可选择射向死角")));
+		Choice.LongShotResolution.BranchChoices.Empty(); Choice.bActionWaitPromptReadOnly=true;
+		MatchScreen->RefreshFromPresentation(Choice);
+		TestFalse(TEXT("Waiting viewer cannot execute either choice"),MatchScreen->GetWidgetFromName(TEXT("TheaterNearDirect"))->GetIsEnabled()
+			|| MatchScreen->GetWidgetFromName(TEXT("TheaterNearCombination"))->GetIsEnabled());
+		TestEqual(TEXT("Waiting strip explains the expected action"),Text(TEXT("TheaterDetail")),FString(TEXT("等待进攻方选择射门方式")));
+	}
 	return true;
 }
 
@@ -618,6 +658,16 @@ bool FFMCodexCutInsideProductionPairedRevealTest::RunTest(
 	Screen->BeginPendingCrossRollRevealForTesting();
 	Screen->RefreshFromPresentation(TerminalScreen);
 	Screen->PauseInlineFormulaRevealTimerForTesting();
+	auto* A=CastChecked<UFMCodexRollReelWidget>(Screen->GetWidgetFromName(TEXT("TheaterPairAReel")));
+	auto* B=CastChecked<UFMCodexRollReelWidget>(Screen->GetWidgetFromName(TEXT("TheaterPairBReel")));
+	auto Text=[Screen](const TCHAR* Name){return CastChecked<UTextBlock>(Screen->GetWidgetFromName(Name))->GetText().ToString();};
+	TestTrue(TEXT("Pair reuses FK TheaterInline operands"),A->UsesTheaterInlineSkin() && B->UsesTheaterInlineSkin());
+	TestEqual(TEXT("DeadCorner retains canonical attacking identity"),Text(TEXT("TheaterAttackName0")),FString(TEXT("萨卡")));
+	TestEqual(TEXT("DeadCorner has no fake Formula"),Screen->GetWidgetFromName(TEXT("TheaterAttackValue"))->GetVisibility(),ESlateVisibility::Collapsed);
+	TestEqual(TEXT("DeadCorner has no defense"),Screen->GetWidgetFromName(TEXT("TheaterDefensePanelBounds"))->GetVisibility(),ESlateVisibility::Collapsed);
+	TestFalse(TEXT("Second die is not shown during first motion"),B->GetPresentation().bVisible);
+	TestEqual(TEXT("First motion keeps the goal condition visible"),Text(TEXT("TheaterReasonSecondary")),FString(TEXT("两枚掷点总和达到 11–12：进球")));
+	TestEqual(TEXT("Goal hint is actually visible"),Screen->GetWidgetFromName(TEXT("TheaterReasonSecondary"))->GetVisibility(),ESlateVisibility::SelfHitTestInvisible);
 	Screen->AdvanceInlineFormulaRevealForTesting(1.8f);
 	const auto& First =
 		Screen->GetLongShotResolutionSurface()->GetPresentation();
@@ -633,6 +683,9 @@ bool FFMCodexCutInsideProductionPairedRevealTest::RunTest(
 		SecondRolling.bDeadCornerAVisible);
 	TestFalse(TEXT("Second CutInside reveal does not leak pair B"),
 		SecondRolling.bDeadCornerBVisible);
+	TestTrue(TEXT("Modern second die moves while first remains landed"),Text(TEXT("TheaterPairARollValue"))==TEXT("6") && B->GetPresentation().bMoving);
+	TestEqual(TEXT("Sum stays hidden during second motion"),Text(TEXT("TheaterPairTotal")),FString(TEXT("?")));
+	TestEqual(TEXT("Second motion retains the same goal condition"),Text(TEXT("TheaterReasonSecondary")),FString(TEXT("两枚掷点总和达到 11–12：进球")));
 	TestTrue(TEXT("CutInside second roll retains first die and target only"),
 		SecondRolling.PairedRollResultLabel == TEXT("第一枚 D6：6")
 			&& SecondRolling.OutcomeHintLabel
@@ -657,6 +710,173 @@ bool FFMCodexCutInsideProductionPairedRevealTest::RunTest(
 	TestEqual(TEXT("CutInside pair does not replay after settlement"),
 		Screen->GetInlineFormulaRevealPhase(),
 		EFMCodexUMGInlineFormulaRevealPhase::Settled);
+	TestTrue(TEXT("Modern pair retains both real values and sum at Outcome"),Text(TEXT("TheaterPairARollValue"))==TEXT("6") && Text(TEXT("TheaterPairBRollValue"))==TEXT("5") && Text(TEXT("TheaterPairTotal"))==TEXT("11"));
+	TestTrue(TEXT("Existing narrative and terminal action are in Theater"),Screen->GetWidgetFromName(TEXT("TheaterOutcome"))->GetVisibility()!=ESlateVisibility::Collapsed
+		&& Screen->GetWidgetFromName(TEXT("TheaterPrimaryBounds"))->GetVisibility()!=ESlateVisibility::Collapsed);
+	TestEqual(TEXT("Theater renders the complete canonical paired narrative"),
+		CastChecked<URichTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterOutcome")))->GetText().ToString(),
+		FString(TEXT("萨卡内切射向死角<Goal>破门</>！")));
+	Screen->RefreshFromPresentation(TerminalScreen);
+	TestFalse(TEXT("Terminal refresh does not replay either die"),Screen->IsInlineFormulaRevealInputBlocked());
+	TestEqual(TEXT("Goal reason explains the disclosed success condition"),Text(TEXT("TheaterReasonSecondary")),FString(TEXT("总和达到 11–12，进球")));
+	// The other outcome uses the same safe decision, not a UI sum comparison.
+	for (const auto Skill:{ESkillRuleType::LongShot,ESkillRuleType::CutInsideShot})
+	{
+		auto Miss=Terminal;
+		Miss.PresentedActionType=Skill; Miss.ResolutionFacts.ActionType=Skill;
+		Miss.ResolutionFacts.ActualBranch.ActionType=Skill;
+		Miss.ResolutionFacts.ActualBranch.LongShot=EMatchPlayLongShotActualBranch::DeadCorner;
+		Miss.ResolutionFacts.Rolls[0].RawD6=5;
+		Miss.ResolutionFacts.Decisions[0].Outcome=EMatchPlayResolutionDecisionOutcome::Miss;
+		auto* Rebuilt=NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+		Rebuilt->TakeWidget(); Rebuilt->RefreshFromPresentation(Build(Miss));
+		TestEqual(TEXT("Both shot consumers explain why the disclosed miss failed"),
+			CastChecked<UTextBlock>(Rebuilt->GetWidgetFromName(TEXT("TheaterReasonSecondary")))->GetText().ToString(),FString(TEXT("总和未达到 11–12，未进球")));
+		TestEqual(TEXT("The original arithmetic remains readable"),
+			CastChecked<UTextBlock>(Rebuilt->GetWidgetFromName(TEXT("TheaterPairTotal")))->GetText().ToString(),FString(TEXT("10")));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexDirectShotTheaterFormulaTest,
+	"FMCodex.LocalPlay.DirectShotTheater.FormulaAndSequentialRoll",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexDirectShotTheaterFormulaTest::RunTest(const FString&)
+{
+	using namespace FMCodexCutInsideProductionPresentationTests;
+	auto Pending = BaseView(ECategory::RollCutInsideShotDirectAttack);
+	AddDirectFacts(Pending, false, 0, false, 0);
+	Pending.ResolutionFacts.bHasPendingRoll = true;
+	Pending.ResolutionFacts.NextPendingRollSequenceIndex = 0;
+	// A distinctive supplied subtotal proves the renderer does not sum the terms.
+	Pending.ResolutionFacts.FormulaContests[0].AttackRow.KnownNonRollSubtotal = 17.25f;
+	auto Model = Build(Pending);
+	auto* Screen = NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	Screen->TakeWidget(); Screen->RefreshFromPresentation(Model);
+	auto Shown = [Screen](const TCHAR* Name) { auto* W=Screen->GetWidgetFromName(Name); return W && W->GetVisibility()!=ESlateVisibility::Collapsed && W->GetVisibility()!=ESlateVisibility::Hidden; };
+	auto Text = [this, Screen](const TCHAR* Name)
+	{
+		// Native tooltip children belong to the tree but are not in its main hierarchy.
+		auto* Value = FindObject<UTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterAttackBaseHover"))->GetOuter(), Name);
+		return TestNotNull(Name, Value) ? Value->GetText().ToString() : FString();
+	};
+	TestTrue(TEXT("Explicit DirectShot consumer enters production Theater"),Shown(TEXT("ResolutionTheater")));
+	TestEqual(TEXT("Base is the supplied scalar"),Text(TEXT("TheaterAttackNumber")),FText::AsNumber(17.25f).ToString());
+	TestEqual(TEXT("Pending RHS is the supplied current subtotal"),Text(TEXT("TheaterAttackFinalNumber")),Model.LongShotResolution.Formula.AttackRow.DisplayedResultLabel);
+	TestTrue(TEXT("Unresolved grammar has one pending operand and current RHS"),Shown(TEXT("TheaterAttackPending")) && Text(TEXT("TheaterAttackValueLabel"))==TEXT("当前值"));
+	TestTrue(TEXT("Base hover explains projected Shooting and Dribbling coefficients"),
+		CastChecked<UBorder>(Screen->GetWidgetFromName(TEXT("TheaterAttackBaseHover")))->GetToolTip()!=nullptr
+		&& Text(TEXT("TheaterAttackBaseExplanation" )).Contains(TEXT("射门")) && Text(TEXT("TheaterAttackBaseExplanation")).Contains(TEXT("盘带"))
+		&& Text(TEXT("TheaterAttackBaseExplanation")).Contains(TEXT("0.5")));
+	TestTrue(TEXT("Only actual Marker and GK appear on defense"),Model.LongShotResolution.Formula.DefenseRow.Participants.Num()==2
+		&& Text(TEXT("TheaterDefenseBaseExplanation")).Contains(TEXT("手控球")));
+	for (const TCHAR* Prefix : {TEXT("TheaterAttack"),TEXT("TheaterDefense")})
+	{
+		auto* Reel=CastChecked<UFMCodexRollReelWidget>(Screen->GetWidgetFromName(FName(*(FString(Prefix)+TEXT("Reel")))));
+		TestEqual(TEXT("Both Formula operands use TheaterInline"),Reel->GetVisualVariant(),EFMCodexRollVisualVariant::TheaterInline);
+		TestNull(TEXT("Roll never gains an underline"),Screen->GetWidgetFromName(FName(*(FString(Prefix)+TEXT("RollUnderline")))));
+	}
+	Screen->BeginPendingCrossRollRevealForTesting();
+	auto AttackOnly=BaseView(ECategory::RollCutInsideShotDirectDefense);
+	AddDirectFacts(AttackOnly,true,4,false,0);
+	AttackOnly.ResolutionFacts.bHasPendingRoll=true; AttackOnly.ResolutionFacts.NextPendingRollSequenceIndex=1;
+	Screen->RefreshFromPresentation(Build(AttackOnly)); Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(1.2f);
+	TestEqual(TEXT("DirectShot uses v2 capture timing rather than Legacy Cycling"),Screen->GetInlineFormulaRevealPhase(),EFMCodexUMGInlineFormulaRevealPhase::Settling);
+	Screen->AdvanceInlineFormulaRevealForTesting(.6f);
+	TestEqual(TEXT("Normal DirectShot shares neutral landed status"),CastChecked<UTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterDetail")))->GetText().ToString(),FString(TEXT("进攻方掷点已落定")));
+	Screen->AdvanceInlineFormulaRevealForTesting(3.f);
+	TestEqual(TEXT("Attack lands on accepted D6"),Text(TEXT("TheaterAttackRollValue")),FString(TEXT("4")));
+	Screen->BeginPendingCrossRollRevealForTesting();
+	auto Complete=BaseView(ECategory::AdvanceAfterTerminal); Complete.bTerminalPendingAdvance=true; Complete.ContinueActionLabel=TEXT("下一回合");
+	AddDirectFacts(Complete,true,4,true,3,EFormulaWinner::Defender);
+	auto& Resolved=Complete.ResolutionFacts.FormulaContests[0].ResolvedResult;
+	Resolved.WinReason=EFormulaWinReason::HigherFinalValue; Resolved.AttackerFinalValue=11; Resolved.DefenderFinalValue=14;
+	AddDecision(Complete,TEXT("CutInsideShot.DirectShot.Outcome"),EMatchPlayResolutionRollSemantics::ArithmeticContest,EMatchPlayResolutionDecisionOutcome::Miss);
+	Screen->RefreshFromPresentation(Build(Complete)); Screen->PauseInlineFormulaRevealTimerForTesting();
+	Screen->AdvanceInlineFormulaRevealForTesting(.3f);
+	TestTrue(TEXT("Defense motion retains static accepted attack operand"),Shown(TEXT("TheaterAttackRollValue")) && !Shown(TEXT("TheaterAttackReelHost")) && Shown(TEXT("TheaterDefenseReelHost")));
+	TestEqual(TEXT("Attack value is never replaced by a placeholder"),Text(TEXT("TheaterAttackRollValue")),FString(TEXT("4")));
+	TestFalse(TEXT("Final Outcome cannot preempt the defense reveal"),Shown(TEXT("TheaterOutcome")) || Shown(TEXT("TheaterPrimaryBounds")));
+	Screen->AdvanceInlineFormulaRevealForTesting(5.f);
+	TestEqual(TEXT("Resolved RHS consumes supplied Final"),Text(TEXT("TheaterDefenseFinalNumber")),FString(TEXT("14")));
+	TestTrue(TEXT("Reason comes from authoritative WinReason"),Build(Complete).LongShotResolution.Formula.ResolutionReasonLabel.Contains(TEXT("高于")));
+	const auto Landed=FMCodexRollPresentationStyle::AuthoritativeLandedValue();
+	TestTrue(TEXT("Static Roll alone uses shared landed accent"),CastChecked<UTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterAttackRollValue")))->GetColorAndOpacity().GetSpecifiedColor().Equals(Landed));
+	TestFalse(TEXT("Formula RHS is not the Roll accent"),CastChecked<UTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterAttackFinalNumber")))->GetColorAndOpacity().GetSpecifiedColor().Equals(Landed));
+	TestTrue(TEXT("Existing terminal narrative and CTA become visible"),Shown(TEXT("TheaterOutcome")) && Shown(TEXT("TheaterPrimaryBounds")));
+	Screen->RefreshFromPresentation(Build(Complete));
+	TestFalse(TEXT("Repeated terminal refresh never replays accepted rolls"),Screen->IsInlineFormulaRevealInputBlocked());
+	// The same renderer formats a safe GK tie reason; it cannot infer it from totals.
+	Resolved.WinReason=EFormulaWinReason::DefenderWinsGoalkeeperTie;
+	TestTrue(TEXT("Projected GK tie has its own explanation"),Build(Complete).LongShotResolution.Formula.ResolutionReasonLabel.Contains(TEXT("门将参与")));
+	for (const auto Id : {TEXT("PassControl.PassAdvance"),TEXT("ThroughBall.Feet"),TEXT("LongShot.DeadCorner"),TEXT("CutInsideShot.DeadCorner")})
+	{
+		auto Other=Model; Other.LongShotResolution.Formula.ContestId=Id;
+		TestFalse(TEXT("Non-target consumer cannot opt in through shared host"),FMCodexResolutionTheaterPrototype::WantsTheater(Other,Other.LongShotResolution.Formula));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexDirectShotTheaterImmediateMissTest,
+	"FMCodex.LocalPlay.DirectShotTheater.ImmediateMiss",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexDirectShotTheaterImmediateMissTest::RunTest(const FString&)
+{
+	using namespace FMCodexCutInsideProductionPresentationTests;
+	auto Pending=BaseView(ECategory::RollCutInsideShotDirectAttack); AddDirectFacts(Pending,false,0,false,0);
+	Pending.ResolutionFacts.bHasPendingRoll=true; Pending.ResolutionFacts.NextPendingRollSequenceIndex=0;
+	auto Terminal=BaseView(ECategory::AdvanceAfterTerminal); Terminal.bTerminalPendingAdvance=true; Terminal.ContinueActionLabel=TEXT("下一回合");
+	AddDirectFacts(Terminal,true,2,false,0);
+	Terminal.ResolutionFacts.FormulaContests[0].Application=EMatchPlayResolutionFormulaApplication::SkippedByAuthoritativeGate;
+	AddDecision(Terminal,TEXT("CutInsideShot.DirectShot.Outcome"),EMatchPlayResolutionRollSemantics::ArithmeticContest,EMatchPlayResolutionDecisionOutcome::ImmediateMiss);
+	auto* Screen=NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage()); Screen->TakeWidget();
+	Screen->RefreshFromPresentation(Build(Pending)); Screen->BeginPendingCrossRollRevealForTesting();
+	Screen->ForceLayoutPrepass();
+	const FVector2D OriginalCardSize=Screen->GetWidgetFromName(TEXT("TheaterAttackPanelBounds"))->GetDesiredSize();
+	auto* AttackReel=CastChecked<UFMCodexRollReelWidget>(Screen->GetWidgetFromName(TEXT("TheaterAttackReel")));
+	Screen->RefreshFromPresentation(Build(Terminal)); Screen->PauseInlineFormulaRevealTimerForTesting();
+	auto Shown=[Screen](const TCHAR* Name) {auto* W=Screen->GetWidgetFromName(Name); return W && W->GetVisibility()!=ESlateVisibility::Collapsed && W->GetVisibility()!=ESlateVisibility::Hidden;};
+	TestEqual(TEXT("Accepted gate has exactly one resolved roll fact"),Terminal.ResolutionFacts.Rolls.FilterByPredicate([](const auto& R){return R.bResolved;}).Num(),1);
+	TestTrue(TEXT("Immediate miss retains the SAME attack operand widget"),AttackReel==Screen->GetWidgetFromName(TEXT("TheaterAttackReel")) && AttackReel->UsesTheaterInlineSkin());
+	Screen->AdvanceInlineFormulaRevealForTesting(.3f);
+	TestTrue(TEXT("Single real attack reel remains visible"),Shown(TEXT("TheaterAttackReelHost")) && AttackReel->GetPresentation().bVisible);
+	TestTrue(TEXT("Undisclosed miss keeps the same pending composition as normal attack"),Shown(TEXT("TheaterDefensePanelBounds")) && Shown(TEXT("TheaterAttackBaseHover")));
+	TestFalse(TEXT("No duplicate standalone die during the attack"),Shown(TEXT("TheaterRoll")));
+	TestFalse(TEXT("No early Outcome or CTA"),Shown(TEXT("TheaterOutcome")) || Shown(TEXT("TheaterPrimaryBounds")));
+	bool bSawLandedStatus=false;
+	for (int32 Tick=0;Tick<150;++Tick)
+	{
+		Screen->AdvanceInlineFormulaRevealForTesting(.01f);
+		const FString Status=CastChecked<UTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterDetail")))->GetText().ToString();
+		if (AttackReel->GetPresentation().bAuthoritativeValue)
+		{
+			bSawLandedStatus=true;
+			TestEqual(TEXT("The first landed frame and entire hold cannot retain rolling copy"),Status,FString(TEXT("进攻方掷点已落定")));
+		}
+		else TestFalse(TEXT("Before authoritative landing no landed status leaks"),Status.Contains(TEXT("已落定")));
+	}
+	TestTrue(TEXT("Boundary sampling reached the landed state"),bSawLandedStatus);
+	Screen->ForceLayoutPrepass();
+	TestEqual(TEXT("ImmediateMiss does not resize the attack silhouette"),CastChecked<USizeBox>(Screen->GetWidgetFromName(TEXT("TheaterAttackSilhouetteBounds")))->GetHeightOverride(),178.f);
+	TestTrue(TEXT("ImmediateMiss retains the attack card allocation"),Screen->GetWidgetFromName(TEXT("TheaterAttackPanelBounds"))->GetDesiredSize().Equals(OriginalCardSize,.1f));
+	for (const TCHAR* Name : {TEXT("TheaterDefensePanelBounds"),TEXT("TheaterAttackBaseHover"),TEXT("TheaterAttackResultColumn")})
+		TestFalse(TEXT("Skipped Formula never paints candidate defense/Base/Final"),Shown(Name));
+	TestEqual(TEXT("No VS comparison"),Screen->GetWidgetFromName(TEXT("TheaterVS"))->GetParent()->GetVisibility(),ESlateVisibility::Collapsed);
+	TestFalse(TEXT("No duplicate standalone die after landing"),Shown(TEXT("TheaterRoll")));
+	TestTrue(TEXT("Same modern roll lands on the actual miss die"),AttackReel->GetPresentation().bAuthoritativeValue && AttackReel->GetPresentation().CenterValue==2);
+	TestTrue(TEXT("Actual hold retains the landed accent"),AttackReel->GetCenterDigitWidget()->GetColorAndOpacity().GetSpecifiedColor().Equals(FMCodexRollPresentationStyle::AuthoritativeLandedValue()));
+	TestFalse(TEXT("ResultHold still owns the final CTA"),Shown(TEXT("TheaterPrimaryBounds")));
+	Screen->AdvanceInlineFormulaRevealForTesting(3.f);
+	const auto Model=Build(Terminal);
+	TestTrue(TEXT("Existing immediate-miss narrative remains exact"),Model.LongShotResolution.Formula.NarrativeHeadline==TEXT("萨卡内切后射门偏出。") && Shown(TEXT("TheaterOutcome")));
+	const auto& Reason=Model.LongShotResolution.Formula.ResolutionReasonLabel;
+	TestTrue(TEXT("Skipped-path explanation does not claim Winner/stamina/GK"),Reason.Contains(TEXT("不进行攻防比较")) && !Reason.Contains(TEXT("体力")) && !Reason.Contains(TEXT("门将")) && !Reason.Contains(TEXT("获胜")));
+	TestEqual(TEXT("No winner badge on the failed attack"),Screen->GetWidgetFromName(TEXT("TheaterAttackBadge"))->GetVisibility(),ESlateVisibility::Hidden);
+	TestTrue(TEXT("Original terminal CTA available after the one roll"),Shown(TEXT("TheaterPrimaryBounds")));
+	Screen->RefreshFromPresentation(Model);
+	TestFalse(TEXT("Repeated View does not manufacture a defense event"),Screen->IsInlineFormulaRevealInputBlocked());
+	TestFalse(TEXT("Resolution does not open Full Card"),Screen->IsDetailOverlayVisible());
 	return true;
 }
 

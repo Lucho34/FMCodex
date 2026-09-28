@@ -331,6 +331,53 @@ FFMCodexTacticalDetailPresentationBuilder::BuildOutcomeRollHint(
 	return Result;
 }
 
+FText FFMCodexTacticalDetailPresentationBuilder::BuildShotBranchExplanation(
+	const ESkillRuleType SkillType, const bool bDirect)
+{
+	if (SkillType!=ESkillRuleType::LongShot && SkillType!=ESkillRuleType::CutInsideShot) return FText::GetEmpty();
+	const auto* Description=FTacticalRuleDescriptionCatalog::FindBySkillType(SkillType);
+	if (!Description) return FText::GetEmpty();
+	const FName Id=SkillType==ESkillRuleType::LongShot
+		? (bDirect?TEXT("LongShot.Direct"):TEXT("LongShot.DeadCorner"))
+		: (bDirect?TEXT("CutInside.Direct"):TEXT("CutInside.DeadCorner"));
+	const auto* Branch=Description->Branches.FindByPredicate([Id](const auto& B){return B.BranchId==Id;});
+	if (!Branch) return FText::GetEmpty();
+	if (!bDirect)
+	{
+		TArray<FString> Lines={NSLOCTEXT("FMCodexShotChoice","Paired","进攻方依次掷两枚骰子").ToString()};
+		for (const auto& Outcome:Branch->Outcomes)
+		{
+			if (Outcome.OutcomeId!=TEXT("Goal")) continue;
+			Lines.Add(FText::Format(NSLOCTEXT("FMCodexShotChoice","PairTotalRange","总和 {0}"),
+				FFMCodexPlayerUIPresentationText::TacticalOutcomeRange(Outcome.Minimum,Outcome.Maximum,
+					FFMCodexPlayerUIPresentationText::TacticalOutcome(Id,Outcome.OutcomeId))).ToString());
+		}
+		return FText::FromString(FString::Join(Lines,TEXT("\n")));
+	}
+	// Decision-page summary only; full rules and live Formula retain all terms.
+	auto Terms=[](const TArray<FTacticalRuleDescriptionTerm>& Source)
+	{
+		TArray<FString> Labels;
+		for (const auto& Term:Source)
+		{
+			if (Term.ParticipantRole==EMatchPlayResolutionParticipantRole::Goalkeeper) continue;
+			if (FMCodexTacticalDetailPresentation::IsAttributeTerm(Term))
+			{
+				FString Label=FFMCodexPlayerUIPresentationText::ResolutionAttribute(Term.Attribute).ToString();
+				if (Term.Multiplier!=1.f) Label+=TEXT(" × ")+FText::AsNumber(Term.Multiplier).ToString();
+				Labels.Add(Label);
+			}
+		}
+		return FText::FromString(FString::Join(Labels,TEXT(" + ")));
+	};
+	TArray<FString> Lines={
+		FText::Format(NSLOCTEXT("FMCodexShotChoice","Attack","持球：{0}"),Terms(Branch->AttackTerms)).ToString(),
+		FText::Format(NSLOCTEXT("FMCodexShotChoice","Defense","对抗盯人：{0}"),Terms(Branch->DefenseTerms)).ToString()};
+	if (Branch->SpecialRuleId==TEXT("AttackRollOneTwoImmediateMiss"))
+		Lines.Add(FText::Format(NSLOCTEXT("FMCodexShotChoice","MissHint","进攻掷点 {0}"),FFMCodexPlayerUIPresentationText::LongShotDirectOutcomeHint()).ToString());
+	return FText::FromString(FString::Join(Lines,TEXT("\n")));
+}
+
 FText FFMCodexTacticalDetailPresentationBuilder::BuildBranchChoiceHint(
 	const ESkillRuleType SkillType, const FName BranchId)
 {

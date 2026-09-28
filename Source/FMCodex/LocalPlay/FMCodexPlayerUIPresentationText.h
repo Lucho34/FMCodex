@@ -106,6 +106,8 @@ public:
 	static FText PairedGoalOutcomeHint(int32 RequiredTotal);
 	static FText FirstPairedRollResult(int32 FirstD6);
 	static FText PairedRollResult(int32 FirstD6, int32 SecondD6);
+	/** Display sum of disclosed dice; never a Formula or outcome decision. */
+	static FText PairedRollTotal(int32 FirstD6, int32 SecondD6);
 	static FText LongShotBranchChoiceStage();
 	static FText LongShotDirectChoiceHint();
 	static FText LongShotDeadCornerChoiceHint();

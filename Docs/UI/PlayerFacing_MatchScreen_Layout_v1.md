@@ -111,7 +111,8 @@ inspection scope accepted in Stage 8.17B + 8.17B.1 USER PIE. It does not define 
 - Full Card is a read-only player-information inspector in approved decision/planning
   contexts. The ordinary allowlist is Deployment, Carrier, Runner, Marker, Helper
   and Tactical Choice (`Deploy`, `SelectCarrier`, `SelectRunner`, `SelectMarker`,
-  `SelectHelper`, `SelectSkill`). Also approved: Near/Long Free Kick and Penalty
+  `SelectHelper`, `SelectSkill`), plus ordinary pre-TP planning (`TacticalPointRoll`
+  before reveal begins; Stage 8.18B–E grouped closeout, USER PIE PASS). Also approved: Near/Long Free Kick and Penalty
   taker planning, and Corner candidate planning. Those planning flows retain
   their existing Theater inspector for hover,
   selected-candidate fallback and cleanup; see the Theater visual spec.
@@ -127,7 +128,9 @@ inspection scope accepted in Stage 8.17B + 8.17B.1 USER PIE. It does not define 
   completion or refresh clears the inspector without mouse leave; another approved
   decision permits fresh inspection. Inspection never selects a tactic or player,
   changes selection focus, submits gameplay, or changes roles, TP, ownership,
-  availability or legality. This current scope
+  availability or legality. Starting the TP Roll clears and denies inspection even
+  before the next authoritative category arrives. The TP dock action preserves its
+  wording and uses a bounded, down-only text fit for both acting sides. This current scope
   supersedes the historical global hand/pitch hover contract; Full Card artwork,
   geometry, card selection and lightweight hover behavior remain unchanged.
 - Drag takes precedence over hover detail. Starting an eligible local Hand
@@ -291,6 +294,14 @@ initial 8.7C terminology and tuning, and the earlier A/C stage's legacy Formula
 styling statement, only for the shared Formula and directly linked result surfaces.
 The authoritative visual rules remain in
 [Match Flow Visual Language v1 §14](MatchFlow_Visual_Language_v1.md#14-formula--result).
+
+The consumer/layout details below record the 8.7C checkpoint. LongShot / CutInside
+now follow the accepted Stage 8.18B–E Theater contract, including Formula grammar,
+TheaterInline / Roll v2 and paired-roll presentation; see
+[Resolution Theater](Resolution_Theater_Visual_Spec_v1.md) and
+[Roll Presentation](Roll_Presentation_Visual_Spec_v1.md). ThroughBall retains its
+existing presentation. This supersedes the older LongShot shell and Roll styling
+described below without changing authoritative facts or reveal gates.
 
 - Attack and defense use separate Tier 2 modules with a section header, uniform
   role/name identity capsules, context, complete operand chips and an independent
