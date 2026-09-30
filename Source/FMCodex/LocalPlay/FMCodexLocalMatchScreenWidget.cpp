@@ -70,6 +70,7 @@ namespace FMCodexLocalMatchScreenWidget
 	constexpr float TheaterFormulaFadeDuration = 0.12f;
 	constexpr float NarrativeDisclosureDelay = 0.38f;
 	constexpr float FormulaReadableResultHoldDuration = 2.40f;
+	constexpr float ThroughBallBehindReadableResultHoldDuration = 3.10f;
 	constexpr float TacticalPointReadableResultHoldDuration = 2.40f;
 	constexpr float FormulaResultHoldDuration =
 		FormulaDisclosureDelay + FormulaReadableResultHoldDuration;
@@ -496,7 +497,11 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 	const FFMCodexUMGMatchHeaderViewModel& DisplayedHeader)
 {
 	using namespace FMCodexResolutionTheaterPrototype;
-	const bool bActive = WantsTheater(Presentation, Displayed);
+	// Choose the outer consumer from the same gated event shown inside it.
+	// Authority may already be at Anti/Formula/OneOnOne during route ResultHold.
+	auto TheaterPresentation=Presentation;
+	TheaterPresentation.ThroughBallResolution=BuildDisplayedThroughBallResolution();
+	const bool bActive = WantsTheater(TheaterPresentation, Displayed);
 	if (bActive && !WidgetTree->FindWidget(TEXT("ResolutionTheater")))
 	{
 		UButton* Primary = nullptr; UButton* High = nullptr; UButton* Low = nullptr;
@@ -514,7 +519,6 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 	}
 	if (bActive)
 	{
-		auto TheaterPresentation=Presentation;
 		TheaterPresentation.LongShotResolution=BuildDisplayedLongShotResolution();
 		TheaterPresentation.LocalRack=BuildDisplayedHandRack(Presentation.LocalRack);
 		TheaterPresentation.OpponentRack=BuildDisplayedHandRack(Presentation.OpponentRack);
@@ -523,6 +527,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 		SetPieceResolutionSurface->SetVisibility(ESlateVisibility::Collapsed);
 		if (IsOrdinaryShotConsumer(TheaterPresentation.LongShotResolution))
 			LongShotResolutionSurface->SetVisibility(ESlateVisibility::Collapsed);
+		if (IsThroughBallEventConsumer(TheaterPresentation.ThroughBallResolution))
+			ThroughBallResolutionSurface->SetVisibility(ESlateVisibility::Collapsed);
 		HideDetailOverlay(); HideTacticalDetail(); SelectionFeedbackToast->DismissFeedback();
 		ResolutionOverlay->SetVisibility(ESlateVisibility::Collapsed);
 	}
@@ -535,6 +541,9 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 
 void UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickDirectRequested()
 {
+ if (TheaterMotion.bActive && BuildDisplayedThroughBallResolution().Stage==EFMCodexUMGThroughBallStage::OneOnOneChoice
+  && !IsInlineFormulaRevealInputBlocked())
+ { RequestSubmitOneOnOneChoice(EFMCodexUMGOneOnOneChoice::DirectShot); return; }
  if (TheaterMotion.bActive && FMCodexResolutionTheaterPrototype::IsOrdinaryShotConsumer(Presentation.LongShotResolution)
   && Presentation.LongShotResolution.Stage==EFMCodexUMGLongShotStage::BranchChoice)
  { RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::DirectShot); return; }
@@ -545,6 +554,9 @@ void UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickDirectRequested()
 }
 void UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickAlternativeRequested()
 {
+ if (TheaterMotion.bActive && BuildDisplayedThroughBallResolution().Stage==EFMCodexUMGThroughBallStage::OneOnOneChoice
+  && !IsInlineFormulaRevealInputBlocked())
+ { RequestSubmitOneOnOneChoice(EFMCodexUMGOneOnOneChoice::ChipShot); return; }
  if (TheaterMotion.bActive && FMCodexResolutionTheaterPrototype::IsOrdinaryShotConsumer(Presentation.LongShotResolution)
   && Presentation.LongShotResolution.Stage==EFMCodexUMGLongShotStage::BranchChoice)
  { RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::DeadCorner); return; }
@@ -1429,7 +1441,10 @@ void UFMCodexLocalMatchScreenWidget::HandleInlineFormulaContinueRequested()
 	const bool bShotAction = TheaterMotion.bActive
 		&& FMCodexResolutionTheaterPrototype::IsOrdinaryShotConsumer(Presentation.LongShotResolution)
 		&& DoesLongShotOwnCurrentPrimaryAction();
-	if (!DoesInlineFormulaOwnCurrentPrimaryAction() && !bShotAction)
+	const bool bThroughBallAction = TheaterMotion.bActive
+		&& FMCodexResolutionTheaterPrototype::IsThroughBallEventConsumer(BuildDisplayedThroughBallResolution())
+		&& DoesThroughBallOwnCurrentPrimaryAction();
+	if (!DoesInlineFormulaOwnCurrentPrimaryAction() && !bShotAction && !bThroughBallAction)
 	{
 		return;
 	}
@@ -3920,7 +3935,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 		ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::Attack
 		&& Result.ContestId == FName(TEXT("ThroughBall.BehindDefense.P1"))
-		&& Result.bNarrativeAvailable;
+		&& Result.bNarrativeAvailable && !Result.bShowFormulaRows;
 	const bool bElectiveDirectAttackTerminalNarrative =
 		ActiveCrossRollReveal.Kind
 			== EFMCodexUMGCrossRollRevealKind::Attack
@@ -4069,7 +4084,8 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 	// A published ImmediateMiss must not change the pre-reveal composition.
 	// These are the existing projected candidate rows, still pending, not an
 	// executed comparison. Drop them only after the actual attack value is visible.
-	if (FMCodexResolutionTheaterPrototype::IsDirectShotContest(Result.ContestId)
+	const bool bBehindContest = Result.ContestId==TEXT("ThroughBall.BehindDefense.P1");
+	if ((FMCodexResolutionTheaterPrototype::IsDirectShotContest(Result.ContestId) || bBehindContest)
 		&& ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Attack
 		&& !bFormulaDisclosed && !Result.bShowFormulaRows)
 	{
@@ -4077,7 +4093,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 	}
 	if (!Result.bShowFormulaRows)
 	{
-		if (FMCodexResolutionTheaterPrototype::IsDirectShotContest(Result.ContestId))
+		if (FMCodexResolutionTheaterPrototype::IsDirectShotContest(Result.ContestId) || bBehindContest)
 		{
 			// The canonical skipped gate removes the comparison, not its one
 			// accepted attack roll. Retain the same displayed operand and clock.
@@ -4095,7 +4111,8 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedInlineFormula() const
 	Result.bAttackRowActive = bAttack;
 	Result.bDefenseRowActive = !bAttack;
 	if (bSetPieceAttackPrefix || (bAttack
-		&& FMCodexResolutionTheaterPrototype::IsDirectShotContest(Result.ContestId)))
+		&& (FMCodexResolutionTheaterPrototype::IsDirectShotContest(Result.ContestId)
+			|| FMCodexResolutionTheaterPrototype::IsThroughBallFormulaContest(Result.ContestId))))
 		StageRowForReveal(Result.DefenseRow, false, false, 0); // A coalesced terminal cannot reveal the defense roll during attack A.
 	if (!bFormulaDisclosed)
 	{
@@ -4161,9 +4178,29 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedThroughBallResolution() const
 		if (ActiveCrossRollReveal.ContestId
 			== FName(TEXT("ThroughBall.AntiOffside")))
 		{
+			// The active event owns the surface even when a later safe snapshot
+			// already contains OneOnOne. Keep its rule aid, never its later controls.
+			Result.Formula = {};
+			Result.OutcomeRollHint = FFMCodexTacticalDetailPresentationBuilder::BuildOutcomeRollHint(
+				ESkillRuleType::ThroughBall, TEXT("ThroughBall.AntiOffside"));
+			if (Result.Stage != EFMCodexUMGThroughBallStage::AntiOffsideCheck
+				&& Result.Stage != EFMCodexUMGThroughBallStage::OneOnOneChoice)
+			{
+				Result.bNarrativeAvailable = false;
+				Result.ResultTitle.Empty();
+				Result.NarrativeHeadline.Empty();
+				Result.OutcomeText = {};
+				Result.OutcomeRollDetail.Empty();
+			}
 			Result.Stage = EFMCodexUMGThroughBallStage::AntiOffsideCheck;
 			Result.StageLabel = FFMCodexPlayerUIPresentationText
 				::ThroughBallAntiOffsideStage().ToString();
+		}
+		else
+		{
+			Result.Formula = {};
+			Result.OutcomeRollHint = FFMCodexTacticalDetailPresentationBuilder::BuildOutcomeRollHint(
+				ESkillRuleType::ThroughBall, TEXT("ThroughBall.OneOnOneChip"));
 		}
 		if (!bNarrativeDisclosed)
 		{
@@ -4186,6 +4223,16 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedThroughBallResolution() const
 	Result.bVisible = true;
 	Result.bSuppressLegacyResolution = true;
 	Result.Stage = EFMCodexUMGThroughBallStage::InitialRoute;
+	// Public downstream facts may arrive during this roll. Only the route
+	// result belongs to its hold; the next event starts after the existing gate.
+	Result.Formula = {};
+	Result.OutcomeRollHint = {};
+	Result.OneOnOneChoices.Reset();
+	Result.bNarrativeAvailable = false;
+	Result.ResultTitle.Empty();
+	Result.NarrativeHeadline.Empty();
+	Result.OutcomeText = {};
+	Result.OutcomeRollDetail.Empty();
 	Result.StageLabel = FFMCodexPlayerUIPresentationText
 		::ThroughBallInitialRouteStage().ToString();
 	Result.RevealPhase = InlineFormulaRevealPhase;
@@ -4411,6 +4458,13 @@ bool UFMCodexLocalMatchScreenWidget::UsesTheaterRollMotion() const
 	// continuous CompactBox motion with its existing reveal/hold lifetime.
 	if (ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::SetPieceType
 		&& ActiveCrossRollReveal.ContestId==TEXT("SetPiece.Type")) return true;
+	// Independent ThroughBall events share CompactBox/v2; Formula events opt in
+	// below only while the existing Theater owns their presentation.
+	if ((ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::ThroughBallInitialRoute
+		&& ActiveCrossRollReveal.ContestId==TEXT("ThroughBall.Route"))
+		|| (ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Attack
+			&& (ActiveCrossRollReveal.ContestId==TEXT("ThroughBall.AntiOffside")
+				|| ActiveCrossRollReveal.ContestId==TEXT("ThroughBall.OneOnOne.ChipShot")))) return true;
 	if (!TheaterMotion.bActive) return false;
 	if (FMCodexResolutionTheaterPrototype::IsDeadCornerContest(ActiveCrossRollReveal.ContestId))
 		return ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::LongShotDeadCornerA
@@ -4434,6 +4488,7 @@ bool UFMCodexLocalMatchScreenWidget::UsesTheaterRollMotion() const
 	if (ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::InitialRoute
 		&& ActiveCrossRollReveal.ContestId == TEXT("Cross.Route")) return true;
 	return (FMCodexResolutionTheaterPrototype::IsFormulaContest(ActiveCrossRollReveal.ContestId)
+		|| FMCodexResolutionTheaterPrototype::IsThroughBallFormulaContest(ActiveCrossRollReveal.ContestId)
 		|| FMCodexResolutionTheaterPrototype::IsDirectShotContest(ActiveCrossRollReveal.ContestId))
 		&& (ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Attack
 			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Defense);
@@ -4532,7 +4587,15 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 			// Reuse the existing readable-result token and elapsed-time clock; no new timer.
 			const bool bReadableCornerParticipants = ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection
 				&& FMCodexResolutionTheaterPrototype::IsCornerResolutionEnabled();
-			const float HoldDuration = bReadableCornerParticipants ? FormulaResultHoldDuration : ActiveCrossRollReveal.Kind
+			// ThroughBall's automatic success handoff gets 3.1 readable seconds
+			// AFTER its Narrative appears, using the same elapsed clock and dedupe.
+			const bool bBehindIntermediate=TheaterMotion.bActive
+				&& ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Defense
+				&& ActiveCrossRollReveal.ContestId==TEXT("ThroughBall.BehindDefense.P1")
+				&& CachedResolvedInlineFormula.bNarrativeAvailable
+				&& CachedResolvedInlineFormula.bNarrativeAttackSuccess;
+			const float HoldDuration = bBehindIntermediate ? NarrativeDisclosureDelay+ThroughBallBehindReadableResultHoldDuration
+				: bReadableCornerParticipants ? FormulaResultHoldDuration : ActiveCrossRollReveal.Kind
 					== EFMCodexUMGCrossRollRevealKind::InitialRoute
 				|| ActiveCrossRollReveal.Kind
 					== EFMCodexUMGCrossRollRevealKind
@@ -5361,6 +5424,11 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		|| Presentation.SetPiece.Type==ESetPieceSelectedType::Corner)
 		&& FMCodexResolutionTheaterPrototype::WantsTheater(Presentation,StandaloneInlineFormula))
 		bOutcomeDisclosed = FMCodexOutcomePresentation::IsFinalReady(StandaloneInlineFormula.bNarrativeAvailable,StandaloneInlineFormula.bDiceRevealVisible);
+	if (FMCodexResolutionTheaterPrototype::IsThroughBallEventConsumer(DisplayedThroughBall)
+		&& FMCodexResolutionTheaterPrototype::IsEnabled())
+		bOutcomeDisclosed = DisplayedThroughBall.Formula.bVisible
+			? FMCodexOutcomePresentation::IsFinalReady(DisplayedThroughBall.Formula.bNarrativeAvailable,DisplayedThroughBall.Formula.bDiceRevealVisible)
+			: FMCodexOutcomePresentation::IsFinalReady(DisplayedThroughBall.bNarrativeAvailable,DisplayedThroughBall.bDiceRevealVisible);
 	MatchHeader->RefreshFromPresentation(BuildDisplayedHeader(bOutcomeDisclosed));
 	PitchWidget->SetPhaseLabel(MatchHeader->GetDisplayedPhaseText());
 	const bool bEntryOrUniqueSetPieceReveal =

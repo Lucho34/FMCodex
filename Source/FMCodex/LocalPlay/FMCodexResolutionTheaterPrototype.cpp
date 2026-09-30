@@ -386,6 +386,14 @@ USizeBox* RollOperand(UWidgetTree& Tree, const FString& Prefix)
 	ReelHost->SetStretch(EStretch::ScaleToFit); ReelHost->AddChild(Reel);
 	auto* ReelSlot=Unknown->AddChildToOverlay(ReelHost); ReelSlot->SetHorizontalAlignment(HAlign_Fill); ReelSlot->SetVerticalAlignment(VAlign_Fill);
 	ReelSlot->SetPadding(FMargin(0));
+	if (Prefix==TEXT("TheaterAttack"))
+	{
+		auto* AttackRollCaption=Text(Tree,TEXT("TheaterAttackRollCaption"),14,Quiet);
+		AttackRollCaption->SetText(LOCTEXT("AttackRollCaption","进攻掷点"));
+		auto* CaptionSlot=Unknown->AddChildToOverlay(AttackRollCaption);
+		CaptionSlot->SetHorizontalAlignment(HAlign_Center); CaptionSlot->SetVerticalAlignment(VAlign_Top);
+		CaptionSlot->SetPadding(FMargin(0,-10,0,0)); Show(*AttackRollCaption,false);
+	}
 	return Bounds(Tree,Unknown,68,76);
 }
 void BuildSide(UWidgetTree& Tree, UHorizontalBox& Middle, const FString& Prefix, UTexture2D* Atlas)
@@ -651,6 +659,11 @@ bool IsFormulaContest(FName ContestId)
 {
 	return ContestId==TEXT("Cross.High") || (ContestId==TEXT("Cross.Low") && IsLowCrossEnabled());
 }
+bool IsThroughBallFormulaContest(FName ContestId)
+{
+	return ContestId==TEXT("ThroughBall.Feet") || ContestId==TEXT("ThroughBall.BehindDefense.P1")
+		|| ContestId==TEXT("ThroughBall.OneOnOne.DirectShot");
+}
 bool IsDirectShotContest(FName ContestId)
 {
 	return ContestId==TEXT("LongShot.DirectShot") || ContestId==TEXT("CutInsideShot.DirectShot");
@@ -704,9 +717,19 @@ void ApplyCornerDisplayCopy(const FFMCodexUMGMatchScreenViewModel& Screen, FFMCo
 		?LOCTEXT("CornerScored","得分"):LOCTEXT("CornerNotScored","未能得分");
 	P.ContestLabel=P.OutcomeText.ToText().ToString();
 }
+bool IsThroughBallEventConsumer(const FFMCodexUMGThroughBallResolutionViewModel& Event)
+{
+	return Event.bVisible && (Event.Stage==EFMCodexUMGThroughBallStage::InitialRoute
+		|| Event.Stage==EFMCodexUMGThroughBallStage::AntiOffsideCheck
+		|| Event.Stage==EFMCodexUMGThroughBallStage::FeetContest
+		|| Event.Stage==EFMCodexUMGThroughBallStage::BehindDefenseFirstStage
+		|| Event.Stage==EFMCodexUMGThroughBallStage::OneOnOneChoice
+		|| Event.Stage==EFMCodexUMGThroughBallStage::OneOnOneResolution);
+}
 bool WantsTheater(const FFMCodexUMGMatchScreenViewModel& Screen, const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed)
 {
 	if (!IsEnabled() || Screen.FullTime.bVisible || Screen.Resolution.bRejected) return false;
+	if (IsThroughBallEventConsumer(Screen.ThroughBallResolution)) return true;
 	if (IsOrdinaryShotConsumer(Screen.LongShotResolution)
 		&& (Screen.LongShotResolution.Stage==EFMCodexUMGLongShotStage::BranchChoice
 			|| Screen.LongShotResolution.Stage==EFMCodexUMGLongShotStage::DeadCorner)) return true;
@@ -927,6 +950,7 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 	}
 	Composition->AddChildToVerticalBox(Methods)->SetHorizontalAlignment(HAlign_Center);
 
+
 	auto* Bottom=Tree.ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(),TEXT("TheaterBottom"));
 	auto* BottomBounds=Bounds(Tree,Bottom,1040); BottomBounds->Rename(TEXT("TheaterBottomBounds"),&Tree);
 	auto* BottomSlot=Composition->AddChildToVerticalBox(BottomBounds); BottomSlot->SetHorizontalAlignment(HAlign_Center); BottomSlot->SetPadding(FMargin(0,16,0,0));
@@ -960,7 +984,7 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 	auto* Status=Text(Tree,TEXT("TheaterStatus"),14,Quiet); Status->SetJustification(ETextJustify::Center);
 	auto* StatusSlot=Bottom->AddChildToVerticalBox(Status); StatusSlot->SetHorizontalAlignment(HAlign_Fill); StatusSlot->SetPadding(FMargin(0,4,0,0));
 	// Reel and action share an allocation, so the sides never jump as the roll resolves.
-	auto* ActionLane=Tree.ConstructWidget<UOverlay>();
+	auto* ActionLane=Tree.ConstructWidget<UOverlay>(UOverlay::StaticClass(),TEXT("TheaterActionLane"));
 	auto* ActionBounds=Bounds(Tree,ActionLane,0,72); ActionBounds->Rename(TEXT("TheaterActionBounds"),&Tree);
 	Bottom->AddChildToVerticalBox(ActionBounds)->SetPadding(FMargin(0,4,0,0));
 	Primary=Button(Tree,TEXT("TheaterContinue"),TEXT("TheaterContinueLabel"),FText::GetEmpty());
@@ -992,18 +1016,161 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 	Reel->SetVisualVariant(EFMCodexRollVisualVariant::CompactBox);
 	ReelLine->AddChildToHorizontalBox(Bounds(Tree,Reel,84,72));
 	auto* ReelSlot=ActionLane->AddChildToOverlay(ReelLine); ReelSlot->SetHorizontalAlignment(HAlign_Center); ReelSlot->SetVerticalAlignment(VAlign_Center);
+	// ThroughBall independent events use the same dedicated action/roll lane as
+	// Cross route. The context card owns identity only; no die or placeholder.
+	auto* EventReel=Tree.ConstructWidget<UFMCodexRollReelWidget>(UFMCodexRollReelWidget::StaticClass(),TEXT("TheaterEventReel"));
+	EventReel->SetVisualVariant(EFMCodexRollVisualVariant::CompactBox);
+	auto* EventReelHost=Bounds(Tree,EventReel,84,72); EventReelHost->Rename(TEXT("TheaterEventReelHost"),&Tree);
+	auto* EventCell=Bounds(Tree,EventReelHost,84,72); EventCell->Rename(TEXT("TheaterEventCell"),&Tree);
+	auto* EventBounds=Bounds(Tree,EventCell,84,72); EventBounds->Rename(TEXT("TheaterTacticalEvent"),&Tree);
+	auto* EventSlot=ActionLane->AddChildToOverlay(EventBounds);
+	EventSlot->SetHorizontalAlignment(HAlign_Center); EventSlot->SetVerticalAlignment(VAlign_Center);
+	Show(*EventBounds,false);
 	return Root;
+}
+FFMCodexUMGInlineFormulaRowViewModel ThroughBallContext(const FFMCodexUMGMatchScreenViewModel& Screen,
+	bool bCarrier)
+{
+	FFMCodexUMGInlineFormulaRowViewModel Row;
+	Row.SideLabel=LOCTEXT("ThroughBallAttack","进攻").ToString();
+	// SelectedRole is already projected from selected stable IDs. Slot position,
+	// roster membership and Narrative text do not determine these subjects.
+	const auto Add=[&](EFMCodexUMGSelectedRole Role)
+	{
+		for (const auto& Region:Screen.PitchRegions)
+			for (const auto& Slot:Region.Slots)
+				if (Slot.Card.SelectedRole==Role)
+				{
+					Row.Participants.Add({Role==EFMCodexUMGSelectedRole::Carrier
+						?LOCTEXT("ThroughBallPasser","传球").ToString():Slot.Card.SelectedRoleLabel,
+						Slot.Card.IdentityLabel.IsEmpty()?LOCTEXT("PlayerFallback","球员").ToString():Slot.Card.IdentityLabel});
+					return;
+				}
+	};
+	if (bCarrier) Add(EFMCodexUMGSelectedRole::Carrier);
+	Add(EFMCodexUMGSelectedRole::Runner);
+	return Row;
+}
+void RefreshThroughBallEvent(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
+	const FFMCodexUMGMatchHeaderViewModel& H, bool bRequestPending)
+{
+	const auto& P=Screen.ThroughBallResolution;
+	const bool bRoute=P.Stage==EFMCodexUMGThroughBallStage::InitialRoute;
+	const bool bChip=P.Stage==EFMCodexUMGThroughBallStage::OneOnOneResolution;
+	const bool bRolling=P.bDiceRevealVisible;
+	for (const auto Name:{TEXT("TheaterDuel"),TEXT("TheaterParticipantDraw"),TEXT("TheaterTakerBounds"),
+		TEXT("TheaterSelectionMessageBounds"),TEXT("TheaterSelectionHintBounds"),TEXT("TheaterNearMethods"),
+		TEXT("TheaterSelectionReturnBounds"),TEXT("TheaterChoices"),TEXT("TheaterRoll"),
+		TEXT("TheaterOutcome"),TEXT("TheaterOutcomeDivider"),TEXT("TheaterReasonPrimary"),TEXT("TheaterReasonSecondary")})
+		Show(*Tree.FindWidget(Name),false);
+	Show(*Tree.FindWidget(TEXT("TheaterTacticalEvent")),true);
+	// Reuse the existing compact participant/art panel, with no Formula or
+	// invented opponent. Shared context always keeps passer before runner.
+	const auto Context=ThroughBallContext(Screen,!bChip);
+	Show(*Tree.FindWidget(TEXT("TheaterDuel")),!Context.Participants.IsEmpty());
+	Show(*Tree.FindWidget(TEXT("TheaterDefensePanelBounds")),false);
+	Show(*Tree.FindWidget(TEXT("TheaterVS"))->GetParent(),false);
+	Show(*Tree.FindWidget(TEXT("TheaterPair")),false);
+	Show(*Tree.FindWidget(TEXT("TheaterAttackRollCaption")),false);
+	RefreshSide(Tree,TEXT("TheaterAttack"),Context,false,false,false,false);
+	Find<UScaleBox>(Tree,TEXT("TheaterCompositionFit"))->SetStretch(EStretch::None);
+	CastChecked<UOverlaySlot>(Tree.FindWidget(TEXT("TheaterCompositionFit"))->Slot)->SetVerticalAlignment(VAlign_Center);
+	Find<UBorder>(Tree,TEXT("TheaterBodyPadding"))->SetPadding(FMargin(0,32,0,76));
+	Find<USizeBox>(Tree,TEXT("TheaterBottomBounds"))->SetWidthOverride(1040.f);
+	Find<USizeBox>(Tree,TEXT("TheaterActionBounds"))->SetHeightOverride(72.f);
+	Find<USizeBox>(Tree,TEXT("TheaterPrimaryBounds"))->SetWidthOverride(320.f);
+	Show(*Tree.FindWidget(TEXT("TheaterInfoBar"))->GetParent(),true);
+	Show(*Tree.FindWidget(TEXT("TheaterReasonMark"))->GetParent(),false);
+	Show(*Tree.FindWidget(TEXT("TheaterReasonSeparator"))->GetParent(),false);
+
+	auto* Title=Find<UTextBlock>(Tree,TEXT("TheaterTitle"));
+	auto Font=Title->GetFont(); Font.Size=52; Title->SetFont(Font);
+	Title->SetText(LOCTEXT("ThroughBall","直塞")); Show(*Title,true);
+	Find<UTextBlock>(Tree,TEXT("TheaterSubtitle"))->SetText(bRoute
+		?LOCTEXT("ThroughBallRoute","路线判定"):bChip?LOCTEXT("ThroughBallChip","单刀 · 挑射"):LOCTEXT("ThroughBallAnti","反越位判定"));
+	const bool bLeftA=H.LeftPlayerSide==EInitialTurnOrderPlayer::PlayerA;
+	SetText(Tree,TEXT("TheaterContext"),FString::Printf(TEXT("%s  %s  –  %s  %s"),
+		*FFMCodexPlayerUIPresentationText::MatchScreenLabel(H.LeftPlayerLabel).ToString(),
+		*(bLeftA?H.PlayerAScoreLabel:H.PlayerBScoreLabel),*(bLeftA?H.PlayerBScoreLabel:H.PlayerAScoreLabel),
+		*FFMCodexPlayerUIPresentationText::MatchScreenLabel(H.RightPlayerLabel).ToString()));
+
+	FText Rule=FFMCodexTacticalDetailPresentationBuilder::BuildThroughBallRouteHint();
+	if (!bRoute)
+	{
+		TArray<FString> Ranges;
+		for (const auto& Entry:P.OutcomeRollHint.Entries)
+			Ranges.Add(Entry.OutcomeId==TEXT("OneOnOne")
+				?FFMCodexPlayerUIPresentationText::TacticalOutcomeRange(Entry.Minimum,Entry.Maximum,
+					NSLOCTEXT("FMCodexThroughBall","AntiFormsOneOnOne","形成单刀")).ToString():Entry.DisplayLabel);
+		Rule=FText::FromString(FString::Join(Ranges,TEXT("　｜　")));
+	}
+	// Hidden keeps the 84x72 lane geometry during the pre-roll CTA. The same
+	// allocation then paints motion, landed value and hold without moving the card.
+	Tree.FindWidget(TEXT("TheaterEventReelHost"))->SetVisibility(
+		bRolling?ESlateVisibility::SelfHitTestInvisible:ESlateVisibility::Hidden);
+
+	// These are display-gated semantic facts. Never derive an outcome from CenterValue.
+	FText Detail=Rule;
+	if (bRoute && !P.RouteResultLabel.IsEmpty()) Detail=FText::FromString(P.RouteResultLabel);
+	if (!bRoute && P.bNarrativeAvailable && !P.ResultTitle.IsEmpty()) Detail=FText::FromString(P.ResultTitle);
+	Find<UTextBlock>(Tree,TEXT("TheaterDetail"))->SetText(Detail); Show(*Tree.FindWidget(TEXT("TheaterDetail")),true);
+
+	const bool bAction=!bRolling && !bRequestPending && P.PrimaryAction.bVisible && P.PrimaryAction.Action.bAvailable;
+	Show(*Tree.FindWidget(TEXT("TheaterPrimaryBounds")),bAction);
+	Find<UButton>(Tree,TEXT("TheaterContinue"))->SetIsEnabled(bAction);
+	Find<UButton>(Tree,TEXT("TheaterContinue"))->SetBackgroundColor(FLinearColor::White);
+	Find<UTextBlock>(Tree,TEXT("TheaterContinueLabel"))->SetText(FText::FromString(P.PrimaryAction.Action.Label));
+	for (const auto Name:{TEXT("TheaterDiceIcon"),TEXT("TheaterRollLeading")}) Show(*Tree.FindWidget(Name),true);
+	for (const auto Name:{TEXT("TheaterNextIcon"),TEXT("TheaterNextTrailing")}) Show(*Tree.FindWidget(Name),false);
+	FText Status=FFMCodexPlayerUIPresentationText::MatchScreenLabel(Screen.Interaction.ExpectedActorLabel);
+	if (Screen.bMirrorActionWaitPrompt && !bRolling)
+		Status=FText::Format(LOCTEXT("EventWait","{0}  {1}"),Screen.ActionWaitActorText,Screen.ActionWaitActionText);
+	if (bRequestPending) Status=LOCTEXT("PendingRequest","操作已提交，等待确认");
+	Find<UTextBlock>(Tree,TEXT("TheaterStatus"))->SetText(Status);
+	Tree.FindWidget(TEXT("TheaterStatus"))->SetVisibility(bRolling?ESlateVisibility::Hidden:ESlateVisibility::SelfHitTestInvisible);
+	RefreshReel(Tree,P.RollReel);
 }
 void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed, const FFMCodexUMGMatchHeaderViewModel& H, bool bRequestPending, FTakerInspection& Inspection,
 	bool bSelectionConfirmationPending)
 {
+	const auto& Through=Screen.ThroughBallResolution;
+	const bool bThrough=IsThroughBallEventConsumer(Through);
+	const bool bThroughChoice=bThrough && Through.Stage==EFMCodexUMGThroughBallStage::OneOnOneChoice
+		&& !Through.Formula.bDiceRevealVisible;
+	const bool bThroughEvent=bThrough && (Through.Stage==EFMCodexUMGThroughBallStage::InitialRoute
+		|| Through.Stage==EFMCodexUMGThroughBallStage::AntiOffsideCheck
+		|| (Through.Stage==EFMCodexUMGThroughBallStage::OneOnOneResolution && !Through.Formula.bVisible));
+	if (bThroughEvent && !FMCodexOutcomePresentation::IsFinalReady(Through.bNarrativeAvailable,Through.bDiceRevealVisible))
+	{
+		ClearTakerInspection(Tree,Inspection);
+		RefreshThroughBallEvent(Tree,Screen,H,bRequestPending);
+		return;
+	}
+	Show(*Tree.FindWidget(TEXT("TheaterTacticalEvent")),false);
+	Show(*Tree.FindWidget(TEXT("TheaterEventReelHost")),false);
+	Show(*Tree.FindWidget(TEXT("TheaterAttackRollCaption")),false);
+	for (const auto Name:{TEXT("TheaterNearDirectDiagram"),TEXT("TheaterNearCombinationDiagram")})
+		Show(*Tree.FindWidget(Name),true);
 	const auto& Shot=Screen.LongShotResolution;
 	const bool bShotConsumer=IsOrdinaryShotConsumer(Shot);
 	const bool bShotChoice=bShotConsumer && Shot.Stage==EFMCodexUMGLongShotStage::BranchChoice;
 	const bool bDeadCorner=bShotConsumer && Shot.Stage==EFMCodexUMGLongShotStage::DeadCorner;
 	// Adapt existing display fields only; DeadCorner never acquires Formula rows.
 	auto ShotContext=Displayed;
+	if (bThrough) ShotContext=Through.Formula;
+	if (bThroughChoice || bThroughEvent)
+	{
+		ShotContext={}; ShotContext.bVisible=true;
+		ShotContext.bShowFormulaRows=ShotContext.bShowAttackRow=ShotContext.bShowDefenseRow=false;
+		ShotContext.bNarrativeAvailable=!bThroughChoice && Through.bNarrativeAvailable;
+		ShotContext.ContestLabel=Through.NarrativeHeadline;
+		ShotContext.OutcomeText=Through.OutcomeText;
+		ShotContext.PrimaryAction=Through.PrimaryAction;
+		ShotContext.ResolutionReasonLabel=Through.OutcomeRollDetail;
+		ShotContext.AttackRow=ThroughBallContext(Screen,!bThroughChoice
+			&& Through.Stage==EFMCodexUMGThroughBallStage::AntiOffsideCheck);
+	}
 	if (bShotChoice || bDeadCorner)
 	{
 		ShotContext={}; ShotContext.bVisible=true; ShotContext.bShowFormulaRows=false;
@@ -1034,7 +1201,8 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	const bool bShared=bCornerResolution && P.ContestId==TEXT("Corner.Participants");
 	const bool bSetPieceTheater=bNear || bLong || bPenalty || bCorner || bCornerResolution;
 	const bool bDirectShot=IsDirectShotContest(P.ContestId);
-	const bool bShotRollOnly=bDirectShot && !P.bShowFormulaRows;
+	const bool bThroughFormula=bThrough && IsThroughBallFormulaContest(P.ContestId);
+	const bool bShotRollOnly=(bDirectShot || (bThroughFormula && P.ContestId==TEXT("ThroughBall.BehindDefense.P1"))) && !P.bShowFormulaRows;
 	const bool bSelection=bSetPieceTheater && (Screen.SetPiece.bTakerWait || bCorner);
 	const auto& Options=bCorner?Screen.SetPiece.CornerOptions:Screen.SetPiece.TakerOptions;
  const bool bInspect=bSelection && !Options.IsEmpty() && !bRequestPending;
@@ -1063,18 +1231,28 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 		|| (bLong && Screen.SetPiece.LongMethod==EMatchPlayLongFreeKickMethod::Power);
 	const bool bPanenka=bPenalty && Screen.SetPiece.PenaltyMethod==EMatchPlayPenaltyMethod::Panenka;
 	const bool bCompactRoll=bPair || bPanenka || bDeadCorner;
-	const bool bFormula=P.bVisible && (IsFormulaContest(P.ContestId) || bSetPieceTheater || bDirectShot) && P.bShowFormulaRows;
+	const bool bFormula=P.bVisible && (IsFormulaContest(P.ContestId) || bSetPieceTheater || bDirectShot || bThroughFormula) && P.bShowFormulaRows;
 	Show(*Tree.FindWidget(TEXT("TheaterDuel")),!bSelection && !bShared && !Screen.SetPiece.bNoTakerNoGoal && (!bCornerResolution || !P.AttackRow.Participants.IsEmpty()));
 	for (const auto Name:{TEXT("TheaterDirectExplanationBounds"),TEXT("TheaterAlternativeExplanationBounds")})
-		Find<USizeBox>(Tree,Name)->SetHeightOverride(bShotChoice?112.f:60.f);
+		Find<USizeBox>(Tree,Name)->SetHeightOverride(bThroughChoice?26.f:bShotChoice?112.f:60.f);
+	for (bool bDirect:{true,false})
+	{
+		auto* Hint=Find<UTextBlock>(Tree,bDirect?TEXT("TheaterNearDirectHint"):TEXT("TheaterNearCombinationHint"));
+		auto* Slot=CastChecked<UHorizontalBoxSlot>(Hint->Slot);
+		Slot->SetSize(FSlateChildSize(bThroughChoice?ESlateSizeRule::Fill:ESlateSizeRule::Automatic));
+		Slot->SetPadding(bThroughChoice?FMargin(0):FMargin(14,0,0,0));
+		Hint->SetJustification(bThroughChoice?ETextJustify::Center:ETextJustify::Left);
+		auto* Bounds=Tree.FindWidget(bDirect?TEXT("TheaterDirectExplanationBounds"):TEXT("TheaterAlternativeExplanationBounds"));
+		CastChecked<UVerticalBoxSlot>(Bounds->Slot)->SetPadding(FMargin(0,bThroughChoice?6:10,0,0));
+	}
 	for (const auto Name:{TEXT("TheaterNearDirectHint"),TEXT("TheaterNearCombinationHint")})
 		Find<UTextBlock>(Tree,Name)->SetColorAndOpacity(bShotChoice?White:Quiet);
 	Show(*Tree.FindWidget(TEXT("TheaterTakerBounds")),bSelection && !Options.IsEmpty());
 	Show(*Tree.FindWidget(TEXT("TheaterSelectionMessageBounds")),bCorner && Options.IsEmpty());
 	Show(*Tree.FindWidget(TEXT("TheaterSelectionHintBounds")),bCorner);
 	Show(*Tree.FindWidget(TEXT("TheaterSelectionReturnBounds")),bCorner && bSelectionConfirmationPending && !bRequestPending);
-	Show(*Tree.FindWidget(TEXT("TheaterNearMethods")),bShotChoice || (bMethod && !bCornerChoice));
-	const bool bDefenseVisible=!bShotChoice && !bDeadCorner && !bShotRollOnly && (!bSetPieceTheater || (bCornerResolution && !P.DefenseRow.Participants.IsEmpty()) || (bFormula && (P.bShowDefenseRow || (bLong && P.bDiceRevealVisible && !P.RollReel.bStaticResult))));
+	Show(*Tree.FindWidget(TEXT("TheaterNearMethods")),bThroughChoice || bShotChoice || (bMethod && !bCornerChoice));
+	const bool bDefenseVisible=!bThroughChoice && !bThroughEvent && !bShotChoice && !bDeadCorner && !bShotRollOnly && (!bSetPieceTheater || (bCornerResolution && !P.DefenseRow.Participants.IsEmpty()) || (bFormula && (P.bShowDefenseRow || (bLong && P.bDiceRevealVisible && !P.RollReel.bStaticResult))));
 	Show(*Tree.FindWidget(TEXT("TheaterDefensePanelBounds")),bDefenseVisible);
 	Show(*Tree.FindWidget(TEXT("TheaterVS"))->GetParent(),bDefenseVisible);
 	Show(*Tree.FindWidget(TEXT("TheaterPair")),bCompactRoll);
@@ -1140,7 +1318,10 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	// Future safe facts may already exist while the visible route is still gated.
 	const FName DisclosedContest=bFormula ? P.ContestId
 		: (P.ContestId==TEXT("Cross.Route") && !P.RouteResultLabel.IsEmpty() ? Screen.InlineFormula.ContestId : NAME_None);
-	const bool bFinal=(bFormula || bSetPieceTheater || bDirectShot || bDeadCorner) && FMCodexOutcomePresentation::IsFinalReady(P.bNarrativeAvailable,P.bDiceRevealVisible);
+	const bool bTransitionResult=bThroughFormula && P.ContestId==TEXT("ThroughBall.BehindDefense.P1")
+		&& P.bNarrativeAvailable && P.bNarrativeAttackSuccess;
+	const bool bFinal=bTransitionResult || ((bThrough || bFormula || bSetPieceTheater || bDirectShot || bDeadCorner)
+		&& FMCodexOutcomePresentation::IsFinalReady(P.bNarrativeAvailable,P.bDiceRevealVisible));
 	// Setup deliberately has no visible Formula; its public participant rows
 	// live on the safe Screen projection, not the empty displayed Formula.
 	const auto& ParticipantSurface=Screen.InlineFormula.ContestId==TEXT("Cross.Setup")
@@ -1182,7 +1363,8 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	Find<UButton>(Tree,TEXT("TheaterContinue"))->SetIsEnabled(bAction);
 	const C Category=P.PrimaryAction.Action.Category;
 	const bool bRoll=Category==C::RollLongShotDeadCorner || Category==C::RollCutInsideShotDeadCorner || Category==C::RollLongShotDirectAttack || Category==C::RollLongShotDirectDefense || Category==C::RollCutInsideShotDirectAttack || Category==C::RollCutInsideShotDirectDefense || Category==C::RollCrossRoute || Category==C::RollCrossAttack || Category==C::RollCrossDefense || (Category==C::RollShortFreeKickDirectAttack || Category==C::RollLongFreeKickDirectAttack)
-		|| (Category==C::RollShortFreeKickDirectDefense || Category==C::RollLongFreeKickDirectDefense) || (Category==C::RollShortFreeKickAngled || Category==C::RollLongFreeKickPower) || Category==C::RollPenaltyDirectAttack || Category==C::RollPenaltyDirectDefense || Category==C::RollPenaltyPanenka || Category==C::RollCornerParticipantSelection || Category==C::RollCornerRoute || Category==C::RollCornerAttack || Category==C::RollCornerDefense;
+		|| (Category==C::RollShortFreeKickDirectDefense || Category==C::RollLongFreeKickDirectDefense) || (Category==C::RollShortFreeKickAngled || Category==C::RollLongFreeKickPower) || Category==C::RollPenaltyDirectAttack || Category==C::RollPenaltyDirectDefense || Category==C::RollPenaltyPanenka || Category==C::RollCornerParticipantSelection || Category==C::RollCornerRoute || Category==C::RollCornerAttack || Category==C::RollCornerDefense
+		|| (bThroughFormula && Category!=C::AdvanceAfterTerminal);
 	Find<UTextBlock>(Tree,TEXT("TheaterContinueLabel"))->SetText(bConfirm?LOCTEXT("NearConfirm","确认主罚球员"):Category==C::RollCrossAttack ? LOCTEXT("AttackRoll","进攻方掷点")
 		: Category==C::RollCrossDefense ? LOCTEXT("DefenseRoll","防守方掷点")
 		: Category==C::RollCrossRoute ? LOCTEXT("RouteRoll","判定路线")
@@ -1213,6 +1395,7 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	// Compact information/reason bar remains separate from the independent CTA.
 	FText Detail;
 	bool bPrimaryOwnsRollStatus=false;
+	bool bActionOwnerOnly=false;
 	if (bFinal) Detail=FText::FromString(P.ResolutionReasonLabel);
 	else if (bSelection) Detail=bConfirm?LOCTEXT("NearDraft","已选主罚球员，确认后继续")
 		:Screen.SetPiece.TakerOptions.IsEmpty()?LOCTEXT("NearWaitTaker","等待进攻方选择主罚球员"):LOCTEXT("NearChooseTaker","请选择主罚球员");
@@ -1223,12 +1406,14 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	{
 		Detail=P.bDiceRevealVisible?LOCTEXT("AttackRolling","进攻方掷点中"):bAction?LOCTEXT("AttackTurn","轮到进攻方掷点"):LOCTEXT("WaitAttack","等待进攻方掷点");
 		bPrimaryOwnsRollStatus=P.bDiceRevealVisible;
+		bActionOwnerOnly=!P.bDiceRevealVisible;
 	}
 	else if (bPair) Detail=FText::FromString(P.RollHelperLabel.IsEmpty()
 		? FFMCodexPlayerUIPresentationText::SetPieceCompactOutcomeHint(Screen.SetPiece.Type).ToString():P.RollHelperLabel);
 	else if (Screen.Interaction.Category==C::SelectBranchIntent) Detail=LOCTEXT("ChooseCross","请选择传中方式");
 	else if (bFormula)
 	{
+		bActionOwnerOnly=!P.bDiceRevealVisible;
 		const bool bAttackTurn=P.bAttackRowActive;
 		if (P.bDiceRevealVisible)
 		{
@@ -1277,6 +1462,11 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 		SecondaryReason=LOCTEXT("LongAttackMissHint","进攻掷点 1–2：直接射偏").ToString();
 		SetText(Tree,TEXT("TheaterReasonSecondary"),SecondaryReason);
 	}
+	if (bThroughFormula && P.ContestId==TEXT("ThroughBall.BehindDefense.P1") && bFormula && !bFinal && P.bAttackRowActive)
+	{
+		SecondaryReason=FFMCodexPlayerUIPresentationText::ThroughBallBehindDefenseOutcomeHint().ToString();
+		SetText(Tree,TEXT("TheaterReasonSecondary"),SecondaryReason);
+	}
 	Show(*Tree.FindWidget(TEXT("TheaterReasonSecondary")),!SecondaryReason.IsEmpty());
 	Show(*Tree.FindWidget(TEXT("TheaterReasonMark"))->GetParent(),bFinal);
 	Show(*Tree.FindWidget(TEXT("TheaterReasonSeparator"))->GetParent(),bFinal);
@@ -1313,14 +1503,22 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	// De-duplicate by presentation meaning, never by translated string matching.
 	// Actor/wait/pending and pair-die sequence helpers add information; keep them.
 	// Hidden preserves the same allocation as visible text throughout the reveal.
-	const bool bRedundantHelper=bPrimaryOwnsRollStatus && bHelperOnlyNamesRollOwner;
+	// Only the action-only branches above move authoritative ownership into the
+	// main bar. Rule, success-condition and result/reason branches retain theirs.
+	if (bActionOwnerOnly && !Status.IsEmpty())
+	{
+		Detail=FText::FromString(Status);
+		Find<UTextBlock>(Tree,TEXT("TheaterDetail"))->SetText(Detail);
+	}
+	const bool bRedundantHelper=(bActionOwnerOnly && !Status.IsEmpty())
+		|| (bPrimaryOwnsRollStatus && bHelperOnlyNamesRollOwner);
 	Tree.FindWidget(TEXT("TheaterStatus"))->SetVisibility(bRedundantHelper?ESlateVisibility::Hidden:ESlateVisibility::SelfHitTestInvisible);
 	// Taker rules are peers; result/roll explanations retain their supporting hierarchy.
 	auto* RuleLine=Find<UTextBlock>(Tree,TEXT("TheaterReasonSecondary"));
 	auto RuleFont=Find<UTextBlock>(Tree,TEXT("TheaterDetail"))->GetFont();
 	if (!bInspect && !bCorner) RuleFont.Size=14;
 	RuleLine->SetFont(RuleFont); RuleLine->SetColorAndOpacity(bInspect || bCorner?White:Quiet);
-	Show(*Tree.FindWidget(TEXT("TheaterRoll")),P.bDiceRevealVisible && !bFormula && !bCompactRoll && !bShared && !bShotConsumer);
+	Show(*Tree.FindWidget(TEXT("TheaterRoll")),P.bDiceRevealVisible && !bFormula && !bCompactRoll && !bShared && !bShotConsumer && !bThrough);
 	RefreshParticipantDraw(Tree,Screen,P,bShared);
 	RefreshReel(Tree,P.RollReel);
 	if (bInspect) RefreshTakerHelper(Tree,Inspection);
@@ -1414,7 +1612,45 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 			}
 		}
 	}
-	if (bShotConsumer)
+	if (bThrough)
+	{
+		for (const auto Prefix:{TEXT("TheaterAttack"),TEXT("TheaterDefense")})
+			Find<UTextBlock>(Tree,Named(Prefix,TEXT("FinalNumber")))->SetColorAndOpacity(White);
+		Find<UTextBlock>(Tree,TEXT("TheaterTitle"))->SetText(LOCTEXT("ThroughBall","直塞"));
+		const FText Stage=bThroughChoice?LOCTEXT("OneOnOneMethod","单刀 · 选择射门方式")
+			:P.ContestId==TEXT("ThroughBall.Feet")?LOCTEXT("ThroughBallFeet","脚下球")
+			:P.ContestId==TEXT("ThroughBall.BehindDefense.P1")?LOCTEXT("ThroughBallBehind","身后球")
+			:P.ContestId==TEXT("ThroughBall.OneOnOne.DirectShot")?LOCTEXT("ThroughBallDirect","单刀 · 直接射门")
+			:FText::FromString(Through.StageLabel);
+		Find<UTextBlock>(Tree,TEXT("TheaterSubtitle"))->SetText(bFinal?FText::GetEmpty():Stage);
+		Show(*Tree.FindWidget(TEXT("TheaterDuel")),!bThroughEvent || !P.AttackRow.Participants.IsEmpty());
+		Show(*Tree.FindWidget(TEXT("TheaterAttackRollCaption")),bShotRollOnly);
+		if (bThroughChoice)
+		{
+			for (bool bDirect:{true,false})
+			{
+				const auto Method=bDirect?EFMCodexUMGOneOnOneChoice::DirectShot:EFMCodexUMGOneOnOneChoice::ChipShot;
+				const auto* Choice=Through.OneOnOneChoices.FindByPredicate([Method](const auto& V){return V.Choice==Method;});
+				const bool bEnabled=Choice && !bRequestPending && !Screen.bActionWaitPromptReadOnly;
+				Find<UButton>(Tree,bDirect?TEXT("TheaterNearDirect"):TEXT("TheaterNearCombination"))->SetIsEnabled(bEnabled);
+				auto* Label=Find<UTextBlock>(Tree,bDirect?TEXT("TheaterNearDirectLabel"):TEXT("TheaterNearCombinationLabel"));
+				Label->SetText(Choice?FText::FromString(Choice->Label):bDirect?LOCTEXT("NearDirect","直接射门"):LOCTEXT("ChipMethod","挑射"));
+				Label->SetColorAndOpacity(bEnabled?Ink:Quiet);
+				Find<UTextBlock>(Tree,bDirect?TEXT("TheaterNearDirectHint"):TEXT("TheaterNearCombinationHint"))->SetText(bDirect
+					?LOCTEXT("ThroughBallDirectHint","比较射门与门将单刀"):LOCTEXT("ThroughBallChipHint","仅按掷点判定"));
+				// A method comparison does not introduce a spatial tactical scene.
+				Show(*Tree.FindWidget(bDirect?TEXT("TheaterNearDirectDiagram"):TEXT("TheaterNearCombinationDiagram")),false);
+			}
+			SetText(Tree,TEXT("TheaterDetail"),LOCTEXT("OneOnOneChoose","已形成单刀，选择射门方式").ToString());
+			Show(*Tree.FindWidget(TEXT("TheaterDetail")),true);
+			SetText(Tree,TEXT("TheaterStatus"),bRequestPending?LOCTEXT("PendingRequest","操作已提交，等待确认").ToString():Screen.bMirrorActionWaitPrompt
+				?Screen.ActionWaitActorText.ToString()+TEXT("  ")+Screen.ActionWaitActionText.ToString()
+				:FFMCodexPlayerUIPresentationText::MatchScreenLabel(Screen.Interaction.ExpectedActorLabel).ToString());
+		}
+		if (bThroughEvent && bFinal && P.ResolutionReasonLabel.IsEmpty())
+			Show(*Tree.FindWidget(TEXT("TheaterInfoBar"))->GetParent(),false);
+	}
+	if (bShotConsumer || bThrough)
 	{
 		// Preserve the projected wording. Allocate its measured width including
 		// icon, separator and padding instead of allowing long CJK labels to overflow.
@@ -1472,7 +1708,7 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 }
 void RefreshReel(UWidgetTree& Tree, const FFMCodexUMGRollReelViewModel& Reel)
 {
-	for (const auto Prefix:{TEXT("TheaterAttack"),TEXT("TheaterDefense"),TEXT("Theater"),TEXT("TheaterPairA"),TEXT("TheaterPairB"),TEXT("TheaterDraw")})
+	for (const auto Prefix:{TEXT("TheaterAttack"),TEXT("TheaterDefense"),TEXT("Theater"),TEXT("TheaterPairA"),TEXT("TheaterPairB"),TEXT("TheaterDraw"),TEXT("TheaterEvent")})
 	{
 		auto* W=Cast<UFMCodexRollReelWidget>(Tree.FindWidget(Named(Prefix,TEXT("Reel"))));
 		auto* Host=Tree.FindWidget(Named(Prefix,FString(Prefix)==TEXT("Theater") ? TEXT("Roll") : TEXT("ReelHost")));

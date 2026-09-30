@@ -2047,7 +2047,9 @@ namespace FMCodexLocalMatchUMGPresentation
 				&& PrimaryAction.bAvailable;
 		if (bNarrativeReady)
 		{
-			if (bResolvedCross || (bResolvedElectiveDirect && !bElectiveDirectImmediateMiss))
+			if (bResolvedCross || (bResolvedElectiveDirect && !bElectiveDirectImmediateMiss)
+				|| bResolvedThroughBallFeet || bResolvedThroughBallDirect
+				|| (bResolvedThroughBallBehind && !bBehindOutOfPlay))
 			{
 				Result.ResolutionReasonLabel = FormulaReason(Contest->ResolvedResult, Result.AttackRow, Result.DefenseRow);
 			}
@@ -2055,6 +2057,17 @@ namespace FMCodexLocalMatchUMGPresentation
 			{
 				Result.ResolutionReasonLabel = NSLOCTEXT("FMCodexTheater", "ShotImmediateMissReason",
 					"进攻掷点 1–2：直接射偏\n本次进攻结束，不进行攻防比较").ToString();
+			}
+			else if (bBehindOutOfPlay)
+			{
+				const auto* AttackRoll=Result.AttackRow.Terms.FindByPredicate([](const auto& Term)
+					{return Term.Kind==EFMCodexUMGInlineFormulaTermKind::RawRoll && Term.bResolved;});
+				// Explain an already-authoritative OutOfPlay decision, never infer it from the operand.
+				Result.ResolutionReasonLabel = AttackRoll
+					?FText::Format(NSLOCTEXT("FMCodexTheater", "BehindOutOfPlayRollReason",
+						"传球出界\n进攻掷点 {0} 落入 1–2，本次不进行防守比较"),FText::AsNumber(AttackRoll->RawD6)).ToString()
+					:NSLOCTEXT("FMCodexTheater", "BehindOutOfPlayRangeReason",
+						"传球出界\n进攻掷点落入 1–2，本次不进行防守比较").ToString();
 			}
 			Result.bNarrativeAttackSuccess = bResolvedElectiveDirect
 				? ElectiveDirectDecision->Outcome

@@ -271,6 +271,25 @@ FText FFMCodexTacticalDetailPresentationBuilder::BuildCrossRouteHint(const EMatc
 		Intent == EMatchPlayElectiveBranchIntent::CrossHigh ? Low : High);
 }
 
+FText FFMCodexTacticalDetailPresentationBuilder::BuildThroughBallRouteHint()
+{
+	const auto* Description = FTacticalRuleDescriptionCatalog::FindBySkillType(ESkillRuleType::ThroughBall);
+	if (!Description) return FText::GetEmpty();
+	TArray<FString> Ranges;
+	for (const auto& Outcome : Description->InitialRouteOutcomes)
+	{
+		// Static rule references only. This does not select the live route from a die.
+		const auto Branch = Outcome.OutcomeId == TEXT("ThroughBall.Feet") ? EMatchPlayThroughBallActualBranch::Feet
+			: Outcome.OutcomeId == TEXT("ThroughBall.BehindDefenseP1") ? EMatchPlayThroughBallActualBranch::BehindDefense
+			: Outcome.OutcomeId == TEXT("ThroughBall.AntiOffside") ? EMatchPlayThroughBallActualBranch::AntiOffside
+			: EMatchPlayThroughBallActualBranch::None;
+		const FText Label = FFMCodexPlayerUIPresentationText::ThroughBallRoute(Branch);
+		if (Label.IsEmpty()) return FText::GetEmpty();
+		Ranges.Add(FFMCodexPlayerUIPresentationText::TacticalOutcomeRange(Outcome.Minimum, Outcome.Maximum, Label).ToString());
+	}
+	return FText::FromString(FString::Join(Ranges, TEXT("　｜　")));
+}
+
 FFMCodexUMGTacticalDetailViewModel
 FFMCodexTacticalDetailPresentationBuilder::Build(
 	const ESkillRuleType SkillType)

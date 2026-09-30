@@ -2547,3 +2547,9 @@ DirectShot 的 ResultHold 不再因 reveal 仍活动而显示“掷点中”，�
 收尾已复核完整 tracked diff、未跟踪 PIE 文件、共享消费者／Network／Shipping 边界及文档一致性。沿用 B/C/D/E 已通过的 focused/affected、增量 Development Editor build 和真实 Local PIE 证据，以及本次用户验收；收尾只同步文档，运行时和测试实现未发生实质变更。本轮新增 gameplay tests / build / PIE / Network tests / Host-Remote / Shipping 均为 0；未改变公共权威、网络、披露或 Shipping 条件分支，不重复 broad suites。REGRESSION SCOPE JUSTIFIED: YES。
 
 未 staging 或 commit；最终提交由用户在 GitHub Desktop 手动完成。未启动 ThroughBall、8.18F 或新 polish。
+
+## 2026-09-30 — Stage 8.19 acceptance and deferred Tactical Scene prototype
+
+**Stage 8.19 ThroughBall Presentation Convergence — USER PIE PASS。** 用户已接受 B / B.1 / C 及后续 polish 的最终完整流程，包括独立外置 CompactBox、紧凑球员上下文、Formula / Outcome 连续性，以及叙事可见后约 3.1 秒的单刀中间结果停留。UI 规范中的阶段性“待 USER PIE”记录由本次最终用户验收状态取代；staging / commit 仍由用户手动完成。
+
+**Tactical Scene / Spatial Presentation Prototype — DEFERRED。** 当前优先方向为 Rules Simplification / Optimization；待该工作达到稳定、干净的 commit 节点后再重新启动原型评估。首个候选为 ThroughBall，沿用现有 Theater，不属于 Stage 8.19 当前生产交付，也不在本次实现。详见 [延期原型记录](Backlog/Tactical_Scene_Spatial_Presentation_Prototype.md)。

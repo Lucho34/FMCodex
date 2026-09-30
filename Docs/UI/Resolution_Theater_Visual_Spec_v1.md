@@ -94,11 +94,29 @@ High / Low Cross 体力理由读取 `ResolvedResult` 的权威参与球员总和
 
 短、适合重复观看的入场顺序为 Attack → Defense → VS → action availability。沿用已验收 timing；动画只控制 presentation，不能推动权威状态或消耗 RNG。Roll 保留 Stage 8.6 共享 lifecycle、真实 elapsed-time ResultHold 与 event identity/dedupe；Cross route 和 High / Low Formula 采用共享 Roll v2 运动，Legacy 消费方保留原轨迹。
 
+## ThroughBall 全流程接入（Stage 8.19C，待完整 USER PIE）
+
+直塞从 InitialRoute 预掷点开始一直留在同一 Theater，覆盖 Anti、Feet、Behind、单刀选择、Direct、Chip 和所有 terminal Outcome；不在中途恢复旧机械外框。B/B.1 的完整入场、事件隔离与 Roll hold 保留，原 B.2 / C / D 分段交付计划取消。
+
+路线与 Anti 均按已投影 Carrier / 传球 → Runner / 跑位排序，单刀选择／Chip 只需 Runner。复用现有参与者面板与 Player Art，不使用 Full Card、球场位置推断、战术空间图或新 token。路线范围是只读参考，不是三个选项。独立骰子使用 CompactBox；Feet / Behind / Direct 使用现有双方 Base / Roll / Final 与 TheaterInline，参与者和 Reason 只消费各自 authoritative facts。
+
+Behind 1–2 提前出界采用“真实骰点可见后再隐藏未执行比较”的非对称原则，不复制 LongShot 玩法。Behind 进攻胜是单刀中间结果；已有门控叙事／胜因之后进入现代双方法选择。Direct 必须独立完成双方新骰，不能继承 LongShot 的 ImmediateMiss；Chip 是一枚独立 D6，无防守或双骰和。
+
+所有 Offside / OutOfPlay / DefenderStopped / Goal / Miss 在 Theater 中复用 Shared Outcome / Narrative 与原有下一回合、比分、scorer 和 Full-Time gates。Route hold 屏蔽下游内容，Formula 攻击 hold 屏蔽合并快照中的防守与结果，重复 View 不重播。完整合同见 [ThroughBall Foundation](ThroughBall_Production_Presentation_Foundation.md)。除下述等价 action-owner 文案去重外，其他 consumer 的默认布局／选项／Reel 行为不变；Tactical Scene 空间原型延期。工程验证后仍须完整 USER PIE。
+
+### Stage 8.19C 紧凑层级与共享操作人语法
+
+ThroughBall Route / Anti / Chip 不使用独立大型规则框；攻击上下文只保留身份与既有 Player Art，复用紧凑卡片高度。独立 CompactBox 骰格使用 Cross route 同位置的底部 action / roll lane，与上下文卡分离；预掷点无装饰骰子图标，隐藏数字格保留占位，rolling / landed / hold 位置不变。范围栏与 owner 保持原有层级。稀疏 Offside 结果保留传球、跑位上下文，Chip 保留 Runner；密集 Formula 结果不叠加重复面板。Behind 出界数字明确标为“进攻掷点”，原因区解释实际点数落入 1–2 后不执行防守比较。单刀中间成功自叙事披露后保留 3.10 秒阅读时间（含 0.38 秒披露延迟的 ResultHold 总长 3.48 秒）；选项 helper 紧邻并居中于各自按钮，无额外确认或玩法条件。
+
+普通攻防掷点 pre-roll 的主栏只承担动作状态时，使用“请玩家 A/B 操作”，CTA 使用“进攻方/防守方掷点”，重复的小 owner 行 Hidden 保持占位。等待方由安全投影提供“等待玩家 X 操作”及预期动作，无可操作 CTA。覆盖实际共用此分支的 Cross、Near/Long Direct、普通 Shot、常规点球、Corner Formula 与 ThroughBall Formula；同语义单骰动作也复用。滚动中保留掷点状态与有用的 pending 信息。
+
+这是按显示职责选择的分支，不匹配中文字符串。路线/选人提示、DeadCorner 与 FK 双骰阈值、选人/选择前提、Formula Reason、终结结果均不替换为 owner。HeroRoll、Set Piece Type D6、Legacy 与 dormant PassControl 不在本次文案清理范围。
+
 ## 生产入口与工程边界
 
 Development 默认 `fm.UI.ResolutionStageV2=1`、`fm.UI.ResolutionStageV2.LowCross=1`、`fm.UI.ResolutionStageV2.NearFreeKick=1`、`fm.UI.ResolutionStageV2.LongFreeKick=1`、`fm.UI.ResolutionStageV2.Penalty=1`、`fm.UI.ResolutionStageV2.CornerSelection=1` 与 `fm.UI.ResolutionStageV2.CornerResolution=1`。Near / Long / Penalty 各自开关关闭只回退对应家族。CornerSelection 只回退候选规划，CornerResolution 只回退锁定后的完整结算；主开关仍控制 Theater 总入口。Low 开关关闭只回退 Low；关闭主开关使用旧界面，此时 `fm.UI.FormulaV2=0/1` 选择相应历史比较层。这些开关仅用于 non-Shipping 对照，不是玩家产品设置。
 
-Shipping 编译为中性 Cross 入口、实际 High / Low、LongShot / CutInside（分支选择及结算）及已披露类型后的 Near / Long / Penalty / Corner（规划及结算）Theater 始终开启，无 cvar、控制台命令或 prototype 配置依赖。实现中的 Prototype 命名属于历史，不表示生产路径尚待采用。8.18B–E 已获 USER PIE PASS；本组复用既有 Shipping 入口，无新增 Shipping 专属分支或 Development 依赖。
+Shipping 编译为中性 Cross 入口、实际 High / Low、LongShot / CutInside（分支选择及结算）、ThroughBall 全流程，以及已披露类型后的 Near / Long / Penalty / Corner（规划及结算）Theater 始终开启，无 cvar、控制台命令或 prototype 配置依赖。实现中的 Prototype 命名属于历史，不表示生产路径尚待采用。8.18B–E 已获 USER PIE PASS；ThroughBall 8.19C 待完整 USER PIE，复用既有 Shipping 入口，无新增 Shipping 专属分支或 Development 依赖。
 
 资源来源、字体限制及历史参数见 [实现说明](../Dev/Resolution_Theater_Prototype_v1.md)。TheaterInline 与 CompactBox 均已纳入当前传中生产家族；Stage 8.10 未增加运行时美术资源。
 
@@ -148,7 +166,7 @@ Near 第二行按 hover 优先的当前检查对象追加“，{PlayerName}可�
 - 已安全披露的真实主罚球员、门将保持身份连续；不由装饰轮廓、roster 顺序或 UI 属性推测参与、赢家或 scorer。
 - 防守滚动时，进攻已落定骰点和值保持静态。双骰逐枚显示，第二枚和权威总和通过现有 gate；不新增 RNG、clock、确认或提前比分。
 - 信息栏对齐当前主内容区域；小型操作身份居中位于其下。选择页两条规则为同级，结果栏仍保留主理由 / 从属解释层级；显式 CTA 独立。
-- **次级 helper 仅在增加信息时显示。** 主栏已表达进攻/防守掷点中时，纯 roll-owner helper 使用保持占位的 Hidden；玩家 A/B 操作身份、等待/提交状态、第一/第二枚顺序、前提与结果解释保留。判断依据是语义职责，不是中文字符串黑名单。该规则同样适用于等价 High / Low Formula 状态。
+- **次级 helper 仅在增加信息时显示。** 主栏已表达进攻/防守掷点中时，纯 roll-owner helper 使用保持占位的 Hidden；普通攻防 pre-roll 的主栏改为安全投影的玩家 A/B 操作身份，CTA 保留动作，小型重复 owner 行 Hidden；等待 viewer 主栏保留等待身份与预期动作，pending 仍明确显示提交状态。第一/第二枚顺序、前提与结果解释保留。判断依据是语义职责，不是中文字符串黑名单。该规则同样适用于等价 High / Low Formula 状态。
 - Outcome、Reason、获胜标识和可见比分共同服从既有结果 gate；权威已计分不等于可见叙事已揭示。Next Round 仍提交 canonical continuation，正常返回 Match Board。
 
 ## Penalty Theater — Stage 8.12 production contract

@@ -3,6 +3,7 @@
 #include "FMCodexOutcomePresentation.h"
 
 #include "FMCodexPlayerUIStyle.h"
+#include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 #include "FMCodexInteractionOptionWidget.h"
 #include "FMCodexRollReelWidget.h"
@@ -247,8 +248,11 @@ void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
 	RollReel = WidgetTree->ConstructWidget<UFMCodexRollReelWidget>(
 		UFMCodexRollReelWidget::StaticClass(),
 		TEXT("ThroughBallSharedRollReel"));
+	auto* ReelBounds = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(), TEXT("ThroughBallRollBounds"));
+	ReelBounds->AddChild(RollReel);
 	if (UVerticalBoxSlot* ReelBoxSlot =
-		RevealBody->AddChildToVerticalBox(RollReel))
+		RevealBody->AddChildToVerticalBox(ReelBounds))
 	{
 		ReelBoxSlot->SetHorizontalAlignment(HAlign_Center);
 	}
@@ -364,16 +368,33 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals(
 		? ESlateVisibility::SelfHitTestInvisible
 		: ESlateVisibility::Collapsed);
 	// Restore the original non-outcome composition on every reuse.
+	const bool bCompactEvent = Presentation.bVisible
+		&& (Presentation.Stage == EFMCodexUMGThroughBallStage::InitialRoute
+			|| (Presentation.Stage == EFMCodexUMGThroughBallStage::AntiOffsideCheck
+				&& (!Presentation.bNarrativeAvailable || Presentation.bDiceRevealVisible)));
 	const bool bFormulaHost = Presentation.Formula.bVisible && Presentation.Formula.bShowFormulaRows;
-	const bool bOutcomeFamily = Presentation.bVisible && !Presentation.Formula.bVisible
+	const bool bOutcomeFamily = !bCompactEvent && Presentation.bVisible && !Presentation.Formula.bVisible
 		&& (Presentation.bNarrativeAvailable || (Presentation.bDiceRevealVisible && Presentation.Stage != EFMCodexUMGThroughBallStage::InitialRoute));
 	const bool bOutcome = bOutcomeFamily && FMCodexOutcomePresentation::IsFinalReady(Presentation.bNarrativeAvailable, Presentation.bDiceRevealVisible);
 	const bool bEmbeddedOutcome = FMCodexOutcomePresentation::OwnsInlineSurface(Presentation.Formula);
 	CastChecked<UFMCodexMatchFlowPanel>(GetWidgetFromName(TEXT("ThroughBallProductionSurfaceFrame")))
-		->SetFlowStyleEnabled(bFormulaHost || bOutcomeFamily || bEmbeddedOutcome);
+		->SetFlowStyleEnabled(bCompactEvent || bFormulaHost || bOutcomeFamily || bEmbeddedOutcome);
 	CastChecked<UFMCodexMatchFlowPanel>(DiceRevealRegion)->SetFormulaRole(
 		bOutcomeFamily || bEmbeddedOutcome ? EFMCodexFormulaPanelRole::RollHost : EFMCodexFormulaPanelRole::None);
 	const auto& Style = FFMCodexPlayerUIStyle::Get();
+	// Explicit consumer opt-in, restored on every refresh when this host is reused.
+	RollReel->SetVisualVariant(bCompactEvent ? EFMCodexRollVisualVariant::CompactBox
+		: EFMCodexRollVisualVariant::Legacy);
+	auto* ReelBounds = CastChecked<USizeBox>(GetWidgetFromName(TEXT("ThroughBallRollBounds")));
+	ReelBounds->SetVisibility(Presentation.bDiceRevealVisible
+		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+	if (bCompactEvent) { ReelBounds->SetWidthOverride(84.f); ReelBounds->SetHeightOverride(72.f); }
+	else { ReelBounds->ClearWidthOverride(); ReelBounds->ClearHeightOverride(); }
+	Style.ApplyBorder(*DiceRevealRegion, EFMCodexPlayerUIColorRole::PanelInset, FMargin(14,10));
+	if (bCompactEvent) DiceRevealRegion->SetBrushColor(FLinearColor::Transparent);
+	Style.ApplyText(*RouteResultText, EFMCodexPlayerUITextRole::SectionHeading);
+	Style.ApplyText(*OutcomeHintText, EFMCodexPlayerUITextRole::Secondary);
+	Style.ApplyText(*StatusText, EFMCodexPlayerUITextRole::Secondary);
 	auto* Frame = CastChecked<UFMCodexMatchFlowPanel>(GetWidgetFromName(TEXT("ThroughBallProductionSurfaceFrame")));
 	auto* Bounds = CastChecked<USizeBox>(GetWidgetFromName(TEXT("ThroughBallProductionSurfaceBounds")));
 	Frame->SetPadding(FMargin(22, 16));
@@ -452,6 +473,46 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals(
 	}
 	if (bOutcome) FMCodexOutcomePresentation::ApplyActionStyle(*ContinueButton);
 	if (bOutcomeFamily && !bOutcome) ContinueButton->GetParent()->SetVisibility(ESlateVisibility::Collapsed);
+	if (bCompactEvent)
+	{
+		// One event heading, one fixed read-only numeric cell, one action. The
+		// completed route is supporting context only on the AntiOffside page.
+		Frame->SetPadding(FMargin(28,22));
+		Bounds->SetMinDesiredWidth(560.f);
+		RouteText->SetVisibility(ESlateVisibility::Collapsed);
+		Style.ApplyFlowText(*StageText, 26);
+		StageText->SetText(Presentation.Stage == EFMCodexUMGThroughBallStage::InitialRoute
+			? NSLOCTEXT("FMCodexThroughBall", "RouteEvent", "判定直塞路线")
+			: NSLOCTEXT("FMCodexThroughBall", "AntiEvent", "反越位判定"));
+		const bool bRouteEvent = Presentation.Stage == EFMCodexUMGThroughBallStage::InitialRoute;
+		Style.ApplyFlowText(*RouteResultText, 14);
+		if (bRouteEvent) RouteResultText->SetVisibility(ESlateVisibility::Collapsed);
+		Style.ApplyFlowText(*OutcomeHintText, 18);
+		if (!bRouteEvent && Presentation.OutcomeRollHint.bVisible)
+		{
+			// Read-only canonical ranges; clarify the existing progression label
+			// only on this event, without interpreting the rolled value here.
+			TArray<FString> Ranges;
+			for (const auto& Entry : Presentation.OutcomeRollHint.Entries)
+				Ranges.Add(Entry.OutcomeId == TEXT("OneOnOne")
+					? FFMCodexPlayerUIPresentationText::TacticalOutcomeRange(Entry.Minimum, Entry.Maximum,
+						NSLOCTEXT("FMCodexThroughBall", "AntiFormsOneOnOne", "形成单刀")).ToString()
+					: Entry.DisplayLabel);
+			SetOptionalText(OutcomeHintText, FString::Join(Ranges, TEXT("　｜　")));
+		}
+		ResultTitleText->SetVisibility(ESlateVisibility::Collapsed);
+		NarrativeText->SetVisibility(ESlateVisibility::Collapsed);
+		if (Presentation.bDiceRevealVisible)
+		{
+			Style.ApplyFlowText(*StatusText, bRouteEvent ? 20 : 16);
+			// One stable line through cycling and landing keeps the die in place.
+			SetOptionalText(StatusText, bRouteEvent && !Presentation.RouteResultLabel.IsEmpty()
+				? Presentation.RouteResultLabel : Presentation.bNarrativeAvailable
+				? Presentation.ResultTitle
+				: NSLOCTEXT("FMCodexThroughBall", "Rolling", "正在掷点").ToString());
+		}
+		FMCodexOutcomePresentation::ApplyActionStyle(*ContinueButton);
+	}
 }
 
 void UFMCodexThroughBallResolutionSurfaceWidget::RebuildOneOnOneChoices()

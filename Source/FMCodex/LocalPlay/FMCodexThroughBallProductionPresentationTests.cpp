@@ -11,11 +11,14 @@
 #include "FMCodexRollReelWidget.h"
 #include "FMCodexTacticalDetailPanelWidget.h"
 #include "FMCodexThroughBallResolutionSurfaceWidget.h"
+#include "FMCodexResolutionTheaterPrototype.h"
 
 #include "Components/Button.h"
 #include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
+#include "Components/RichTextBlock.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -207,6 +210,9 @@ namespace FMCodexThroughBallProductionPresentationTests
 		if (Contest.bHasResolvedFormula && Winner != EFormulaWinner::None)
 		{
 			Contest.ResolvedResult.FormulaType = EFormulaType::Finishing;
+			Contest.ResolvedResult.WinReason=EFormulaWinReason::HigherFinalValue;
+			Contest.ResolvedResult.AttackerFinalValue=Contest.AttackRow.FinalValue;
+			Contest.ResolvedResult.DefenderFinalValue=Contest.DefenseRow.FinalValue;
 			Contest.ResolvedResult.Winner = Winner;
 			Contest.ResolvedResult.bAttackEnded = true;
 			Contest.ResolvedResult.bContinueResolution = false;
@@ -433,6 +439,7 @@ namespace FMCodexThroughBallProductionPresentationTests
 		if (Contest.bHasResolvedFormula)
 		{
 			Contest.ResolvedResult.FormulaType = EFormulaType::Transition;
+			Contest.ResolvedResult.WinReason=EFormulaWinReason::FastSuppression;
 			Contest.ResolvedResult.Winner = Outcome
 				== EMatchPlayResolutionDecisionOutcome::OneOnOneRequired
 					? EFormulaWinner::Attacker : EFormulaWinner::Defender;
@@ -778,6 +785,7 @@ namespace FMCodexThroughBallProductionPresentationTests
 		Contest.bHasResolvedFormula = bAttackResolved && bDefenseResolved;
 		if (Contest.bHasResolvedFormula)
 		{
+			Contest.ResolvedResult.WinReason=EFormulaWinReason::FastSuppression;
 			Contest.ResolvedResult.Winner = Outcome
 				== EMatchPlayResolutionDecisionOutcome::Goal
 					? EFormulaWinner::Attacker : EFormulaWinner::Defender;
@@ -833,6 +841,17 @@ namespace FMCodexThroughBallProductionPresentationTests
 		View.InteractionCategory =
 			EFMCodexLocalMatchInteractionCategory::RollThroughBallInitialRoute;
 		View.ContinueActionLabel = TEXT("判定直塞路线");
+		View.SelectedCarrierCardId=TEXT("Fixture.Context.Carrier");
+		View.SelectedRunnerCardId=TEXT("Fixture.Context.Runner");
+		auto& Region=View.PitchRegions.AddDefaulted_GetRef();
+		Region.NeutralSide=EMatchPlayNeutralSlotSide::NearPlayerA;
+		for (bool bCarrier:{true,false})
+		{
+			auto& Slot=Region.Slots.AddDefaulted_GetRef(); Slot.bOccupied=true;
+			Slot.Card.CardId=bCarrier?View.SelectedCarrierCardId:View.SelectedRunnerCardId;
+			Slot.Card.Side=EInitialTurnOrderPlayer::PlayerA;
+			Slot.Card.DisplayLabel=bCarrier?TEXT("厄德高"):TEXT("哈兰德");
+		}
 		return View;
 	}
 
@@ -865,6 +884,65 @@ namespace FMCodexThroughBallProductionPresentationTests
 			Result += Choice.Label;
 		}
 		return Result;
+	}
+
+	void CheckTheater(FAutomationTestBase& Test, UFMCodexLocalMatchScreenWidget& Screen, bool bOutcome=false)
+	{
+		Test.TestTrue(TEXT("ThroughBall has one modern outer surface and denies Full Card"),
+			Screen.GetWidgetFromName(TEXT("ResolutionTheater"))->GetVisibility()!=ESlateVisibility::Collapsed
+			&& Screen.GetThroughBallResolutionSurface()->GetVisibility()==ESlateVisibility::Collapsed
+			&& !Screen.IsLegacyResolutionOverlayVisible() && !Screen.IsDetailOverlayVisible());
+		if (bOutcome) Test.TestTrue(TEXT("Shared Outcome is painted in Theater"),
+			Screen.GetWidgetFromName(TEXT("TheaterOutcome"))->GetVisibility()!=ESlateVisibility::Collapsed
+			&& !CastChecked<URichTextBlock>(Screen.GetWidgetFromName(TEXT("TheaterOutcome")))->GetText().IsEmpty());
+	}
+	void CheckFormula(FAutomationTestBase& Test, UFMCodexLocalMatchScreenWidget& Screen)
+	{
+		CheckTheater(Test,Screen);
+		const auto& P=Screen.GetThroughBallResolutionSurface()->GetPresentation().Formula;
+		for (bool bAttack:{true,false})
+		{
+			const FString Prefix=bAttack?TEXT("TheaterAttack"):TEXT("TheaterDefense");
+			const auto& Row=bAttack?P.AttackRow:P.DefenseRow;
+			Test.TestEqual(TEXT("Projected Base uses production numeric grammar"),
+				CastChecked<UTextBlock>(Screen.GetWidgetFromName(FName(*(Prefix+TEXT("Number")))))->GetText().ToString(), FText::AsNumber(Row.KnownNonRollSubtotal).ToString());
+			Test.TestEqual(TEXT("Formula operands opt into TheaterInline"),
+				CastChecked<UFMCodexRollReelWidget>(Screen.GetWidgetFromName(FName(*(Prefix+TEXT("Reel")))))->GetVisualVariant(),EFMCodexRollVisualVariant::TheaterInline);
+			for (int32 I=0;I<Row.Participants.Num();++I)
+			{
+				const auto* Name=Cast<UTextBlock>(Screen.GetWidgetFromName(FName(*(Prefix+FString::Printf(TEXT("Name%d"),I)))));
+				Test.TestNotNull(TEXT("Projected participant has a name slot"),Name);
+				Test.TestEqual(TEXT("Theater shows only projected Formula participants"),
+					Name?Name->GetText().ToString():FString(),Row.Participants[I].PlayerName);
+			}
+		}
+	}
+	void CheckMergedFormula(FAutomationTestBase& Test, const FFMCodexUMGMatchScreenViewModel& Preview,
+		FFMCodexUMGMatchScreenViewModel Future)
+	{
+		const FName Contest=Preview.ThroughBallResolution.Formula.ContestId;
+		for (const auto& Fact:Future.Resolution.FormulaFacts.Rolls)
+		{
+			if (Fact.bInitialRoute || !Fact.bResolved || Fact.Semantics!=EMatchPlayResolutionRollSemantics::ArithmeticContest) continue;
+			auto& Event=Future.ResolvedRolls.AddDefaulted_GetRef();
+			Event.Kind=Fact.OwningSide==Preview.ThroughBallResolution.Formula.AttackRow.Side?EFMCodexUMGCrossRollRevealKind::Attack:EFMCodexUMGCrossRollRevealKind::Defense;
+			Event.ContestId=Contest; Event.AttackSequence=Future.Header.AttackSequence;
+			Event.SequenceIndex=Fact.SequenceIndex; Event.OwnerSide=Fact.OwningSide; Event.RawD6=Fact.RawD6;
+		}
+		auto* Screen=NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+		Screen->TakeWidget(); Screen->RefreshFromPresentation(Preview); Screen->RefreshFromPresentation(Future);
+		Screen->PauseInlineFormulaRevealTimerForTesting(); Screen->AdvanceInlineFormulaRevealForTesting(1.85f);
+		const auto& P=Screen->GetThroughBallResolutionSurface()->GetPresentation().Formula;
+		Test.TestTrue(TEXT("Merged terminal keeps defense and outcome hidden during attack hold"),
+			P.bAttackRowActive && !P.DefenseRow.bFinalValueResolved && !P.bNarrativeAvailable
+			&& P.DefenseRow.Terms.ContainsByPredicate([](const auto& Term){return Term.Kind==EFMCodexUMGInlineFormulaTermKind::RawRoll && !Term.bResolved;})
+			&& Screen->GetWidgetFromName(TEXT("TheaterOutcome"))->GetVisibility()==ESlateVisibility::Collapsed);
+		const auto Phase=Screen->GetInlineFormulaRevealPhase(); Screen->RefreshFromPresentation(Future);
+		Screen->PauseInlineFormulaRevealTimerForTesting();
+		Test.TestEqual(TEXT("Merged repeated View does not replay current reveal"),Screen->GetInlineFormulaRevealPhase(),Phase);
+		Screen->AdvanceInlineFormulaRevealForTesting(2.21f);
+		Test.TestTrue(TEXT("Queued defense gets its own reveal after attack hold"),
+			Screen->IsInlineFormulaRevealInputBlocked() && Screen->GetThroughBallResolutionSurface()->GetPresentation().Formula.bDefenseRowActive);
 	}
 
 	int32 CountOccurrences(const FString& Text, const FString& Needle)
@@ -954,7 +1032,7 @@ bool FFMCodexThroughBallProductionSemanticSurfaceTest::RunTest(
 		{ EMatchPlayThroughBallActualBranch::BehindDefense, 4,
 			EFMCodexUMGThroughBallRoute::BehindDefense,
 			EFMCodexUMGThroughBallStage::BehindDefenseFirstStage,
-			TEXT("身后球"), TEXT("第一阶段") },
+			TEXT("身后球"), TEXT("身后球") },
 		{ EMatchPlayThroughBallActualBranch::AntiOffside, 6,
 			EFMCodexUMGThroughBallRoute::AntiOffside,
 			EFMCodexUMGThroughBallStage::AntiOffsideCheck,
@@ -1306,12 +1384,29 @@ bool FFMCodexThroughBallProductionSharedRevealTest::RunTest(
 	}
 	Screen->TakeWidget();
 	Screen->RefreshFromPresentation(Pending);
+	TestTrue(TEXT("Independent pre-roll has no large rule chamber"),Screen->GetWidgetFromName(TEXT("TheaterEventRule"))==nullptr);
+	TestNull(TEXT("Context card has no decorative die placeholder"),Screen->GetWidgetFromName(TEXT("TheaterEventPending")));
+	TestTrue(TEXT("Compact die shares Cross route's dedicated action lane"),
+		Screen->GetWidgetFromName(TEXT("TheaterTacticalEvent"))->GetParent()==Screen->GetWidgetFromName(TEXT("TheaterRoll"))->GetParent());
+	TestEqual(TEXT("Pre-roll preserves empty die allocation beneath the CTA"),
+		Screen->GetWidgetFromName(TEXT("TheaterEventReelHost"))->GetVisibility(),ESlateVisibility::Hidden);
+	CheckTheater(*this,*Screen);
+	TestEqual(TEXT("Route shows projected Carrier"),CastChecked<UTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterAttackName0")))->GetText().ToString(),FString(TEXT("厄德高")));
+	TestEqual(TEXT("Route shows projected Runner"),CastChecked<UTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterAttackName1")))->GetText().ToString(),FString(TEXT("哈兰德")));
+	TestTrue(TEXT("InitialRoute enters full Theater before any roll; old modal is absent"),
+		Screen->GetWidgetFromName(TEXT("ResolutionTheater")) != nullptr
+		&& Screen->GetWidgetFromName(TEXT("TheaterTacticalEvent"))->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
+		&& Screen->GetThroughBallResolutionSurface()->GetVisibility() == ESlateVisibility::Collapsed
+		&& CastChecked<UButton>(Screen->GetWidgetFromName(TEXT("TheaterContinue")))->GetIsEnabled()
+		&& Screen->GetWidgetFromName(TEXT("TheaterDuel"))->GetVisibility() == ESlateVisibility::SelfHitTestInvisible);
+	TestEqual(TEXT("Route pre-roll gives the canonical readonly reference"),
+		CastChecked<UTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterDetail")))->GetText().ToString(),
+		FString(TEXT("1–2：脚下球　｜　3–4：身后球　｜　5–6：反越位")));
 	Screen->RefreshFromPresentation(Resolved);
 	Screen->PauseInlineFormulaRevealTimerForTesting();
 	UFMCodexThroughBallResolutionSurfaceWidget* Surface =
 		Screen->GetThroughBallResolutionSurface();
-	UFMCodexRollReelWidget* Reel = Surface != nullptr
-		? Surface->GetRollReelWidget() : nullptr;
+	UFMCodexRollReelWidget* Reel = Cast<UFMCodexRollReelWidget>(Screen->GetWidgetFromName(TEXT("TheaterEventReel")));
 	TestTrue(TEXT("ThroughBall route uses the unified clipped D6 reel"),
 		Screen->GetInlineFormulaRevealPhase()
 			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
@@ -1327,11 +1422,16 @@ bool FFMCodexThroughBallProductionSharedRevealTest::RunTest(
 				== ESlateVisibility::Collapsed
 			&& !Screen->IsLegacyResolutionOverlayVisible());
 
-	Screen->AdvanceInlineFormulaRevealForTesting(1.30f);
-	TestEqual(TEXT("Shared timing enters the existing settle phase"),
+	TestEqual(TEXT("InitialRoute opts into production CompactBox"), Reel->GetVisualVariant(), EFMCodexRollVisualVariant::CompactBox);
+	TestTrue(TEXT("Cycling glyph is neutral"), Reel->GetCenterDigitWidget()->GetColorAndOpacity().GetSpecifiedColor().B
+		> Reel->GetCenterDigitWidget()->GetColorAndOpacity().GetSpecifiedColor().R);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.92f);
+	TestEqual(TEXT("Existing v2 enters continuous capture before Legacy would settle"),
 		Screen->GetInlineFormulaRevealPhase(),
 		EFMCodexUMGInlineFormulaRevealPhase::Settling);
-	Screen->AdvanceInlineFormulaRevealForTesting(0.16f);
+	Screen->AdvanceInlineFormulaRevealForTesting(0.54f);
+	TestEqual(TEXT("Authoritative landed glyph uses shared EED7A6"),
+		Reel->GetCenterDigitWidget()->GetColorAndOpacity().GetSpecifiedColor(), FLinearColor::FromSRGBColor(FColor(238,215,166)));
 	TestTrue(TEXT("Authority raw 4 lands before BehindDefense is disclosed"),
 		Screen->GetInlineFormulaRevealPhase()
 			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold
@@ -1369,6 +1469,80 @@ bool FFMCodexThroughBallProductionSharedRevealTest::RunTest(
 			&& Reconstructed->GetThroughBallResolutionSurface()
 				->GetPresentation().RouteLabel == TEXT("身后球")
 			&& !Reconstructed->IsLegacyResolutionOverlayVisible());
+
+	// Real downstream models, including a coalesced accepted Anti success. The
+	// old route-only fixture cannot detect embedded Formula or choice leakage.
+	for (auto Future : {Build(MakeFeetView(false,false)), Build(MakeBehindView(false,false)),
+		Build(MakeAntiView(false)), Build(MakeAntiView(true, EMatchPlayResolutionDecisionOutcome::OneOnOneRequired, 6))})
+	{
+		if (!Future.ThroughBallResolution.OneOnOneChoices.IsEmpty())
+		{
+			// A coalesced Network view carries the accepted chronological prefix.
+			// Local builder-only fixtures omit it because Local observes each action.
+			for (const auto& Fact : Future.Resolution.FormulaFacts.Rolls)
+			{
+				if (!Fact.bResolved) continue;
+				auto& Event = Future.ResolvedRolls.AddDefaulted_GetRef();
+				Event.Kind = Fact.bInitialRoute ? EFMCodexUMGCrossRollRevealKind::ThroughBallInitialRoute : EFMCodexUMGCrossRollRevealKind::Attack;
+				Event.ContestId = Fact.bInitialRoute ? TEXT("ThroughBall.Route") : TEXT("ThroughBall.AntiOffside");
+				Event.AttackSequence = Future.Header.AttackSequence;
+				Event.SequenceIndex = Fact.SequenceIndex; Event.OwnerSide = Fact.OwningSide; Event.RawD6 = Fact.RawD6;
+			}
+		}
+		auto* Gated = NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+		Gated->TakeWidget(); Gated->RefreshFromPresentation(Pending); Gated->RefreshFromPresentation(Future);
+		Gated->PauseInlineFormulaRevealTimerForTesting();
+		auto* Outer = Gated->GetThroughBallResolutionSurface();
+		for (const float Delta : {0.f, .92f, .54f, 1.44f})
+		{
+			Gated->AdvanceInlineFormulaRevealForTesting(Delta);
+			const auto Phase = Gated->GetInlineFormulaRevealPhase();
+			Gated->RefreshFromPresentation(Future); Gated->PauseInlineFormulaRevealTimerForTesting();
+			TestEqual(TEXT("Repeated route refresh never restarts its phase"), Gated->GetInlineFormulaRevealPhase(), Phase);
+			const auto& Shown = Outer->GetPresentation();
+			TestTrue(TEXT("Full route Theater stays primary through coalesced future facts"),
+				Outer->GetVisibility() == ESlateVisibility::Collapsed
+				&& CastChecked<UTextBlock>(Gated->GetWidgetFromName(TEXT("TheaterSubtitle")))->GetText().ToString() == TEXT("路线判定")
+				&& !CastChecked<UTextBlock>(Gated->GetWidgetFromName(TEXT("TheaterDetail")))->GetText().ToString().Contains(TEXT("形成单刀"))
+				&& Gated->GetWidgetFromName(TEXT("TheaterPrimaryBounds"))->GetVisibility() == ESlateVisibility::Collapsed);
+			TestTrue(TEXT("The entire current route hold excludes downstream UI"),
+				Shown.Stage == EFMCodexUMGThroughBallStage::InitialRoute && !Shown.Formula.bVisible
+				&& !Shown.OutcomeRollHint.bVisible && Shown.OneOnOneChoices.IsEmpty()
+				&& !Shown.bNarrativeAvailable && !Shown.PrimaryAction.bVisible
+				&& Outer->GetFormulaSurface()->GetVisibility() == ESlateVisibility::Collapsed
+				&& Outer->GetOneOnOneChoiceWidgets().IsEmpty());
+		}
+		Gated->AdvanceInlineFormulaRevealForTesting(.02f);
+		TestTrue(TEXT("Only completed route hold releases the next event"), Outer->GetPresentation().Stage != EFMCodexUMGThroughBallStage::InitialRoute);
+		if (Future.ThroughBallResolution.Route == EFMCodexUMGThroughBallRoute::AntiOffside)
+		{
+			TestTrue(TEXT("Anti now owns its canonical condition, not OneOnOne choices"),
+				Outer->GetPresentation().Stage == EFMCodexUMGThroughBallStage::AntiOffsideCheck
+				&& Outer->GetPresentation().OutcomeRollHint.bVisible && Outer->GetOneOnOneChoiceWidgets().IsEmpty());
+			TestEqual(TEXT("Second event also selects CompactBox"), Outer->GetRollReelWidget()->GetVisualVariant(), EFMCodexRollVisualVariant::CompactBox);
+			TestEqual(TEXT("Second event stays in Theater with its own subtitle"),
+				CastChecked<UTextBlock>(Gated->GetWidgetFromName(TEXT("TheaterSubtitle")))->GetText().ToString(), FString(TEXT("反越位判定")));
+			if (!Future.ThroughBallResolution.OneOnOneChoices.IsEmpty())
+			{
+				TestTrue(TEXT("Coalesced second event has its own reveal lifetime"), Gated->IsInlineFormulaRevealInputBlocked());
+				Gated->AdvanceInlineFormulaRevealForTesting(4.1f);
+				TestEqual(TEXT("Only the second completed hold releases both original choices"), Outer->GetOneOnOneChoiceWidgets().Num(), 2);
+				TestEqual(TEXT("OneOnOne retains Theater ownership"), Outer->GetVisibility(), ESlateVisibility::Collapsed);
+			}
+		}
+		else
+		{
+			TestEqual(TEXT("Formula handoff retains its existing contest"), Outer->GetPresentation().Formula.ContestId, Future.ThroughBallResolution.Formula.ContestId);
+			TestEqual(TEXT("Production Formula reel is TheaterInline"), CastChecked<UFMCodexRollReelWidget>(Gated->GetWidgetFromName(TEXT("TheaterAttackReel")))->GetVisualVariant(), EFMCodexRollVisualVariant::TheaterInline);
+			TestEqual(TEXT("Formula retains Theater ownership"), Outer->GetVisibility(), ESlateVisibility::Collapsed);
+		}
+	}
+	for (const auto& Other : {Build(MakeFeetView(false,false)), Build(MakeBehindView(false,false)),
+		Build(MakeChipView(false)), Build(MakeDirectView(false,false)),
+		Build(MakeAntiView(true, EMatchPlayResolutionDecisionOutcome::Offside, 1)),
+		Build(MakeAntiView(true, EMatchPlayResolutionDecisionOutcome::OneOnOneRequired, 6))})
+		TestTrue(TEXT("Explicit ThroughBall stages retain full Theater continuity"),
+			FMCodexResolutionTheaterPrototype::WantsTheater(Other,Other.InlineFormula));
 	return true;
 }
 
@@ -1465,6 +1639,7 @@ bool FFMCodexThroughBallProductionFeetFormulaFlowTest::RunTest(
 	}
 	Screen->TakeWidget();
 	Screen->RefreshFromPresentation(Preview);
+	CheckFormula(*this,*Screen);
 	UFMCodexThroughBallResolutionSurfaceWidget* Surface =
 		Screen->GetThroughBallResolutionSurface();
 	UFMCodexInlineResolutionFormulaSurfaceWidget* FormulaSurface =
@@ -1581,6 +1756,9 @@ bool FFMCodexThroughBallProductionFeetFormulaFlowTest::RunTest(
 		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
 	TerminalReconstructed->TakeWidget();
 	TerminalReconstructed->RefreshFromPresentation(Terminal);
+	CheckFormula(*this,*TerminalReconstructed); CheckTheater(*this,*TerminalReconstructed,true);
+	TestTrue(TEXT("Feet result explains authoritative Formula reason"),!Terminal.ThroughBallResolution.Formula.ResolutionReasonLabel.IsEmpty());
+	CheckMergedFormula(*this,Preview,Terminal);
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& RebuiltFormula =
 		TerminalReconstructed->GetThroughBallResolutionSurface()
 			->GetFormulaSurface()->GetPresentation();
@@ -1801,7 +1979,7 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 			&& Preview.ThroughBallResolution.RouteLabel == TEXT("身后球")
 			&& Preview.ThroughBallResolution.Stage
 				== EFMCodexUMGThroughBallStage::BehindDefenseFirstStage
-			&& Preview.ThroughBallResolution.StageLabel == TEXT("第一阶段")
+			&& Preview.ThroughBallResolution.StageLabel == TEXT("身后球")
 			&& PreviewFormula.bVisible
 			&& PreviewFormula.ContestId
 				== TEXT("ThroughBall.BehindDefense.P1")
@@ -1880,6 +2058,7 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 	}
 	OutScreen->TakeWidget();
 	OutScreen->RefreshFromPresentation(Preview);
+	CheckFormula(*this,*OutScreen);
 	OutScreen->RefreshFromPresentation(OutOfPlay);
 	OutScreen->PauseInlineFormulaRevealTimerForTesting();
 	UFMCodexInlineResolutionFormulaSurfaceWidget* OutFormulaWidget =
@@ -1889,7 +2068,7 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 			== EFMCodexUMGInlineFormulaRevealPhase::Cycling
 			&& OutScreen->IsInlineFormulaRevealInputBlocked()
 			&& OutFormulaWidget->GetPresentation().bDiceRevealVisible
-			&& !OutFormulaWidget->GetPresentation().bShowFormulaRows
+			&& OutFormulaWidget->GetPresentation().bShowFormulaRows
 			&& !OutFormulaWidget->GetPresentation().bNarrativeAvailable
 			&& !OutFormulaWidget->GetPresentation().bCanContinue
 			&& OutScreen->GetInteractionPanel()->GetVisibility()
@@ -1901,6 +2080,11 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 			&& OutFormulaWidget->GetPresentation().RollReel.bAuthoritativeValue
 			&& OutFormulaWidget->GetPresentation().ResultTitle.IsEmpty());
 	OutScreen->AdvanceInlineFormulaRevealForTesting(0.38f);
+	TestTrue(TEXT("Behind landed early-end suppresses unexecuted comparison and no fake defense"),
+		!OutFormulaWidget->GetPresentation().bShowFormulaRows
+		&& OutScreen->GetWidgetFromName(TEXT("TheaterDefensePanelBounds"))->GetVisibility()==ESlateVisibility::Collapsed
+		&& OutScreen->GetWidgetFromName(TEXT("TheaterAttackBaseHover"))->GetVisibility()==ESlateVisibility::Hidden
+		&& CastChecked<UTextBlock>(OutScreen->GetWidgetFromName(TEXT("TheaterAttackRollValue")))->GetText().ToString()==TEXT("1"));
 	TestTrue(TEXT("OutOfPlay result and shared narrative disclose during hold"),
 		OutFormulaWidget->GetPresentation().ResultTitle == TEXT("传球出界")
 			&& OutFormulaWidget->GetPresentation().NarrativeHeadline
@@ -2013,6 +2197,10 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 			&& DefenseFormulaWidget->GetPresentation().ResultSubtitle
 				== TEXT("身后球 · 进攻被阻断")
 			&& !DefenseFormulaWidget->GetPresentation().bCanContinue);
+	TestTrue(TEXT("Dense terminal retains only its existing Formula participant cards"),
+		DefenseScreen->GetWidgetFromName(TEXT("TheaterDefensePanelBounds"))->GetVisibility()!=ESlateVisibility::Collapsed
+		&& DefenseScreen->GetWidgetFromName(TEXT("TheaterTacticalEvent"))->GetVisibility()==ESlateVisibility::Collapsed
+		&& CastChecked<UHorizontalBox>(DefenseScreen->GetWidgetFromName(TEXT("TheaterAttackPeople")))->GetChildrenCount()==2);
 	DefenseScreen->AdvanceInlineFormulaRevealForTesting(2.22f);
 	TestTrue(TEXT("DefenderStopped hold releases NextRound"),
 		DefenseFormulaWidget->GetPresentation().bCanContinue
@@ -2064,7 +2252,23 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 			&& !OneOnOneFormulaWidget->GetPresentation().bCanContinue
 			&& OneOnOneScreen->GetInteractionPanel()->GetVisibility()
 				== ESlateVisibility::Collapsed);
-	OneOnOneScreen->AdvanceInlineFormulaRevealForTesting(2.22f);
+	OneOnOneScreen->AdvanceInlineFormulaRevealForTesting(3.00f);
+	TestTrue(TEXT("Intermediate Narrative retains the full readable duration"),
+		OneOnOneScreen->IsInlineFormulaRevealInputBlocked()
+		&& OneOnOneScreen->GetWidgetFromName(TEXT("TheaterOutcome"))->GetVisibility()!=ESlateVisibility::Collapsed
+		&& OneOnOneScreen->GetWidgetFromName(TEXT("TheaterNearMethods"))->GetVisibility()==ESlateVisibility::Collapsed);
+	OneOnOneScreen->RefreshFromPresentation(OneOnOne); OneOnOneScreen->PauseInlineFormulaRevealTimerForTesting();
+	OneOnOneScreen->AdvanceInlineFormulaRevealForTesting(.11f);
+	CheckTheater(*this,*OneOnOneScreen);
+	TestEqual(TEXT("Direct choice helper is concise"),CastChecked<UTextBlock>(OneOnOneScreen->GetWidgetFromName(TEXT("TheaterNearDirectHint")))->GetText().ToString(),FString(TEXT("比较射门与门将单刀")));
+	TestEqual(TEXT("Chip helper spans its own button with no horizontal offset"),CastChecked<UHorizontalBoxSlot>(OneOnOneScreen->GetWidgetFromName(TEXT("TheaterNearCombinationHint"))->Slot)->GetPadding(),FMargin(0));
+	TestEqual(TEXT("Choice helper has a compact line allocation"),CastChecked<USizeBox>(OneOnOneScreen->GetWidgetFromName(TEXT("TheaterDirectExplanationBounds")))->GetHeightOverride(),26.f);
+	TestTrue(TEXT("Modern OneOnOne has two legal methods and no terminal CTA"),
+		OneOnOneScreen->GetWidgetFromName(TEXT("TheaterNearMethods"))->GetVisibility()!=ESlateVisibility::Collapsed
+		&& CastChecked<UButton>(OneOnOneScreen->GetWidgetFromName(TEXT("TheaterNearDirect")))->GetIsEnabled()
+		&& CastChecked<UButton>(OneOnOneScreen->GetWidgetFromName(TEXT("TheaterNearCombination")))->GetIsEnabled()
+		&& OneOnOneScreen->GetWidgetFromName(TEXT("TheaterPrimaryBounds"))->GetVisibility()==ESlateVisibility::Collapsed);
+	CheckMergedFormula(*this,Preview,DefenderStopped);
 	TestTrue(TEXT("Shot choices appear only after the narrative hold"),
 		!OneOnOneScreen->IsInlineFormulaRevealInputBlocked()
 			&& OneOnOneScreen->GetInteractionPanel()->GetVisibility()
@@ -2101,6 +2305,10 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
 	TerminalReconstructed->TakeWidget();
 	TerminalReconstructed->RefreshFromPresentation(OutOfPlay);
+	CheckTheater(*this,*TerminalReconstructed,true);
+	TestTrue(TEXT("Early-end identifies its real attack operand and explains the range"),
+		TerminalReconstructed->GetWidgetFromName(TEXT("TheaterAttackRollCaption"))->GetVisibility()!=ESlateVisibility::Collapsed
+		&& CastChecked<UTextBlock>(TerminalReconstructed->GetWidgetFromName(TEXT("TheaterReasonSecondary")))->GetText().ToString()==TEXT("进攻掷点 1 落入 1–2，本次不进行防守比较"));
 	TestTrue(TEXT("Fresh terminal snapshot rebuilds result and NextRound without replay"),
 		TerminalReconstructed->GetInlineFormulaRevealPhase()
 			== EFMCodexUMGInlineFormulaRevealPhase::None
@@ -2212,9 +2420,14 @@ bool FFMCodexThroughBallProductionAntiAndChipGoldenPathsTest::RunTest(
 		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
 	Screen->TakeWidget();
 	Screen->RefreshFromPresentation(Pending);
-	TestTrue(TEXT("Normal Anti surface exclusively owns both legacy roots"),
+	TestEqual(TEXT("Anti keeps passer before runner"),CastChecked<UTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterAttackName0")))->GetText().ToString(),FString(TEXT("厄德高")));
+	TestTrue(TEXT("Anti uses the dedicated roll lane outside player context"),
+		Screen->GetWidgetFromName(TEXT("TheaterTacticalEvent"))->GetParent()==Screen->GetWidgetFromName(TEXT("TheaterActionLane"))
+		&& Screen->GetWidgetFromName(TEXT("TheaterEventPending"))==nullptr);
+	TestTrue(TEXT("Anti pre-roll enters full Theater with no old modal"),
 		Screen->GetThroughBallResolutionSurface()->GetVisibility()
-			== ESlateVisibility::SelfHitTestInvisible
+			== ESlateVisibility::Collapsed
+			&& Screen->GetWidgetFromName(TEXT("TheaterTacticalEvent")) != nullptr
 			&& Screen->GetInlineFormulaSurface()->GetVisibility()
 				== ESlateVisibility::Collapsed
 			&& !Screen->IsLegacyResolutionOverlayVisible());
@@ -2230,9 +2443,22 @@ bool FFMCodexThroughBallProductionAntiAndChipGoldenPathsTest::RunTest(
 				== ESlateVisibility::Collapsed
 			&& Screen->GetInteractionPanel()->GetVisibility()
 				== ESlateVisibility::Collapsed);
-	Screen->AdvanceInlineFormulaRevealForTesting(1.30f);
-	Screen->AdvanceInlineFormulaRevealForTesting(0.16f);
+	TestEqual(TEXT("Anti is an independent CompactBox consumer"),
+		Screen->GetThroughBallResolutionSurface()->GetRollReelWidget()->GetVisualVariant(), EFMCodexRollVisualVariant::CompactBox);
+	TestTrue(TEXT("Anti keeps its own rule during motion"), Screen->GetThroughBallResolutionSurface()->GetPresentation().OutcomeRollHint.bVisible);
+	TestTrue(TEXT("Anti's visible canonical range names the OneOnOne destination"),
+		CastChecked<UTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterDetail")))->GetText().ToString().Contains(TEXT("6：形成单刀")));
+	Screen->AdvanceInlineFormulaRevealForTesting(.92f);
+	TestEqual(TEXT("Anti reuses v2 capture timing"), Screen->GetInlineFormulaRevealPhase(), EFMCodexUMGInlineFormulaRevealPhase::Settling);
+	Screen->AdvanceInlineFormulaRevealForTesting(.54f);
+	TestTrue(TEXT("Anti keeps rule rather than revealing a result before the narrative gate"),
+		CastChecked<UTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterDetail")))->GetText().ToString().Contains(TEXT("6：形成单刀"))
+		&& Screen->GetThroughBallResolutionSurface()->GetPresentation().ResultTitle.IsEmpty());
+	TestEqual(TEXT("Anti authoritative six lands in the shared slot"),
+		Screen->GetThroughBallResolutionSurface()->GetRollReelWidget()->GetPresentation().CenterValue, 6);
 	Screen->AdvanceInlineFormulaRevealForTesting(0.38f);
+	TestEqual(TEXT("Anti hold communicates the gated meaning instead of landed status"),
+		CastChecked<UTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterDetail")))->GetText().ToString(), FString(TEXT("形成单刀")));
 	TestTrue(TEXT("Anti formation narrative discloses before choices"),
 		Screen->GetThroughBallResolutionSurface()->GetPresentation().ResultTitle
 			== TEXT("形成单刀")
@@ -2245,6 +2471,18 @@ bool FFMCodexThroughBallProductionAntiAndChipGoldenPathsTest::RunTest(
 				.OneOnOneChoices.Num() == 2
 			&& Screen->GetInteractionPanel()->GetVisibility()
 				== ESlateVisibility::Collapsed);
+	CheckTheater(*this,*Screen);
+	auto Waiting=Success;
+	Waiting.ThroughBallResolution.OneOnOneChoices.Reset(); Waiting.Interaction.OneOnOneChoices.Reset();
+	Waiting.bMirrorActionWaitPrompt=Waiting.bActionWaitPromptReadOnly=true;
+	Waiting.ActionWaitActorText=FText::FromString(TEXT("等待玩家 A 操作"));
+	Waiting.ActionWaitActionText=FText::FromString(TEXT("选择单刀方式"));
+	auto* WaitScreen=NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	WaitScreen->TakeWidget(); WaitScreen->RefreshFromPresentation(Waiting);
+	TestTrue(TEXT("Waiting viewer sees explicit read-only modern choice"),
+		!CastChecked<UButton>(WaitScreen->GetWidgetFromName(TEXT("TheaterNearDirect")))->GetIsEnabled()
+		&& !CastChecked<UButton>(WaitScreen->GetWidgetFromName(TEXT("TheaterNearCombination")))->GetIsEnabled()
+		&& CastChecked<UTextBlock>(WaitScreen->GetWidgetFromName(TEXT("TheaterStatus")))->GetText().ToString().Contains(TEXT("等待玩家 A")));
 
 	UFMCodexLocalMatchScreenWidget* Reconstructed =
 		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
@@ -2259,6 +2497,33 @@ bool FFMCodexThroughBallProductionAntiAndChipGoldenPathsTest::RunTest(
 			&& Reconstructed->GetInlineFormulaSurface()->GetVisibility()
 				== ESlateVisibility::Collapsed
 			&& !Reconstructed->IsLegacyResolutionOverlayVisible());
+	for (const int32 D6 : {1,5})
+	{
+		auto* Failure = NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+		Failure->TakeWidget(); Failure->RefreshFromPresentation(Pending);
+		Failure->RefreshFromPresentation(Build(MakeAntiView(true, EMatchPlayResolutionDecisionOutcome::Offside, D6)));
+		Failure->PauseInlineFormulaRevealTimerForTesting();
+		auto* Outer = Failure->GetThroughBallResolutionSurface();
+		TestFalse(TEXT("Offside never creates a Formula"), Outer->GetPresentation().Formula.bVisible);
+		Failure->AdvanceInlineFormulaRevealForTesting(1.46f);
+		TestEqual(TEXT("Failure lands the accepted independent die"), Outer->GetRollReelWidget()->GetPresentation().CenterValue, D6);
+		TestEqual(TEXT("Unfavorable landed die also uses EED7A6"), Outer->GetRollReelWidget()->GetCenterDigitWidget()->GetColorAndOpacity().GetSpecifiedColor(), FLinearColor::FromSRGBColor(FColor(238,215,166)));
+		TestFalse(TEXT("Terminal CTA stays gated during hold"), Outer->GetPresentation().PrimaryAction.bVisible);
+		Failure->AdvanceInlineFormulaRevealForTesting(.38f);
+		TestEqual(TEXT("Unfavorable Anti hold also uses the gated semantic result"),
+			CastChecked<UTextBlock>(Failure->GetWidgetFromName(TEXT("TheaterDetail")))->GetText().ToString(), FString(TEXT("越位")));
+		Failure->AdvanceInlineFormulaRevealForTesting(2.21f);
+		CheckTheater(*this,*Failure,true);
+		TestTrue(TEXT("Sparse Offside keeps a single compact passer/runner card"),
+			Failure->GetWidgetFromName(TEXT("TheaterDuel"))->GetVisibility()!=ESlateVisibility::Collapsed
+			&& Failure->GetWidgetFromName(TEXT("TheaterDefensePanelBounds"))->GetVisibility()==ESlateVisibility::Collapsed
+			&& CastChecked<UTextBlock>(Failure->GetWidgetFromName(TEXT("TheaterAttackName0")))->GetText().ToString()==TEXT("厄德高")
+			&& CastChecked<UTextBlock>(Failure->GetWidgetFromName(TEXT("TheaterAttackName1")))->GetText().ToString()==TEXT("哈兰德"));
+		TestEqual(TEXT("Offside uses Shared Outcome inside Theater"), Outer->GetVisibility(), ESlateVisibility::Collapsed);
+		TestTrue(TEXT("Failure hands off to original Offside Outcome and NextRound"),
+			Outer->GetPresentation().ResultTitle == TEXT("越位") && Outer->GetPresentation().PrimaryAction.bVisible
+			&& Outer->GetOneOnOneChoiceWidgets().IsEmpty() && !Outer->GetPresentation().Formula.bVisible);
+	}
 
 	const FFMCodexUMGMatchScreenViewModel ChipPending = Build(
 		MakeChipView(false));
@@ -2266,6 +2531,11 @@ bool FFMCodexThroughBallProductionAntiAndChipGoldenPathsTest::RunTest(
 		EMatchPlayResolutionDecisionOutcome::Miss, 1));
 	const FFMCodexUMGMatchScreenViewModel ChipGoal = Build(MakeChipView(true,
 		EMatchPlayResolutionDecisionOutcome::Goal, 6));
+	// The dormant fallback keeps its old skin; normal production Chip uses Theater below.
+	auto* ReusedSurface = Screen->GetThroughBallResolutionSurface();
+	ReusedSurface->RefreshFromPresentation(Pending.ThroughBallResolution);
+	ReusedSurface->RefreshFromPresentation(ChipPending.ThroughBallResolution);
+	TestEqual(TEXT("Chip remains Legacy after CompactBox host reuse"), ReusedSurface->GetRollReelWidget()->GetVisualVariant(), EFMCodexRollVisualVariant::Legacy);
 	TestTrue(TEXT("Chip pending is one shared outcome-only reel"),
 		ChipPending.Interaction.Category
 			== EFMCodexUMGInteractionCategory
@@ -2298,9 +2568,33 @@ bool FFMCodexThroughBallProductionAntiAndChipGoldenPathsTest::RunTest(
 		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
 	ChipReconstructed->TakeWidget();
 	ChipReconstructed->RefreshFromPresentation(ChipGoal);
+	CheckTheater(*this,*ChipReconstructed,true);
+	for (const auto& Terminal:{ChipMiss,ChipGoal})
+	{
+		auto* Chip=NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+		Chip->TakeWidget(); Chip->RefreshFromPresentation(ChipPending);
+		TestTrue(TEXT("Chip independent die also mounts outside its Runner card"),
+			Chip->GetWidgetFromName(TEXT("TheaterTacticalEvent"))->GetParent()==Chip->GetWidgetFromName(TEXT("TheaterActionLane"))
+			&& Chip->GetWidgetFromName(TEXT("TheaterEventPending"))==nullptr);
+		TestTrue(TEXT("Chip lower bar owns the useful rule range"),
+			CastChecked<UTextBlock>(Chip->GetWidgetFromName(TEXT("TheaterDetail")))->GetText().ToString().Contains(TEXT("4–6：进球"))
+			&& Chip->GetWidgetFromName(TEXT("TheaterEventRule"))==nullptr);
+		Chip->RefreshFromPresentation(Terminal);
+		Chip->PauseInlineFormulaRevealTimerForTesting();
+		auto* Reel=CastChecked<UFMCodexRollReelWidget>(Chip->GetWidgetFromName(TEXT("TheaterEventReel")));
+		TestEqual(TEXT("Production Chip is one CompactBox"),Reel->GetVisualVariant(),EFMCodexRollVisualVariant::CompactBox);
+		TestTrue(TEXT("Chip never creates Formula, paired sum or defense"),!Chip->GetThroughBallResolutionSurface()->GetPresentation().Formula.bVisible
+			&& Chip->GetWidgetFromName(TEXT("TheaterPair"))->GetVisibility()==ESlateVisibility::Collapsed
+			&& Chip->GetWidgetFromName(TEXT("TheaterDefensePanelBounds"))->GetVisibility()==ESlateVisibility::Collapsed);
+		Chip->AdvanceInlineFormulaRevealForTesting(.92f);
+		TestEqual(TEXT("Chip uses continuous v2 capture"),Chip->GetInlineFormulaRevealPhase(),EFMCodexUMGInlineFormulaRevealPhase::Settling);
+		Chip->AdvanceInlineFormulaRevealForTesting(.54f);
+		TestEqual(TEXT("Chip authoritative landing is EED7A6"),Reel->GetCenterDigitWidget()->GetColorAndOpacity().GetSpecifiedColor(),FLinearColor::FromSRGBColor(FColor(238,215,166)));
+		Chip->AdvanceInlineFormulaRevealForTesting(2.61f); CheckTheater(*this,*Chip,true);
+	}
 	TestTrue(TEXT("Fresh Chip terminal has one exclusive production root"),
 		ChipReconstructed->GetThroughBallResolutionSurface()->GetVisibility()
-			== ESlateVisibility::SelfHitTestInvisible
+			== ESlateVisibility::Collapsed
 			&& ChipReconstructed->GetInlineFormulaSurface()->GetVisibility()
 				== ESlateVisibility::Collapsed
 			&& !ChipReconstructed->IsLegacyResolutionOverlayVisible());
@@ -2425,6 +2719,25 @@ bool FFMCodexThroughBallProductionDirectGoldenPathTest::RunTest(
 			&& !DefenseReveal->GetThroughBallResolutionSurface()
 				->GetFormulaSurface()->GetPresentation().bCanContinue);
 	DefenseReveal->AdvanceInlineFormulaRevealForTesting(2.22f);
+	CheckTheater(*this,*DefenseReveal,true); CheckFormula(*this,*DefenseReveal);
+	TestTrue(TEXT("Direct uses authority reason"),Save.ThroughBallResolution.Formula.ResolutionReasonLabel.Contains(TEXT("快速压制")));
+	CheckMergedFormula(*this,Preview,Save);
+	// A low Direct attack is a new accepted operand, never LongShot ImmediateMiss.
+	auto LowView=MakeDirectView(true,false,EMatchPlayResolutionDecisionOutcome::Miss);
+	LowView.ResolutionFacts.Decisions[0].bResolved=false;
+	LowView.ResolutionFacts.Decisions[0].Outcome=EMatchPlayResolutionDecisionOutcome::None;
+	const auto Low=Build(LowView);
+	auto* LowScreen=NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+	LowScreen->TakeWidget(); LowScreen->RefreshFromPresentation(Preview); LowScreen->RefreshFromPresentation(Low);
+	LowScreen->PauseInlineFormulaRevealTimerForTesting(); LowScreen->AdvanceInlineFormulaRevealForTesting(4.05f);
+	CheckFormula(*this,*LowScreen);
+	TestTrue(TEXT("Direct attack one retains real defense CTA and GK without terminal shortcut"),
+		LowScreen->GetThroughBallResolutionSurface()->GetPresentation().Formula.bShowFormulaRows
+		&& LowScreen->GetThroughBallResolutionSurface()->GetPresentation().Formula.ResultTitle.IsEmpty()
+		&& LowScreen->GetWidgetFromName(TEXT("TheaterDefensePanelBounds"))->GetVisibility()!=ESlateVisibility::Collapsed
+		&& Low.Interaction.CrossRollSequenceIndex==4
+		&& Low.ThroughBallResolution.Formula.DefenseRow.Participants.Num()==1
+		&& Low.ThroughBallResolution.Formula.DefenseRow.Participants[0].PlayerName==TEXT("阿利松"));
 	TestTrue(TEXT("Direct terminal hold releases central NextRound"),
 		DefenseReveal->GetThroughBallResolutionSurface()
 			->GetFormulaSurface()->GetPresentation().bCanContinue

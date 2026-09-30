@@ -211,7 +211,7 @@ FText FFMCodexPlayerUIPresentationText::ThroughBallFeetStage()
 
 FText FFMCodexPlayerUIPresentationText::ThroughBallBehindDefenseStage()
 {
-	return LOCTEXT("ThroughBallBehindDefenseStage", "第一阶段");
+	return LOCTEXT("ThroughBallBehindDefenseStage", "身后球");
 }
 
 FText FFMCodexPlayerUIPresentationText::ThroughBallAntiOffsideStage()

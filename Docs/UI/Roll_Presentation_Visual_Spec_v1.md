@@ -10,18 +10,20 @@ Roll 共用既有 viewer-safe projection、Screen phase machine、event identity
 
 | 变体 | 当前实际消费方 | 视觉职责 |
 |---|---|---|
-| Legacy | 未迁移的 generic Inline Formula、Development Formula Broadcast、ThroughBall、dormant PassControl，以及 Development Theater fallback（含旧 Corner participant reel） | 已有 Sports Broadcast Numeric Window；迁移期间继续有效 |
-| TheaterInline | High / Low Cross、Near / Long Direct、常规点球、Corner High / Low 与 LongShot / CutInside DirectShot 的攻防 Roll，Near Combination / Long Power / LongShot 与 CutInside DeadCorner 的逐枚双骰槽位，以及 Panenka 的单骰槽位 | 稳定数字槽位；对抗分支嵌入等式，双骰只表达已揭示点数和，单骰结果不虚构算式；8.18B–E USER PIE PASS |
-| CompactBox | Resolution Theater 的独立 Cross route、Corner 共享选人及 Corner route D6；Set Piece Type D6 | 小型、安静、有边界的只读结果格 |
+| Legacy | 未迁移的 generic Inline Formula、Development Formula Broadcast、dormant PassControl，以及 Development Theater fallback（含旧 Corner participant reel） | 已有 Sports Broadcast Numeric Window；迁移期间继续有效 |
+| TheaterInline | High / Low Cross、Near / Long Direct、常规点球、Corner High / Low、LongShot / CutInside DirectShot 与 ThroughBall Feet / Behind / OneOnOne Direct 的攻防 Roll，Near Combination / Long Power / LongShot 与 CutInside DeadCorner 的逐枚双骰槽位，以及 Panenka 的单骰槽位 | 稳定数字槽位；对抗分支嵌入等式，双骰只表达已揭示点数和，单骰结果不虚构算式；8.18B–E USER PIE PASS，8.19C 待完整 USER PIE |
+| CompactBox | Resolution Theater 的独立 Cross route、Corner 共享选人及 Corner route D6；Set Piece Type D6；ThroughBall InitialRoute / AntiOffside / Chip 的完整 Theater 内槽位（8.19C 待完整 USER PIE） | 小型、安静、有边界的只读结果格 |
 | HeroRoll | 主 Match Board 的 Full D12 / 战术点掷点 | 临时聚焦的大数字事件面板 |
 
-Legacy 的实际 route hosts 还包括 ThroughBall route / anti-offside / chip-shot、PassControl route，以及 generic fallback Formula。枚举值存在不等于所有 D6 / D12 都已迁移：Corner participant 是共享 D6，现采用 CompactBox（旧文档的 D12 称呼有误）；Set Piece 类型 D6 的当前迁移合同见 Stage 8.16 补充。
+Legacy 的实际独立 Roll hosts 仍包括 PassControl route，以及 generic fallback Formula。枚举值存在不等于所有 D6 / D12 都已迁移：Corner participant 是共享 D6，现采用 CompactBox（旧文档的 D12 称呼有误）；Set Piece 类型 D6 的当前迁移合同见 Stage 8.16 补充。
 
 Stage 8.18B 将 LongShot / CutInside DirectShot 接入 TheaterInline / Roll v2；8.18C–E 根据 USER PIE 反馈完成修复与复用，最终组合已获 USER PIE PASS。正常比较保留攻先守后与静态进攻值。ImmediateMiss 的权威结果到达不能提前改变攻击滚动布局：仍显示已投影的待定组成，真实落点可见后才隐藏未执行的 Base / Final 比较、防守及 VS；同一攻击槽位全程独占 Roll，不附加独立骰子。已落定 Roll 使用 #EED7A6；Base / RHS 不使用该 Roll 状态色。
 
 Stage 8.18C DeadCorner 曾采用独立 CompactBox 双骰；8.18D 根据用户实测改为复用 Near Combination 攻击卡内的 TheaterInline 双骰行。顺序继续由原有 A/B reveal identity 与 hold 驱动：A 滚动 → A 落定 → B 滚动且 A 静态保留 → B 落定 → 既有 Outcome。不可提前显示 B 或显示用点数和，不创建防守、Formula Final、比较胜因或第五种 Roll family。ImmediateMiss 隐藏未执行比较时保留攻击卡与人物几何，不改变 v2 轨迹或时钟。8.18E 的中性落定状态、DeadCorner 滚动成功条件与已披露结果原因见 [Theater 规范](Resolution_Theater_Visual_Spec_v1.md)。ThroughBall / dormant PassControl 不变。**8.18B–E 分组验收及收尾完成，等待用户手动 staging / commit**。
 
 **Legacy 是有效兼容边界，不是新迁移界面的长期视觉目标。** 新消费方先确定 Formula 内嵌、小型独立结果格或主事件焦点的职责，再按独立 Stage 采用对应变体；不自动复制 Hero 的机壳和视觉强度。
+
+ThroughBall InitialRoute / AntiOffside 必须从预掷点起采用完整 Resolution Theater，CompactBox 仅是其中的数字组件；旧机械 modal 内换骰子不满足 8.19B / B.1 的 surface convergence。两事件保持各自 identity、既有 v2 / elapsed-time hold，以及预掷点到 hold 的固定槽位；语义文案消费已有 gate，不用“点数已落定”重复描述可见数字。完整外层合同见 [ThroughBall Foundation](ThroughBall_Production_Presentation_Foundation.md)。
 
 ## 2. 共同运动与权威边界
 
@@ -42,7 +44,13 @@ UI 不生成 gameplay RNG，不改变骰序、route、Formula、winner、Goal、
 
 ## 4. CompactBox / 独立 D6
 
-CompactBox 是独立 Roll 的只读数字格，用于 Theater Cross route、Corner 共享选人、Corner route 和 Stage 8.16 Set Piece Type D6。采用紧凑深蓝玻璃面、细边线、安静内层光和局部顶部反射；数字优先，不使用多层机械外壳、箭头、下划线、额外图标或重复 owner 标签。当前 84 × 72 是实现 token，不是所有未来消费方必须照搬的尺寸。
+CompactBox 是独立 Roll 的只读数字格，用于 Theater Cross route、Corner 共享选人、Corner route、Stage 8.16 Set Piece Type D6 和 Stage 8.19C ThroughBall InitialRoute / AntiOffside / Chip。采用紧凑深蓝玻璃面、细边线、安静内层光和局部顶部反射；数字优先，不使用多层机械外壳、箭头、下划线、额外图标或重复 owner 标签。当前 84 × 72 是实现 token，不是所有未来消费方必须照搬的尺寸。
+
+Stage 8.19C 保留 B/B.1 的路线／Anti CompactBox 接入并完成整个 ThroughBall Theater。InitialRoute waiting / rolling / settling / ResultHold 只拥有当前路线和已门控路线结果；完整 hold 后才显示 Anti 条件、Formula、单刀或下一 CTA。Anti 与 Chip 各自是一枚新独立 D6，范围来自 readonly rule，结果来自 OutcomeDecision；Chip 不采用 TheaterInline、Formula 或 paired sum。三者使用原有 v2 / elapsed-time / dedupe / hold 与 #EED7A6 落定值。Carrier / Runner 仅作为已有参与者语法的事件上下文，不引入新的 Roll family。三个独立事件不另建大型规则框；上下文卡只保留身份与既有 Player Art。84 × 72 小骰格复用 Cross route 的底部 action / roll lane，位于范围信息栏和 owner 之后；掷前隐藏数字格、不显示装饰骰子占位图标，预掷点占位与 rolling / landed / hold 共用固定几何。Carrier / 传球在先，Runner / 跑位在后；Chip 仅 Runner。
+
+Feet / Behind / Direct 显式接入 TheaterInline。Behind 提前出界在真实攻击骰落定后才抑制未执行比较；Direct 攻击 1–2 仍需新的防守骰，不继承普通 Shot ImmediateMiss。Future defense / result 在攻击 hold 被屏蔽，其他 accepted event 依原队列和身份依次揭示。全部终结在现代 Theater 内使用 Shared Outcome / Narrative，其他消费方默认值不变。Tactical Scene 原型延期；该完整交付待 USER PIE。
+
+Stage 8.19C 最终 polish 仅将 Behind 成功形成单刀的中间结果 hold 调整为：Narrative 披露延迟 0.38 秒之后保留 3.10 秒，总 ResultHold 3.48 秒。仍使用共享真实 elapsed clock、accepted event identity 与去重；不重启时钟、不添加确认动作、不改变其他消费者 hold。工程证据不等于 USER PIE PASS。
 
 CTA 与数字格分离。掷点前沿用现有路线说明、操作身份和独立合法 CTA，reel 隐藏；滚动期间只显示已有等待/操作状态，不制造另一个可点数字按钮。落定为清晰的共享暖色数字（#EED7A6），无残留邻位或持续发光，不暗示成功、Goal 或更优路线。
 

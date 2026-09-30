@@ -405,7 +405,9 @@ bool FTheaterHelperMeaningTest::RunTest(const FString&)
  FMCodexResolutionTheaterPrototype::FTakerInspection Inspection;
  FFMCodexUMGMatchScreenViewModel Screen; FFMCodexUMGMatchHeaderViewModel Header;
  FFMCodexUMGInlineFormulaSurfaceViewModel P;
- auto Apply=[&](bool Pending=false){FMCodexResolutionTheaterPrototype::Refresh(*Tree,Screen,P,Header,Pending,Inspection);};
+ auto Apply=[&](bool Pending=false){
+  if(P.ContestId==TEXT("ThroughBall.Feet")) {Screen.ThroughBallResolution.bVisible=true;Screen.ThroughBallResolution.Stage=EFMCodexUMGThroughBallStage::FeetContest;Screen.ThroughBallResolution.Formula=P;}
+  FMCodexResolutionTheaterPrototype::Refresh(*Tree,Screen,P,Header,Pending,Inspection);};
  auto VisibleHelper=[&](){return Tree->FindWidget(TEXT("TheaterStatus"))->GetVisibility()==ESlateVisibility::SelfHitTestInvisible;};
  auto Text=[&](const TCHAR* Name){return CastChecked<UTextBlock>(Tree->FindWidget(Name))->GetText().ToString();};
  for (const auto Type:{ESetPieceSelectedType::ShortFreeKick,ESetPieceSelectedType::LongFreeKick})
@@ -434,11 +436,12 @@ bool FTheaterHelperMeaningTest::RunTest(const FString&)
    TestEqual(TEXT("Threshold explanation stays intact"),Text(TEXT("TheaterDetail")),P.RollHelperLabel);
   }
  }
- for (const auto Contest:{TEXT("Cross.High"),TEXT("Cross.Low"),TEXT("SetPiece.Short.Direct"),TEXT("SetPiece.Long.Direct")})
+ for (const auto Contest:{TEXT("Cross.High"),TEXT("Cross.Low"),TEXT("SetPiece.Short.Direct"),TEXT("SetPiece.Long.Direct"),TEXT("Corner.High"),TEXT("ThroughBall.Feet")})
  {
   Screen={}; P={}; P.ContestId=Contest; P.bVisible=true; P.bShowFormulaRows=true;
   if (FString(Contest).StartsWith(TEXT("SetPiece.")))
   {Screen.SetPiece.bVisible=true;Screen.SetPiece.Type=FString(Contest).Contains(TEXT("Short"))?ESetPieceSelectedType::ShortFreeKick:ESetPieceSelectedType::LongFreeKick;}
+  if (FString(Contest)==TEXT("Corner.High")) {Screen.SetPiece.bVisible=true;Screen.SetPiece.Type=ESetPieceSelectedType::Corner;}
   for (bool Attack:{true,false})
   {
    P.bAttackRowActive=Attack; P.bDefenseRowActive=!Attack; P.bDiceRevealVisible=true;
@@ -448,10 +451,10 @@ bool FTheaterHelperMeaningTest::RunTest(const FString&)
    Apply(true); TestTrue(TEXT("Pending ACK adds information and stays visible"),VisibleHelper());
    P.bDiceRevealVisible=false; Screen.bMirrorActionWaitPrompt=true;
    Screen.ActionWaitActorText=FText::FromString(TEXT("等待玩家 B 操作")); Screen.ActionWaitActionText=FText::FromString(TEXT("掷点")); Apply();
-   TestTrue(TEXT("Waiting viewer retains identity and expected action"),VisibleHelper() && Text(TEXT("TheaterStatus")).Contains(TEXT("等待玩家 B")));
+   TestTrue(TEXT("Waiting viewer retains identity and expected action"),!VisibleHelper() && Text(TEXT("TheaterDetail")).Contains(TEXT("等待玩家 B")));
    Screen.bMirrorActionWaitPrompt=false; P.PrimaryAction.bVisible=true; P.PrimaryAction.Action.bAvailable=true;
    Screen.Interaction.ExpectedActorLabel=TEXT("请玩家 B 操作"); Apply();
-   TestTrue(TEXT("Legal operator remains visible before roll"),VisibleHelper() && !Text(TEXT("TheaterStatus")).IsEmpty());
+   TestTrue(TEXT("Legal operator remains visible before roll"),!VisibleHelper() && Text(TEXT("TheaterDetail"))==TEXT("请玩家 B 操作"));
    P.bNarrativeAvailable=true; P.ResolutionReasonLabel=TEXT("已揭示结果\n原因说明"); Apply();
    TestTrue(TEXT("Outcome retains operator"),VisibleHelper());
    TestEqual(TEXT("Outcome retains reveal-safe reason"),Text(TEXT("TheaterReasonSecondary")),FString(TEXT("原因说明")));

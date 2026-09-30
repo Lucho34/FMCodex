@@ -141,3 +141,38 @@ Network now supplies the complete canonical ThroughBall presentation to the same
 OneOnOne choice uses the existing two central options and is owned by the attacker only. Waiting viewers see the mirrored action prompt without options. New Direct/Chip rolls keep distinct event identities while the earlier primary records remain immutable. BehindDefense OutOfPlay and AntiOffside Offside have no irrelevant Defense CTA; Chip has no Formula comparison or defender die. Direct retains its existing goalkeeper save-presentation exception.
 
 Only viewer-safe values cross replication. Hidden accepted conditional dice also conceal next-action/choice information. Public terminal facts may arrive before the local Reel finishes; the original elapsed-time ResultHold and displayed-score/result gate determine visible reveal. Repeated/coalesced views and late UI creation reuse existing dedupe. Explicit 下一回合 clears the old attack surfaces and opens canonical Recovery/next Full D12 or Full-Time. Technical evidence must be followed by the short BehindOneOnOne USER PIE milestone.
+
+## Stage 8.19C — Full Presentation Convergence（待完整 USER PIE）
+
+本节取代原 B.2 / C / D 分段迁移计划。保留 B/B.1 的路线与反越位 Theater 入场、CompactBox/v2、独立事件身份与既有揭示门控；从选择直塞到终结／下一回合，整个结算使用同一 Resolution Theater。旧机械 ThroughBall 外框仅保留 Development fallback / recovery 兼容，不再是以下正常生产状态的外层目标。
+
+| 当前事件 | 玩家上下文 | 复用表现 |
+|---|---|---|
+| InitialRoute | 已投影 Carrier → Runner 的角色与中文名 | Theater 参与者／Player Art + CompactBox，只读三路线范围 |
+| AntiOffside | Carrier / 传球在先，Runner / 跑位在后；不制造防守方 | 同一参与者语法 + 独立 CompactBox；`1–5：越位 ｜ 6：形成单刀` |
+| Feet | Formula facts 中实际参与的 Carrier / Runner / Marker / Helper / GK | 双方 `Base + ? = Current` → `Base + Roll = Final`，TheaterInline |
+| BehindDefense P1 | 权威 Formula participants | 标题“身后球”，双方 TheaterInline；成功是单刀中间状态 |
+| OneOnOne choice | 已选择的 Runner；没有安全的当前 GK 上下文时省略 | Shot / FK 同族双方法布局，现有 typed DirectShot / Chip 选项 |
+| OneOnOne Direct | 权威 Runner 与唯一 GK | 新的双方 TheaterInline / Formula；攻击 1–2 仍有真实防守掷点 |
+| Chip | Runner | 一枚新的 CompactBox；无 Formula、无防守、无双骰和 |
+| 所有终结 | 现有 Outcome / Narrative / Reason | 同一 Theater 的共享 Outcome 标题、胜因和 typed 下一回合 |
+
+独立事件的身份取自现有安全 SelectedRole（由已选 stable ID 投影），显示名来自集中式本地化 source；不按球场位置、阵容类型或 Narrative 解析姓名。该轻量上下文复用 Theater 参与者面板与 Player Art，不扩大 Full Card。Formula 参与者仍只来自当前 contest facts，不用这些事件角色拼装 Formula。
+
+Feet、Behind、Direct 的 Base／tooltip、骰点、Final、Winner / WinReason、体力与 GK 事实都消费已有投影。胜因调用现有 FormulaReason 格式化入口，不重新计算数学、体力、胜者或门将参与。Behind 真实攻击 1–2 落定前保留待定布局，落定后移除未执行比较／防守／VS，仅保留真实攻击骰；不制造 defense Final、Formula Winner 或 stamina reason。普通 Behind 防守胜为 DefenderStopped；进攻胜的已门控叙事／胜因在 hold 后自然进入单刀选择，不出现 terminal CTA。
+
+InitialRoute / Anti / Chip 各自使用原有 accepted event identity、dedupe、实际 elapsed-time clock 和 hold。路线 hold 全程禁止下游 Formula、Anti 条件、单刀按钮或后续 CTA；合并快照依次揭示每个事件。Formula 攻击 hold 不泄露已到达的防守点数／结果。所有现代骰子复用 v2，落定值为 #EED7A6；Final RHS 保持自己的层级，不借用该落定状态色。Chip 的范围来自既有 readonly Rule Description，结果来自权威 OutcomeDecision。
+
+Offside、OutOfPlay、DefenderStopped、Feet / Direct / Chip Goal 或 Miss 都复用 Shared Outcome / Narrative 并留在 Theater。保留 score/scorer、ResultHold、Full-Time、recovery、NextRound 与下一次进攻的原合同。单刀形成是中间结果，不更新比分、不显示下一回合。行动方／等待方／pending 沿用安全交互事实，只有一个合法 CTA；整个直塞结算继续禁止 Full Card。
+
+不修改 CoreRules、Authority、玩法、RNG、RPC、replicated / viewer-safe schema 或 ownership。Local / Network 共用本表现层。Tactical Scene / spatial token、位置图、箭头和轨迹原型明确延期到后续干净 milestone。工程验证不能替代完整 USER PIE；本阶段在 READY FOR USER PIE 停止，不作 commit closeout。
+
+### Stage 8.19C 最终 USER PIE polish 合同（仍待用户验收）
+
+Route / Anti / Chip 使用“标题与阶段 → 现有球员上下文 → 下方规则栏 → 操作身份与 CTA”的紧凑层级，不保留独立大型中间规则框。球员上下文仅包含身份与既有 Player Art，收回原来被骰格撑高的空间。CompactBox 的 84 × 72 数字槽与 Cross route 一样挂在下方信息栏之后的独立 action / roll lane；掷前显示合法 CTA，不显示装饰骰子占位图标，数字槽保留隐藏占位，rolling / landed / ResultHold 使用同一位置。下栏分别显示三路线、反越位、挑射的已有只读范围，合法披露后才替换为当前结果语义。删除重复的操作步骤说明及 Anti 路线历史；不以截图或骰值推断结果。
+
+两个球员同时出现的 ThroughBall 上下文始终按 Carrier / 传球 → Runner / 跑位排序。Formula 参与者顺序仍属于 canonical Formula facts。稀疏 Offside terminal 复用此紧凑上下文，Chip 只保留 Runner；已有 Formula 参与者的结果不再追加第二张身份面板。
+
+Behind OutOfPlay 只显示真实进攻骰，标注“进攻掷点”，落定值沿用 #EED7A6；原因主行为“传球出界”，从属行为“进攻掷点 N 落入 1–2，本次不进行防守比较”。N 来自已披露 RawRoll；不增加防守、Final、VS、Winner 或体力理由。Behind 成功形成单刀时，自 Narrative 披露起保留 3.10 秒可读时长；与原 0.38 秒 Narrative delay 相加后，ResultHold 为 3.48 秒，沿用原 elapsed clock 与事件去重，自动交接 choice，无确认 CTA。
+
+OneOnOne 两个 helper 在各自按钮下方近距居中、使用安静次级字号：“比较射门与门将单刀”“仅按掷点判定”。没有新玩法条件、hover 功能或 Full Card 入口。等价普通攻防掷点的信息栏显示安全投影的操作人，CTA 说明动作，小型重复 owner 行 Hidden 保持布局；规则、阈值和原因栏仍保持自身语义，详见 Theater 规范。
