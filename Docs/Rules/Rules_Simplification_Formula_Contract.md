@@ -152,7 +152,7 @@
 
 ### 4.2 未来完整算术式（仅设计）
 
-沿用 §3 的 D6、GK、tA/tD、cA/cD 记号、前置失败、缺 Helper、快速压制、平局和 lifecycle。表中未写其他新加成；23 Ranked Trait 效果尚未定义。
+沿用 §3 的 D6、GK、tA/tD、cA/cD 记号、前置失败、缺 Helper、快速压制、平局和 lifecycle。表中记录基础属性公式；后续 Stage 8.20A.3 已在 [Trait 合同](Trait_System_Design_Contract.md) 锁定 23 Ranked 的逐角色属性加成，先形成 EffectiveAttribute 再进入本表既有系数／max，不改变本表基础映射。
 
 | Tactic / Method | 未来攻击 | 未来防守 |
 |---|---|---|
@@ -173,7 +173,7 @@
 
 继承 [Trait System Design Contract](Trait_System_Design_Contract.md)：实际 AntiOffside Runner 持有“反越位专家”时，未来**一次玩家动作、一个权威 AntiOffside 事件**包含 2D6，任一为6成功，否则越位；无 Trait 时保留1D6。不得增加第二 CTA、第二动作、重掷步骤、工作流阶段、防守者、Marker / Helper、防守骰、GK Formula。成功仍进入同一 Runner 的既有单刀选择。
 
-该 Binary 设计已批准，**当前代码仍是1D6，尚未实现 Trait 例外**。23 个 Ranked 的目标项、应用位置、叠加方式与具体效果仍未锁定；候选 S/A/B 加成不能被本文自动批准。以后“低球传中接应”应围绕实际 Low Cross Runner 已有的 Speed 贡献设计，不能绕回 Shooting；这不等于已批准 +N、乘数或新的骰子效果。此阶段不改等级、球员分配或工作簿。
+该 Binary 设计已批准，**当前代码仍是1D6，尚未实现 Trait 例外**。Stage 8.20A.3 已在上述 Trait 合同锁定全部 Ranked 为 S/A/B = +3/+2/+1，在既有属性系数前应用；不同实际参与者可同时生效，同一参与者重复匹配属于配置错误。近任意球与点球各增强 Shooting、Passing 后仍取 max；低球传中接应只增强 Speed。完整逐项效果与程序分支排除以 Trait 合同为准，均为设计、尚未实现，不改变等级或球员分配。
 
 ## 5. 审计差异与产品范围
 
@@ -200,7 +200,7 @@
 
 上表只保留审计发现的**当前运行时事实**，不能理解为继续批准该战术的未来映射。暂时移除不是永久废弃，也不是本次删除 C++、技能配置、玩家数据或界面的授权；实际移除工作仍须在后续获授权实施阶段处理。本阶段不为它定义新属性公式，不保留其假设收益来填补 Passing / Control 的暴露，不自动恢复该战术或启动后续 Stage。
 
-**Remaining product decisions: None.** 在本次已锁定范围内，未发现阻止映射的结构冲突、必须重定的 GK 属性或含义不明的固定修正。23 Ranked 效果属于明确留待后续的工作，不因本合同完成而被锁定。
+**Remaining product decisions: None.** 在本次已锁定范围内，未发现阻止映射的结构冲突、必须重定的 GK 属性或含义不明的固定修正。23 Ranked 效果后续已由 Stage 8.20A.3 的 [Trait 合同](Trait_System_Design_Contract.md) 单独锁定，未重新设计本合同 Formula。
 
 ## 6. 属性暴露与足球身份审查
 

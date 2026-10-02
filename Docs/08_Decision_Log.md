@@ -2571,3 +2571,17 @@ Trait taxonomy v1 为 **24 项：14 Offensive / 10 Defensive，23 Ranked / 1 Bin
 用户在本阶段明确确认 **PassControl / 传控已决定暂时移除**，其三路线不进入目标公式矩阵或六属性暴露评估；审计记录其代码仍存在，不将文档决定冒充运行时删除，也不永久废弃或自动恢复该战术。当前保留范围无剩余产品决定；23 Ranked Trait 具体效果继续未锁定。AntiOffside Binary 仍仅为实际 Runner 的一次动作、一个事件内2D6任一6成功，无新参与者、Formula、CTA或阶段，尚未实施。
 
 验证采用最小充分文档证据：代码与矩阵核对、链接 / 内容 / Git 范围检查、受保护文件哈希与 `git diff --check`；不运行 gameplay suites、build、Host/Remote、Shipping 或 PIE。REGRESSION SCOPE JUSTIFIED: YES。用户最终手动 staging / commit。
+
+## 2026-10-02 — Stage 8.20A.3: ranked Trait effect contract
+
+**DESIGN / CONTRACT ONLY — APPROVED DESIGN, NOT IMPLEMENTED。** 在已提交的 Stage 8.20A.2 节点 `625939ea5ee011260bba18f898cb16c6cc642bd7` 上，锁定 [Trait System Design Contract](Rules/Trait_System_Design_Contract.md) 的完整效果表：24 项仍为 14 Offensive / 10 Defensive、23 Ranked / 1 Binary。此条取代此前 Ranked 效果 TBD／候选尺度的当前适用状态，不改旧阶段历史或 A.2 基础 Formula 决策。
+
+全部 Ranked 统一 S+3 / A+2 / B+1，`EffectiveAttribute = BaseAttribute + TraitBonus`，在原系数前增强本次 Formula 已读取的实际角色属性，不改基础卡面或添加最终值奖励。内切专家只加 Control、内切封锁只加 Defense；Low Cross Runner / Helper 加 Speed，Low Corner Runner 加 Control、Helper 加 Defense，Feet Helper 加 Defense。其余逐项映射以完整表为准，不为属性数量对称重设计。
+
+近任意球大师与点球专家各自给 **Shooting、Passing 两项同加 Bonus，再保留 max(EffectiveShooting,EffectivePassing)**。不得只加较大值、在 max 后加，或回到未经批准的 Shooting-only。只作用既有属性 Formula，不影响 Near Angled 资格、纯骰方法、路线骰或前置失败。实际角色由 Tactic + Route/Method + Actual Gameplay Role 决定；候选、静态位置、仅在场或前阶段参与不能触发，不制造参与者、骰子、Formula、CTA 或阶段。
+
+不同实际参与者的匹配 Trait 可在一个 Formula 同时生效，无每公式一个、最高等级独占、优先级、递减或总上限。同一实际参与者在同一 Formula 至多匹配一个 Ranked；未来重复匹配是内容／配置验证错误，不建立叠加仲裁。上述双属性 Trait 各仍是一项。反越位专家继续是唯一 Binary：有／空白、无 S/A/B，一次动作、一个权威事件内 2D6 任一 6 成功，否则越位，无第二 CTA、输入、事件、阶段、防守参与者／骰或 Formula；当前运行时仍未实现。
+
+UI 合同要求基础值与加成分别可见、加成归属具体角色／属性／Trait，例如“射门 5 +1 / 远射专家 B”；近任意球与点球两项都显示原值与 Bonus，再展示取较高值。未来 UI 消费权威安全事实，不计算效果。本阶段只改设计文档与非运行时草稿的 TraitCatalog / README 元数据；保留全部名单属性、体力、等级、分配和审查记录。无新增 Trait，不要求 S 或覆盖率，不处理名单平衡。
+
+**Remaining product decisions: None.** Gameplay / Formula / Trait / UI runtime、canonical workbook、JSON、importer、Tactical Scene / Spatial Presentation 不变，不启动 Stage 8.20B。验证仅覆盖 24 项完整性、效果与特殊边界、文档／目录一致性、工作簿内容保留、生产文件哈希与 Git diff；不运行 build、gameplay suites、Host/Remote 或 PIE。REGRESSION SCOPE JUSTIFIED: YES。最终 staging / commit 由用户手动执行。
