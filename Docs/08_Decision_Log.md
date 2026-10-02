@@ -2553,3 +2553,21 @@ DirectShot 的 ResultHold 不再因 reveal 仍活动而显示“掷点中”，�
 **Stage 8.19 ThroughBall Presentation Convergence — USER PIE PASS。** 用户已接受 B / B.1 / C 及后续 polish 的最终完整流程，包括独立外置 CompactBox、紧凑球员上下文、Formula / Outcome 连续性，以及叙事可见后约 3.1 秒的单刀中间结果停留。UI 规范中的阶段性“待 USER PIE”记录由本次最终用户验收状态取代；staging / commit 仍由用户手动完成。
 
 **Tactical Scene / Spatial Presentation Prototype — DEFERRED。** 当前优先方向为 Rules Simplification / Optimization；待该工作达到稳定、干净的 commit 节点后再重新启动原型评估。首个候选为 ThroughBall，沿用现有 Theater，不属于 Stage 8.19 当前生产交付，也不在本次实现。详见 [延期原型记录](Backlog/Tactical_Scene_Spatial_Presentation_Prototype.md)。
+
+## 2026-10-01 — Stage 8.20A Patch: Trait taxonomy v1 design contract
+
+Trait taxonomy v1 为 **24 项：14 Offensive / 10 Defensive，23 Ranked / 1 Binary**。触发合同锁定为 Tactic + Route/Method（适用时）+ 实际权威玩法角色；静态 Position、候选身份或未实际参与的历史选择不能激活 Trait，不得补造参与者或攻防对称。显示名与未来稳定 ID 分离，TraitKeyDraft 仍是临时设计键。
+
+**反越位专家**是首个已批准的 Binary Procedural Trait：实际 ThroughBall AntiOffside Runner 持有时，一次动作、一个 AntiOffside 事件内使用 2D6，任一 6 成功，否则越位；无第二 CTA／动作、防守骰／参与者、Formula 或新阶段。此为 **APPROVED DESIGN — NOT IMPLEMENTED**；23 个 Ranked 的具体效果仍 TBD，运行时实现及其余产品锁定留待 Stage 8.20B。现有 canonical 数据与玩法未改变。
+
+本次只迁移非运行时草稿并保留用户属性、同义 Trait 与备注；旧宽泛 Trait 进入可见参考表，新拆分列由用户手填。完整合同见 [Trait System Design Contract](Rules/Trait_System_Design_Contract.md)。填写后再进行 Stage 8.20A.1 草稿审查，不自动启动。
+
+## 2026-10-02 — Stage 8.20A.2: simplified tactical Formula design contract
+
+**DESIGN / CONTRACT ONLY — APPROVED DESIGN, NOT IMPLEMENTED。** 以 `4c96c37cd5ccec7f94ce00089ac9e36e147c2d74` 的实际 CoreRules / AuthoritativeSession 为基线，锁定 [Rules Simplification Formula Contract](Rules/Rules_Simplification_Formula_Contract.md) 中保留战术的逐角色旧→新映射、系数、固定项、GK、D6、特殊方法与平局 / 缺席边界。运行时、生产 canonical workbook / JSON / importer 与用户草稿均不修改，不启动 Stage 8.20B。
+
+未来 LS→Shooting，TKL/MRK→Defense，DRI/OFF→Control；远射 Direct 当前固定防守 +2 已核实，未来改 +3，远任意球 Direct 仍保留 +2。内切为同一 Carrier 的 Control/Shooting 平均，对同一 Marker 的 Defense/Speed 平均；低球传中 Runner/Helper 改 Speed；脚下直塞 Helper 保留 Defense；高球角球实际 Helper 仍用 Strength，低球角球 Runner 改 Control。角球保留 Helper/GK 各0.5的防守平均，不能镜像为 Cross 或添加主罚 Carrier。近任意球与点球 Direct 在未来简化模型中仍保留 max(Shooting,Passing)；此前合同 / 报告中的 Shooting-only 表述未经批准，按用户纠正撤回。GK 专属属性与程序方法保持合同中的既有结构。
+
+用户在本阶段明确确认 **PassControl / 传控已决定暂时移除**，其三路线不进入目标公式矩阵或六属性暴露评估；审计记录其代码仍存在，不将文档决定冒充运行时删除，也不永久废弃或自动恢复该战术。当前保留范围无剩余产品决定；23 Ranked Trait 具体效果继续未锁定。AntiOffside Binary 仍仅为实际 Runner 的一次动作、一个事件内2D6任一6成功，无新参与者、Formula、CTA或阶段，尚未实施。
+
+验证采用最小充分文档证据：代码与矩阵核对、链接 / 内容 / Git 范围检查、受保护文件哈希与 `git diff --check`；不运行 gameplay suites、build、Host/Remote、Shipping 或 PIE。REGRESSION SCOPE JUSTIFIED: YES。用户最终手动 staging / commit。
