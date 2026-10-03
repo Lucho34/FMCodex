@@ -405,6 +405,12 @@ struct FMCODEX_API FFMCodexUMGCardViewModel
 	TArray<FFMCodexUMGAttributeViewModel> AttributeValues;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	TArray<FPlayerRankedTrait> RankedTraits;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	TArray<FName> BinaryTraits;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	TArray<FFMCodexUMGSkillViewModel> Skills;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")

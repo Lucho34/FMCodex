@@ -45,7 +45,7 @@ bool FFMCodexPlayerCardFamilyContractTest::RunTest(const FString&)
         View.CompactRoleLabel=TEXT("D");View.PlayerFacingSerialLabel=D->PlayerFacingSerial;
         const auto Card=FFMCodexLocalMatchUMGPresentationBuilder::BuildCard(View);
         Widget->RefreshFromPresentation(Card,EMode::InteractionChoice);
-        TestEqual(TEXT("Full always renders four biography rows"),Widget->GetRenderedBiographyRowCount(),4);
+        TestEqual(TEXT("Outfield Full biography includes stamina"),Widget->GetRenderedBiographyRowCount(),5);
         if (View.BirthDate.IsEmpty())
         {
             TestEqual(TEXT("Absent date has neutral placeholder"),Text(TEXT("BiographyBirthDateValue")),FString(TEXT("—")));

@@ -2622,3 +2622,14 @@ A.2 基础矩阵现已实施：远射 Direct 防守固定 +3，远任意球仍 +
 生产 workbook、JSON、importer、名单属性和 Trait assignments/ranks 均未修改；OVR 继续仅计六项 base，Stamina / Recovery / tie 的 5/3/1 不变。AntiOffside Expert 2D6 is NOT implemented in B.2. 反越位仍是一次动作、一个事件、原单骰；PassControl 暂退，Tactical Scene 延后。A.2/A.3 合同无矛盾，不重写。
 
 工程验证采用新增 `FMCodex.RankedTraits`、直接受影响的 Formula Plan / SingleCard 装配 / 定位球重建，以及共享 Formula/Theater 与 Corner 安全 DTO 检查；执行反射结构所需 UHT、增量 Development Editor build 和一条生产名单 Cross 的真实 Local PIE。结果为 8 项新增 focused、249 项受影响 CoreRules、22 项共享 UI 与 1 项 Corner SecurityAndWire 全部通过；一条真实 `FMCodex.PIE.CrossRunnerZone.Production` 通过，萨卡传球 base 5 + B bonus 1 = effective 6，既有 0.5 系数与悬浮解释均核对。UHT、增量 build 与 `git diff --check` 通过；重复运行按唯一测试计数，主动收敛的未完成 suite 不宣称全量通过。真实独立 Host/Remote 与 full CoreRules / Runtime / LocalPlay / NetworkPlay 留 B.4：本阶段未改 transport、RNG、ACK、共享生命周期或安全披露规则。REGRESSION SCOPE JUSTIFIED: YES。USER PIE REQUIRED；自动 PIE 仅提供工程证据，不冒充用户视觉/手感验收。最终 staging / commit 由用户手动完成。
+
+
+## 2026-10-03 — Stage 8.20B.2.1: Full Card Trait layout
+
+Full Card 保留既有 360×540、头像/边框资产、姓名/号码、数值徽章及技能表现，将外场六属性组织为左射门/传球/控球、右速度/力量/防守的 2×3 网格。体力移至右上资料区第五行，标签在上、语义 S/A/B 在下；GK 六属性与四项资料不变。属性与技能之间新增进攻/防守两列特性，各保留两行容量，空列显示低强调 `—`。Ranked 名称加 S/A/B，复用原属性 6/5/4 的金/紫/蓝 tier；Binary 反越位专家仅显示名称，不显示“有”、徽章或占位符，不启用双骰。用户 PIE 后的同节点微调将两列小标题与 Trait 名称左边缘对齐，主标题保持居中；特性区通过标题、行间与底部间距合计增加 4 个单位，并从 hero 高度补偿，不改卡片尺寸、字号、技能、配色或号码。
+
+分配与 rank 来自权威 card snapshot，静态 registry 仅提供中文名称/类别；类别沿用已锁定映射的 registry 元数据，无 UI 重复清单。当前 viewer 的拥有权在安全 View 与 Local read adapter 中过滤，Network 复用既有 DTO；对手卡不接收新的分配 payload，不按当前战术或候选状态推导。UI 不计算 bonus、Formula 或 activation。40 人名单单列最多 2 项、总数最多 3 项，两类最长实际名称各 6 汉字，最多 2 技能；逐张布局检查确认所有实际分配完整可见，资料、特性、技能无溢出。首轮发现的双技能卡资料/姓名区轻微重叠，已通过统一资料行间距修正，字号保持不变。
+
+仅新增/消费显示事实及局部布局，不改 Formula、Ranked 机制/激活、Stamina/Recovery/tie、OVR、AntiOffside、名单/分配、workbook/JSON/importer、RPC/ACK/RNG/lifecycle。PassControl 仍不可用；Tactical Scene 延后。Focused 验证为 FullCardTraits 两项（权威拥有权、Local/Network safe presentation 往返、40 人容量/几何），Affected 为 FullCardUnifiedPilot.NumberAndPurposeIsolation 与 PlayerCardFamily.GlobalDataAndFallback；UHT、增量 Development Editor build、git diff --check 通过。真实 Local PIE 的 FullCard.TraitLayoutSmoke 在原只读悬浮入口核对代表卡片，窗口截图作为工程视觉证据；USER PIE REQUIRED，不冒充用户美观验收。未改 gameplay/transport/shared lifecycle，省略 full CoreRules/Runtime/LocalPlay/NetworkPlay 与独立 Host/Remote Golden Path。REGRESSION SCOPE JUSTIFIED: YES。用户手动 staging/commit。
+
+本节点视觉跟进验证：仅重跑 `FMCodex.LocalPlay.UI.FullCardTraits.ProductionCapacityAndGeometry` 与一轮真实 `FMCodex.PIE.FullCard.TraitLayoutSmoke`，均通过；窗口截图核对多 Ranked、双列与 Binary 名称行。增量 Development Editor build 与 diff 检查通过；跟进未改反射类型，无需重新执行 UHT，未扩大至 broad suites 或 Host/Remote。USER PIE REQUIRED，沿用 B.2.1 同一提交节点。

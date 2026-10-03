@@ -286,7 +286,7 @@ bool FFMCodexFullCardUnifiedPilotTest::RunTest(const FString&)
         const float BioTextWidth = BioBounds->GetWidthOverride() - Bio->GetPadding().Left - Bio->GetPadding().Right;
         TestTrue(TEXT("Bio keeps its top anchor and approved right safety margin"),
             BioBounds->GetWidthOverride() == 90.f && BioSlot->GetHorizontalAlignment() == HAlign_Right
-            && BioSlot->GetPadding().Top == 18.f && BioSlot->GetPadding().Right == 10.f
+            && BioSlot->GetPadding().Top == 12.f && BioSlot->GetPadding().Right == 10.f
             && Bio->GetPadding().Left == 4.f && Bio->GetPadding().Right == 4.f);
         for (const TCHAR* Fact : {TEXT("BiographyBirthDate"),TEXT("BiographyHeight"),TEXT("BiographyWeight"),TEXT("BiographyPosition")})
         for (const TCHAR* Part : {TEXT("Label"),TEXT("Value")})
@@ -333,7 +333,7 @@ bool FFMCodexFullCardUnifiedPilotTest::RunTest(const FString&)
         CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("OverallLabel")))->GetFont().OutlineSettings.OutlineSize,0);
     TestEqual(TEXT("Fallback rating typography restored"),
         CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("OverallNumber")))->GetFont().Size,44.f);
-    TestEqual(TEXT("Fallback Full hero is restored"),CastChecked<USizeBox>(Card->GetWidgetFromName(TEXT("PortraitAssetBounds")))->GetHeightOverride(),320.f);
+    TestTrue(TEXT("Fallback Full reserves the new assignment section"),CastChecked<USizeBox>(Card->GetWidgetFromName(TEXT("PortraitAssetBounds")))->GetHeightOverride()<320.f);
     TestTrue(TEXT("Family v1.1 legacy footer retains collection serial"),Card->GetWidgetFromName(TEXT("FullCardCollectionLine"))->GetVisibility()==ESlateVisibility::HitTestInvisible);
     TestEqual(TEXT("Family v1.1 legacy retains the configured number plate"),
         CastChecked<UFMCodexFullCardSurface>(Card->GetWidgetFromName(TEXT("FullCardNumberPlate")))->GetSurface(),EFMCodexFullCardSurface::Number);
@@ -354,7 +354,7 @@ bool FFMCodexFullCardUnifiedPilotTest::RunTest(const FString&)
         const auto* Region=CastChecked<UBorder>(Card->GetWidgetFromName(TEXT("InMatchFullCardBiographyRegion")));
         TestTrue(TEXT("Global Full bio width/padding, independent of identity or art route"),
             Bounds->GetWidthOverride()==90.f && Region->GetPadding().Left==4.f && Region->GetPadding().Right==4.f);
-        TestEqual(TEXT("All routes preserve four biography facts"),Card->GetRenderedBiographyRowCount(),4);
+        TestEqual(TEXT("Outfield routes preserve biography plus semantic stamina"),Card->GetRenderedBiographyRowCount(),5);
         TestEqual(TEXT("Full size remains frozen"),Card->GetConfiguredDimensions(),FVector2D(360,540));
         for (const TCHAR* Fact : {TEXT("BiographyBirthDateValue"),TEXT("BiographyHeightValue"),
             TEXT("BiographyWeightValue"),TEXT("BiographyPositionValue")})

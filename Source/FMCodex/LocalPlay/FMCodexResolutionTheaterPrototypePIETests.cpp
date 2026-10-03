@@ -1873,4 +1873,79 @@ bool FCornerFull::RunTest(const FString& P)
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FRun(this,P)));ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
 }
 }
+
+// Presentation-only smoke: existing Local PIE read-only hover, no gameplay state injection.
+#include "../CoreRules/PlayerTraitFormula.h"
+class FFullCardTraitPIESmoke final : public IAutomationLatentCommand
+{
+public:
+ explicit FFullCardTraitPIESmoke(FAutomationTestBase* InTest):Test(InTest){}
+ bool Update() override
+ {
+  if (FPlatformTime::Seconds()-Start>60.) {Test->AddError(TEXT("Full Card Trait PIE timed out"));return true;}
+  if (!GEditor || !GEditor->PlayWorld) return false;
+  auto* C=Cast<AFMCodexLocalMatchPlayerController>(GEditor->PlayWorld->GetFirstPlayerController());
+  auto* S=C?C->GetPlayerMatchScreen():nullptr;if (!S) return false;
+  if (!Started) {S->RequestStartNewMatch();Started=true;return false;}
+  if (!S->GetLocalRackWidget() || S->GetLocalRackWidget()->GetRenderedCardWidgets().IsEmpty()) return false;
+  if (!CapturedPending)
+  {
+   const TCHAR* Arsenal[]={TEXT("BukayoSaka"),TEXT("WilliamSaliba"),TEXT("GabrielMagalhaes"),TEXT("MylesLewisSkelly"),TEXT("MikelMerino")};
+   const TCHAR* City[]={TEXT("PhilFoden"),TEXT("RubenDias"),TEXT("Rodri"),TEXT("NathanAke")};
+   const bool IsArsenal=S->GetLocalRackWidget()->GetRenderedCardWidgets()[0]->GetPresentation().CardId.ToString().Contains(TEXT("Arsenal"));
+   const int32 Count=IsArsenal?5:4;
+   if (Index>=Count)
+   {
+    for (auto& Ref:S->GetOpponentRackWidget()->GetRenderedCardWidgets())
+     if (auto* Card=Ref.Get()) Test->TestTrue(TEXT("Live opponent card has no assignment payload"),Card->GetPresentation().RankedTraits.IsEmpty() && Card->GetPresentation().BinaryTraits.IsEmpty());
+    Test->AddInfo(FString::Printf(TEXT("FULL_CARD_TRAIT_PIE_SMOKE representativeCards=%d; readonly native hover; actual window captures; aesthetic acceptance remains USER PIE REQUIRED"),Count));
+    return true;
+   }
+   const FString Key=IsArsenal?Arsenal[Index]:City[Index];UFMCodexPlayerCardWidget* Card=nullptr;
+   for (auto& Ref:S->GetLocalRackWidget()->GetRenderedCardWidgets())
+    if (Ref->GetPresentation().CardId.ToString().EndsWith(Key)) Card=Ref.Get();
+   if (!Test->TestNotNull(TEXT("Representative own card exists"),Card)) return true;
+   Before=C->GetLastDiagnostic().CommandName;Id=Card->GetPresentation().CardId;
+   Card->TakeWidget()->OnMouseEnter(Card->GetCachedGeometry(),FPointerEvent());
+   Test->TestTrue(TEXT("Existing PIE hover opens Full Card"),S->IsDetailOverlayVisible());
+   CapturedPending=true;Changed=GEditor->PlayWorld->GetTimeSeconds();return false;
+  }
+  if (GEditor->PlayWorld->GetTimeSeconds()-Changed<.4f) return false;
+  auto* Detail=S->GetDetailOverlayCard();if (!Test->TestNotNull(TEXT("Live inspector"),Detail)) return true;
+  Test->TestTrue(TEXT("Inspector stays visible for native capture"),S->IsDetailOverlayVisible());
+  Test->TestEqual(TEXT("Inspector retains hovered identity"),Detail->GetPresentation().CardId,Id);
+  Test->TestEqual(TEXT("Live inspector shows six base attributes"),Detail->GetRenderedAttributeCount(),6);
+  Test->TestEqual(TEXT("Inspection submits no gameplay action"),C->GetLastDiagnostic().CommandName,Before);
+  TArray<FColor> Pixels;FIntVector Size;
+  if (Test->TestTrue(TEXT("Native PIE card screenshot"),FSlateApplication::Get().TakeScreenshot(Detail->TakeWidget(),Pixels,Size)))
+  {
+   const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_20B_2_1");IFileManager::Get().MakeDirectory(*Dir,true);
+   TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
+   Test->TestTrue(TEXT("Saved native PIE card"),FFileHelper::SaveArrayToFile(PNG,*(Dir/(Id.ToString()+TEXT(".png")))));
+   Test->AddInfo(FString::Printf(TEXT("LIVE_FULL_CARD_PIE_CAPTURE %s %dx%d"),*Id.ToString(),Size.X,Size.Y));
+  }
+  if (Index==2)
+  {
+   Pixels.Reset();
+   if (Test->TestTrue(TEXT("Native PIE context screenshot"),TheaterPIEWindow.IsValid() && FSlateApplication::Get().TakeScreenshot(TheaterPIEWindow->GetContent(),Pixels,Size)))
+   {
+    TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
+    Test->TestTrue(TEXT("Saved native PIE context"),FFileHelper::SaveArrayToFile(PNG,*(FPaths::ProjectSavedDir()/TEXT("Stage8_20B_2_1/LivePIEWindow.png"))));
+   }
+  }
+  ++Index;CapturedPending=false;return false;
+ }
+private:
+ FAutomationTestBase* Test;double Start=FPlatformTime::Seconds();bool Started=false,CapturedPending=false;
+ int32 Index=0;float Changed=0;FName Id;FString Before;
+};
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFullCardTraitPIE,"FMCodex.PIE.FullCard.TraitLayoutSmoke",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFullCardTraitPIE::RunTest(const FString&)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FFullCardTraitPIESmoke(this)));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
+}
 #endif

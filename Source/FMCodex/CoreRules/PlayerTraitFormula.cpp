@@ -98,6 +98,16 @@ FPlayerTraitTakerFormula FPlayerTraitFormula::ResolveTaker(const FPlayerCardRule
 
 FText FPlayerTraitFormula::DisplayName(const FName Id)
 {
+ if (IsKnownBinaryPlayerTrait(Id)) return NSLOCTEXT("FMCodexTraits", "ThroughBallAntiRunner", "反越位专家");
  for (const auto& Entry : Registry()) if (Entry.Id == Id) return Entry.Name;
  return FText::GetEmpty();
+}
+
+EPlayerTraitCategory FPlayerTraitFormula::Category(const FName Id)
+{
+ if (IsKnownBinaryPlayerTrait(Id)) return EPlayerTraitCategory::Offensive;
+ for (const auto& Entry : Registry()) if (Entry.Id == Id)
+  return Entry.Role == R::Carrier || Entry.Role == R::Runner || Entry.Role == R::Taker
+   ? EPlayerTraitCategory::Offensive : EPlayerTraitCategory::Defensive;
+ return EPlayerTraitCategory::None;
 }

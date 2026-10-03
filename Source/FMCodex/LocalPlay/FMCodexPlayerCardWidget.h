@@ -79,6 +79,7 @@ public:
 	FLinearColor GetFullCardBaseSurfaceColor() const;
 	const TArray<FLinearColor>& GetRenderedAttributeTierColors() const;
 	static FLinearColor GetAttributeTierColor(int32 Value);
+	static int32 GetTraitRankVisualTier(EPlayerTraitRank Rank);
 	bool IsGoalkeeperVisualVariant() const;
 	FName GetResolvedArtIdentity() const;
 	UTexture2D* GetResolvedCardFrameTexture() const;
@@ -150,6 +151,7 @@ private:
 	void RefreshBiography();
 	void RefreshSkills();
 	void RefreshAttributes();
+	void RefreshTraits();
 	void RefreshStatusBadges();
 
 	UFUNCTION()
@@ -171,6 +173,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> DetailedContentLayer;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> TraitRegion;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> TraitColumns;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> FullCardBaseSurface;

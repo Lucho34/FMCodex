@@ -1,6 +1,7 @@
 #include "FMCodexPlayerCardWidget.h"
 #include "FMCodexPlayerCardSurface.h"
 #include "FMCodexFullCardSurface.h"
+#include "../CoreRules/PlayerTraitFormula.h"
 #include "Rendering/DrawElements.h"
 
 #include "FMCodexDeploymentDragDropOperation.h"
@@ -1758,6 +1759,17 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	AttributeRegion->AddChild(AttributeBody);
 	Body->AddChildToVerticalBox(AttributeRegion);
 
+	TraitRegion = MakeFullRegion(*WidgetTree, TEXT("TraitPresentationRegion"), FullCardSurfaceColor(), FMargin(13,2,13,4));
+	auto* TraitBody = WidgetTree->ConstructWidget<UVerticalBox>();
+	auto* TraitHeading = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("TraitHeadingBounds"));
+	TraitHeading->AddChild(MakeFullCardSectionHeading(*WidgetTree, TEXT("TraitSection"),
+		NSLOCTEXT("FMCodexPlayerUI", "TraitsHeading", "特性")));
+	TraitBody->AddChildToVerticalBox(TraitHeading)->SetPadding(FMargin(0,0,0,1));
+	TraitColumns = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("FullCardTraitColumns"));
+	TraitBody->AddChildToVerticalBox(TraitColumns);
+	TraitRegion->AddChild(TraitBody);
+	Body->AddChildToVerticalBox(TraitRegion);
+
 	SkillRegion = MakeFullRegion(*WidgetTree,
 		TEXT("SkillPresentationRegion"),
 		FullCardSurfaceColor(), FMargin(7.0f, 4.0f));
@@ -2187,6 +2199,7 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 
 	RefreshSkills();
 	RefreshAttributes();
+	RefreshTraits();
 	RefreshStatusBadges();
 	RefreshPilotSurfaces();
     RefreshFullCardPilot();
@@ -2415,10 +2428,10 @@ void UFMCodexPlayerCardWidget::RefreshBiography()
 		USizeBox* RowBounds = WidgetTree->ConstructWidget<USizeBox>(
 			USizeBox::StaticClass(),
 			FName(*(RowName.ToString() + TEXT("Bounds"))));
-		RowBounds->SetHeightOverride(bFullCardPilot && Presentation.Skills.Num() >= 3 ? 32.f : 34.f);
+		RowBounds->SetHeightOverride(!Presentation.bGoalkeeper || (bFullCardPilot && Presentation.Skills.Num() >= 3) ? (!Presentation.bGoalkeeper ? 30.f : 32.f) : 34.f);
 		UBorder* RowSurface = FMCodexPlayerCardWidget::MakeRegion(
 			*WidgetTree, RowName, FLinearColor::Transparent,
-			bFullCardPilot ? FMargin(0,0) : FMargin(0,2));
+			FMargin(0,0));
 		UVerticalBox* Copy = WidgetTree->ConstructWidget<UVerticalBox>(
 			UVerticalBox::StaticClass(),
 			FName(*(RowName.ToString() + TEXT("Copy"))));
@@ -2470,8 +2483,8 @@ void UFMCodexPlayerCardWidget::RefreshBiography()
 		if (UVerticalBoxSlot* DividerSlot =
 			BiographyList->AddChildToVerticalBox(DividerBounds))
 		{
-			DividerSlot->SetPadding(bFullCardPilot
-                ? (Presentation.Skills.Num() >= 3 ? FMargin(2,1,2,1) : FMargin(2,3,2,3))
+			DividerSlot->SetPadding((bFullCardPilot || !Presentation.bGoalkeeper)
+                ? (!Presentation.bGoalkeeper || Presentation.Skills.Num() >= 3 ? FMargin(2,1,2,1) : FMargin(2,3,2,3))
                 : FMargin(3,3,3,2));
 		}
 	};
@@ -2494,6 +2507,14 @@ void UFMCodexPlayerCardWidget::RefreshBiography()
         const FText Position = FFMCodexPlayerUIPresentationText::InMatchCompactRole(Presentation.RoleLabel);
         AddBiographyRow(TEXT("BiographyPosition"), FFMCodexPlayerUIPresentationText::FullCardPositionTypeHeading(),
             Position.IsEmpty() ? Missing : Position);
+        if (!Presentation.bGoalkeeper)
+        {
+            const auto* Stamina = Presentation.AttributeValues.FindByPredicate([](const auto& A)
+                { return A.CanonicalLabel == TEXT("StaminaTier"); });
+            AddBiographyDivider(TEXT("BiographyStaminaDivider"));
+            AddBiographyRow(TEXT("BiographyStamina"), FFMCodexPlayerUIPresentationText::AttributeLabel(TEXT("StaminaTier")),
+                Stamina && !Stamina->ValueLabel.IsEmpty() ? FText::FromString(Stamina->ValueLabel) : Missing);
+        }
     }
 	const ESlateVisibility BiographyVisibility =
 		RenderedBiographyRowCount > 0
@@ -2748,7 +2769,7 @@ void UFMCodexPlayerCardWidget::RefreshAttributes()
 			? TArray<FString>({ TEXT("HAN"), TEXT("POS"), TEXT("REF"),
 				TEXT("AER"), TEXT("ANT"), TEXT("1V1") })
 			: TArray<FString>({ TEXT("SHO"), TEXT("PAS"), TEXT("CON"),
-				TEXT("SPD"), TEXT("STR"), TEXT("DEF"), TEXT("StaminaTier") });
+				TEXT("SPD"), TEXT("STR"), TEXT("DEF") });
 		TArray<FFMCodexUMGAttributeViewModel> OrderedAttributes;
 		OrderedAttributes.Reserve(CanonicalOrder.Num());
 		for (const FString& CanonicalToken : CanonicalOrder)
@@ -2768,7 +2789,7 @@ void UFMCodexPlayerCardWidget::RefreshAttributes()
 		Attributes = MoveTemp(OrderedAttributes);
 		AttributeRegion->SetVisibility(Attributes.IsEmpty()
 			? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
-		AttributeGrid->SetSlotPadding(bFullCardPilot ? FMargin(6.f, 1.f) : FMargin(1.0f));
+		AttributeGrid->SetSlotPadding(FMargin(6.f, 1.f));
 		for (int32 Index = 0; Index < Attributes.Num(); ++Index)
 		{
 			const FFMCodexUMGAttributeViewModel& Attribute = Attributes[Index];
@@ -2777,12 +2798,11 @@ void UFMCodexPlayerCardWidget::RefreshAttributes()
 			USizeBox* StatCellBounds = WidgetTree->ConstructWidget<USizeBox>(
 				USizeBox::StaticClass(), FName(*FString::Printf(
 					TEXT("AttributeCellBounds%d"), Index)));
-			StatCellBounds->SetHeightOverride(bFullCardPilot
-                ? (Presentation.bGoalkeeper && RenderedSkillTexts.IsEmpty() ? 32.f : 21.f) : 30.f);
+			StatCellBounds->SetHeightOverride(Presentation.bGoalkeeper && RenderedSkillTexts.IsEmpty() ? 32.f : 21.f);
 			UBorder* StatCell = MakeFullRegion(*WidgetTree,
 				FName(*FString::Printf(TEXT("AttributeCell%d"), Index)),
 				FLinearColor::FromSRGBColor(FColor(0x08, 0x1A, 0x26)),
-				FMargin(2.0f, 3.0f));
+				FMargin(7, 0, 1, 0));
             if (bFullCardPilot)
             {
                 StatCell->SetPadding(FMargin(7, 0, 1, 0));
@@ -2812,7 +2832,7 @@ void UFMCodexPlayerCardWidget::RefreshAttributes()
 				USizeBox::StaticClass(), FName(*FString::Printf(
 					TEXT("AttributeLabelBounds%d"), Index)));
 			LabelBounds->SetWidthOverride(
-				bFullCardPilot ? 80.0f : Presentation.bGoalkeeper ? 58.0f : 29.0f);
+				80.0f);
 			UTextBlock* LabelText = MakeText(*WidgetTree,
 				FName(*FString::Printf(TEXT("AttributeLabel%d"), Index)));
 			LabelText->SetText(
@@ -2883,10 +2903,9 @@ void UFMCodexPlayerCardWidget::RefreshAttributes()
 			}
 			StatCell->AddChild(StatRow);
 			StatCellBounds->AddChild(StatCell);
-			const int32 ColumnCount = Presentation.bGoalkeeper ? 3 : 5;
+			const int32 ColumnCount = 3;
             UUniformGridSlot* StatSlot = AttributeGrid->AddChildToUniformGrid(
-                StatCellBounds, bFullCardPilot ? Index % ColumnCount : Index / ColumnCount,
-                bFullCardPilot ? Index / ColumnCount : Index % ColumnCount);
+                StatCellBounds, Index % ColumnCount, Index / ColumnCount);
             if (bFullCardPilot) StatSlot->SetHorizontalAlignment(HAlign_Fill);
 			RenderedAttributeTexts.Add(LabelText);
 			RenderedAttributeValueTexts.Add(ValueText);
@@ -2912,6 +2931,88 @@ void UFMCodexPlayerCardWidget::RefreshAttributes()
 			StatCell, Index / 2, Index % 2);
 		RenderedAttributeTexts.Add(StatText);
 	}
+}
+
+int32 UFMCodexPlayerCardWidget::GetTraitRankVisualTier(const EPlayerTraitRank Rank)
+{
+    switch (Rank) { case EPlayerTraitRank::S: return 6; case EPlayerTraitRank::A: return 5;
+        case EPlayerTraitRank::B: return 4; default: return 0; }
+}
+
+void UFMCodexPlayerCardWidget::RefreshTraits()
+{
+    using namespace FMCodexPlayerCardWidget;
+    TraitColumns->ClearChildren();
+    const bool Detailed = PresentationMode == EFMCodexPlayerCardPresentationMode::InteractionChoice;
+    TraitRegion->SetVisibility(Detailed ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+    if (!Detailed) return;
+    struct FRow { FName Id; FString Value; int32 VisualTier; bool Binary; };
+    TArray<FRow> Offensive, Defensive;
+    for (const auto& Trait : Presentation.RankedTraits)
+    {
+        const FString Rank = Trait.Rank == EPlayerTraitRank::S ? TEXT("S") : Trait.Rank == EPlayerTraitRank::A ? TEXT("A") : TEXT("B");
+        auto& Rows = FPlayerTraitFormula::Category(Trait.TraitId) == EPlayerTraitCategory::Offensive ? Offensive : Defensive;
+        Rows.Add({Trait.TraitId, Rank, GetTraitRankVisualTier(Trait.Rank), false});
+    }
+    for (const FName Id : Presentation.BinaryTraits)
+        Offensive.Add({Id, FString(), 0, true});
+    const int32 RowCount = FMath::Max(2, FMath::Max(Offensive.Num(), Defensive.Num()));
+    auto AddColumn = [&](const TCHAR* Prefix, const FText& Heading, const TArray<FRow>& Rows, const FLinearColor HeaderColor)
+    {
+        auto* Column = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), FName(Prefix));
+        auto* HeaderBounds = WidgetTree->ConstructWidget<USizeBox>(); HeaderBounds->SetHeightOverride(14.f);
+        auto* Header = MakeText(*WidgetTree, FName(*(FString(Prefix)+TEXT("Heading"))));
+        Header->SetText(Heading); Header->SetAutoWrapText(false); Header->SetJustification(ETextJustify::Left);
+        FFMCodexPlayerUIStyle::Get().ApplyText(*Header, EFMCodexPlayerUITextRole::Kicker);
+        auto Font = Header->GetFont(); Font.Size = 10; Font.TypefaceFontName = TEXT("Bold"); Header->SetFont(Font);
+        Header->SetColorAndOpacity(HeaderColor); HeaderBounds->AddChild(Header); Column->AddChildToVerticalBox(HeaderBounds)->SetPadding(FMargin(7,0,0,0));
+        auto* RowsBounds = WidgetTree->ConstructWidget<USizeBox>(); RowsBounds->SetMinDesiredHeight(RowCount*21.f);
+        auto* List = WidgetTree->ConstructWidget<UVerticalBox>(); RowsBounds->AddChild(List); Column->AddChildToVerticalBox(RowsBounds);
+        if (Rows.IsEmpty())
+        {
+            auto* Empty = MakeText(*WidgetTree, FName(*(FString(Prefix)+TEXT("Empty"))));
+            Empty->SetText(NSLOCTEXT("FMCodexPlayerUI", "EmptyTraitCategory", "—"));
+            FFMCodexPlayerUIStyle::Get().ApplyText(*Empty, EFMCodexPlayerUITextRole::Body);
+            auto EmptyFont=Empty->GetFont(); EmptyFont.Size=12; Empty->SetFont(EmptyFont);
+            Empty->SetColorAndOpacity(FSlateColor(FLinearColor(.3f,.4f,.46f,1))); List->AddChildToVerticalBox(Empty)->SetPadding(FMargin(7,2,0,0));
+        }
+        for (int32 Index=0; Index<Rows.Num(); ++Index)
+        {
+            const auto& Data=Rows[Index]; const FString Base=FString(Prefix)+FString::FromInt(Index);
+            auto* Bounds=WidgetTree->ConstructWidget<USizeBox>(); Bounds->SetHeightOverride(19.f);
+            auto* Surface=MakeFullRegion(*WidgetTree,FName(*(Base+TEXT("Row"))),FullCardSurfaceColor(),FMargin(7,0,1,0));
+            SetFullSurface(Surface,bFullCardPilot,EFMCodexFullCardSurface::AttributeRow,FMCodexFullCardGeometry::StructuralInk());
+            auto* Row=WidgetTree->ConstructWidget<UHorizontalBox>();
+            auto* NameBounds=WidgetTree->ConstructWidget<USizeBox>(); NameBounds->SetWidthOverride(106.f);
+            auto* Name=MakeText(*WidgetTree,FName(*(Base+TEXT("Name")))); Name->SetText(FPlayerTraitFormula::DisplayName(Data.Id));
+            Name->SetAutoWrapText(false);
+            FFMCodexPlayerUIStyle::Get().ApplyText(*Name,EFMCodexPlayerUITextRole::Body);
+            auto NameFont=Name->GetFont(); NameFont.TypefaceFontName=TEXT("Medium");
+            NameFont.Size=GetMeasuredSingleLineFontSize(Name->GetText(),NameFont,106.f,12,10); Name->SetFont(NameFont);
+            NameBounds->AddChild(Name); Row->AddChildToHorizontalBox(NameBounds)->SetVerticalAlignment(VAlign_Center);
+            auto* Spacer=WidgetTree->ConstructWidget<USpacer>(); Row->AddChildToHorizontalBox(Spacer)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+            // Binary presence is communicated by the row itself; emit no value or badge.
+            if (!Data.Binary)
+            {
+                auto* BadgeBounds=WidgetTree->ConstructWidget<USizeBox>(); BadgeBounds->SetWidthOverride(32.f); BadgeBounds->SetHeightOverride(19.f);
+                const auto Color=GetAttributeTierColor(Data.VisualTier);
+                auto* Badge=MakeFullRegion(*WidgetTree,FName(*(Base+TEXT("Badge"))),Color*.22f,FMargin(2,0));
+                SetFullSurface(Badge,bFullCardPilot,EFMCodexFullCardSurface::Value,Color);
+                Badge->SetVerticalAlignment(VAlign_Center);
+                auto* Value=MakeText(*WidgetTree,FName(*(Base+TEXT("Value")))); Value->SetText(FText::FromString(Data.Value));
+                Value->SetAutoWrapText(false); Value->SetJustification(ETextJustify::Center);
+                FFMCodexPlayerUIStyle::Get().ApplyText(*Value,EFMCodexPlayerUITextRole::Body);
+                auto ValueFont=Value->GetFont(); ValueFont.Size=12; ValueFont.TypefaceFontName=TEXT("Bold"); Value->SetFont(ValueFont);
+                Badge->AddChild(Value); BadgeBounds->AddChild(Badge); Row->AddChildToHorizontalBox(BadgeBounds)->SetVerticalAlignment(VAlign_Center);
+            }
+            Surface->AddChild(Row); Bounds->AddChild(Surface);
+            List->AddChildToVerticalBox(Bounds)->SetPadding(FMargin(0,2,0,0));
+        }
+        auto* Slot=TraitColumns->AddChildToHorizontalBox(Column); Slot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+        Slot->SetPadding(FMargin(Prefix==FString(TEXT("FullCardOffensiveTraits"))?0:6,0,Prefix==FString(TEXT("FullCardOffensiveTraits"))?6:0,0));
+    };
+    AddColumn(TEXT("FullCardOffensiveTraits"),NSLOCTEXT("FMCodexPlayerUI","OffensiveTraits","进攻特性"),Offensive,FLinearColor(.66f,.42f,.16f,1));
+    AddColumn(TEXT("FullCardDefensiveTraits"),NSLOCTEXT("FMCodexPlayerUI","DefensiveTraits","防守特性"),Defensive,FLinearColor(.25f,.48f,.68f,1));
 }
 
 void UFMCodexPlayerCardWidget::RefreshStatusBadges()
@@ -3026,17 +3127,17 @@ void UFMCodexPlayerCardWidget::RefreshFullCardPilot()
     SetFullSurface(CardFrame, bFullCardPilot, EFMCodexFullCardSurface::Frame, Accent);
     SetFullSurface(FullCardBaseSurface, bFullCardPilot, EFMCodexFullCardSurface::Body, Accent);
     SetFullSurface(AttributeRegion, bFullCardPilot, EFMCodexFullCardSurface::Attributes, Accent);
+    SetFullSurface(TraitRegion, bFullCardPilot, EFMCodexFullCardSurface::Attributes, Accent);
     auto* Footer = CastChecked<UBorder>(GetWidgetFromName(TEXT("FullCardCollectionSurface")));
     SetFullSurface(Footer, bFullCardPilot, EFMCodexFullCardSurface::Footer, Accent);
     const bool bDetailed = PresentationMode == EFMCodexPlayerCardPresentationMode::InteractionChoice;
     Footer->SetVisibility(bDetailed ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-    for (const TCHAR* Node : {TEXT("AttributeHeadingBounds"),TEXT("SkillHeadingBounds")})
+    for (const TCHAR* Node : {TEXT("AttributeHeadingBounds"),TEXT("TraitHeadingBounds"),TEXT("SkillHeadingBounds")})
     {
         auto* HeadingBounds = CastChecked<USizeBox>(GetWidgetFromName(Node));
-        if (bFullCardPilot) HeadingBounds->SetHeightOverride(26.f);
-        else HeadingBounds->ClearHeightOverride();
+        HeadingBounds->SetHeightOverride(20.f);
     }
-    const bool bDenseBiography = bFullCardPilot && Presentation.Skills.Num() >= 3;
+    const bool bDenseBiography = bFullCardPilot && (!Presentation.bGoalkeeper || Presentation.Skills.Num() >= 3);
     auto* BioBounds = CastChecked<USizeBox>(GetWidgetFromName(TEXT("InMatchFullCardBiographyBounds")));
     // Global Full bio clearance: narrow only from the left, retaining each frame
     // skin's accepted top/right anchors and all vertical capacity rules.
@@ -3044,7 +3145,7 @@ void UFMCodexPlayerCardWidget::RefreshFullCardPilot()
     if (auto* BioSlot = Cast<UOverlaySlot>(BioBounds->Slot))
         BioSlot->SetPadding(bFullCardPilot ? FMargin(0,bDenseBiography ? 12 : 18,10,0) : FMargin(0,10,5,0));
     BiographyRegion->SetPadding(bFullCardPilot
-        ? (bDenseBiography ? FMargin(4,7) : FMargin(4,9,4,10)) : FMargin(4,6));
+        ? (bDenseBiography ? FMargin(4,4) : FMargin(4,9,4,10)) : FMargin(4,6));
     SetFullSurface(SkillRegion, bFullCardPilot, EFMCodexFullCardSurface::Section, Accent);
     GetWidgetFromName(TEXT("FullCardIdentityReadabilityScrim"))->SetVisibility(bFullCardPilot
         ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
@@ -3054,7 +3155,7 @@ void UFMCodexPlayerCardWidget::RefreshFullCardPilot()
     const FLinearColor HeadingInk = bFullCardPilot
         ? FLinearColor(.72f,.81f,.85f,1)
         : FLinearColor::FromSRGBColor(FColor(0xE4,0xE8,0xE7));
-    for (const TCHAR* Prefix : {TEXT("AttributeSection"), TEXT("SkillSection")})
+    for (const TCHAR* Prefix : {TEXT("AttributeSection"), TEXT("TraitSection"), TEXT("SkillSection")})
     {
         const FString Base(Prefix);
         auto* Title = CastChecked<UTextBlock>(GetWidgetFromName(FName(*(Base + TEXT("Title")))));
@@ -3124,6 +3225,19 @@ void UFMCodexPlayerCardWidget::RefreshFullCardPilot()
     if (UVerticalBoxSlot* SupplementSlot = Cast<UVerticalBoxSlot>(FullCardIdentitySupplementText->Slot))
         SupplementSlot->SetPadding(bFullCardPilot ? FMargin(16,1,bHasNumber ? 90 : 16,6) : FMargin(10,0,bHasNumber ? 90 : 38,5));
     if (bDetailed) PlayerFacingSerialText->SetVisibility(ESlateVisibility::Collapsed);
+    const int32 AttributeRows = 3;
+    const int32 SkillRows = RenderedSkillTexts.Num();
+    // UI space allocation only: no attribute/skill facts are invented for short cards.
+    // Reserve both assignment columns even when one category is empty.
+    int32 OffensiveCount = Presentation.BinaryTraits.Num(), DefensiveCount = 0;
+    for (const auto& T : Presentation.RankedTraits)
+        (FPlayerTraitFormula::Category(T.TraitId) == EPlayerTraitCategory::Offensive ? OffensiveCount : DefensiveCount)++;
+    const float TraitHeight = 41.f + 21.f * FMath::Max(2, FMath::Max(OffensiveCount, DefensiveCount));
+    const float HeroHeight = FMath::Clamp(280.f + (2-SkillRows)*26.f
+        + (5-AttributeRows)*24.f + (SkillRows == 0 ? 20.f : 0.f)
+        - (SkillRows >= 3 ? 12.f : 0.f) - TraitHeight + 10.f, 220.f, 360.f);
+    PortraitBounds->SetHeightOverride(HeroHeight);
+
     if (!bFullCardPilot)
     {
         FSlateFontInfo NumberFont = FullCardAssignedNumberText->GetFont();
@@ -3153,14 +3267,6 @@ void UFMCodexPlayerCardWidget::RefreshFullCardPilot()
     NumberFont.Size = GetMeasuredSingleLineFontSize(FText::FromString(Presentation.AssignedPlayerNumber), NumberFont, 42.f, 26, 12);
     FullCardAssignedNumberText->SetFont(NumberFont);
     FullCardAssignedNumberText->SetColorAndOpacity(FSlateColor(HeroInk));
-    const int32 AttributeRows = Presentation.bGoalkeeper ? 3 : 5;
-    const int32 SkillRows = RenderedSkillTexts.Num();
-    // UI space allocation only: no attribute/skill facts are invented for short cards.
-    // Reserve actual breathing room for the three-skill variant inside the same footprint.
-    const float HeroHeight = FMath::Clamp(280.f + (2-SkillRows)*26.f
-        + (5-AttributeRows)*24.f + (SkillRows == 0 ? 20.f : 0.f)
-        - (SkillRows >= 3 ? 12.f : 0.f), 242.f, 360.f);
-    PortraitBounds->SetHeightOverride(HeroHeight);
     if (ResolvedPortraitTexture != nullptr)
     {
         // All four Full derivatives share one ratio-preserving viewport. No player-key offsets.

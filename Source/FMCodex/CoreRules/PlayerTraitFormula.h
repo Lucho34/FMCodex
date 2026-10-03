@@ -56,6 +56,8 @@ struct FMCODEX_API FPlayerTraitTakerFormula
  int32 SelectedEffectiveValue = 0;
 };
 
+enum class EPlayerTraitCategory : uint8 { None, Offensive, Defensive };
+
 class FMCODEX_API FPlayerTraitFormula final
 {
 public:
@@ -69,4 +71,6 @@ public:
  // Near/Penalty resolve BOTH candidates before selection; Long resolves Shooting.
  static FPlayerTraitTakerFormula ResolveTaker(const FPlayerCardRuleSnapshot& Taker, FName FormulaContext);
  static FText DisplayName(FName TraitId);
+ // Read-only catalog metadata for player-information surfaces.
+ static EPlayerTraitCategory Category(FName TraitId);
 };

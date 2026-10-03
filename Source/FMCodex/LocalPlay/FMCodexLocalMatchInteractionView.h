@@ -133,6 +133,9 @@ struct FMCODEX_API FFMCodexLocalMatchCardView
 		int32 MaxTriggerActionPoint = 0;
 	};
 	TArray<FAttribute> AttributeValues;
+	// Assigned player information, independent of current Formula activation.
+	TArray<FPlayerRankedTrait> RankedTraits;
+	TArray<FName> BinaryTraits;
 	TArray<FSkill> Skills;
 	TArray<FSkill> EligibleTacticalSkills;
 	/**
@@ -517,6 +520,8 @@ public:
 
 	static FFMCodexLocalMatchScreenPresentation BuildScreenPresentation(
 		const FFMCodexLocalMatchInteractionView& View);
+
+	static void RedactFullCardTraitAssignments(FFMCodexLocalMatchInteractionView& View, EInitialTurnOrderPlayer ViewerSide);
 
 	static TArray<FFMCodexLocalMatchCardView::FSkill>
 	ProjectEligibleTacticalSkills(

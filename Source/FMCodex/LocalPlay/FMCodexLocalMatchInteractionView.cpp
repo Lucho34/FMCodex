@@ -282,6 +282,8 @@ namespace FMCodexLocalMatchInteractionView
 		}
 
 		View.bGoalkeeper = Card.Snapshot.bIsGoalkeeper;
+		View.RankedTraits = Card.Snapshot.RankedTraits;
+		View.BinaryTraits = Card.Snapshot.BinaryTraits;
 		View.RackSortGroup = RackSortGroup(Card.Snapshot);
 		if (const FFMCodexPrototypePlayerDefinition* Prototype =
 			FFMCodexPrototypeTeamContent::Find(CardId))
@@ -1759,6 +1761,7 @@ namespace FMCodexLocalMatchInteractionView
 		FFMCodexLocalMatchInteractionView& View)
 	{
 		const bool bValidViewer = IsPlayerSide(ViewerSide);
+		FFMCodexLocalMatchInteractionViewBuilder::RedactFullCardTraitAssignments(View, ViewerSide);
 		if (!Disclosure.bRevealInitialActionPointRoll)
 		{
 			View.ActionPoint = 0;
@@ -3250,4 +3253,18 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	default:
 		return TEXT("No One-on-One Choice");
 	}
+}
+
+void FFMCodexLocalMatchInteractionViewBuilder::RedactFullCardTraitAssignments(
+ FFMCodexLocalMatchInteractionView& View, const EInitialTurnOrderPlayer ViewerSide)
+{
+ auto Redact = [ViewerSide](FFMCodexLocalMatchCardView& Card)
+ {
+  if (ViewerSide == EInitialTurnOrderPlayer::None || Card.Side != ViewerSide)
+  { Card.RankedTraits.Reset(); Card.BinaryTraits.Reset(); }
+ };
+ for (auto* Roster : {&View.PlayerACardRoster, &View.PlayerBCardRoster}) for (auto& Card : *Roster) Redact(Card);
+ for (auto& Group : View.DeploymentGroups) Redact(Group.Card);
+ for (auto& Option : View.SelectionOptions) Redact(Option.Card);
+ for (auto& Region : View.PitchRegions) for (auto& Slot : Region.Slots) Redact(Slot.Card);
 }

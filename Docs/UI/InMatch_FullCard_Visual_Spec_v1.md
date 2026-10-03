@@ -8,6 +8,17 @@ Stage: `6.13.1.3.11.8`
 
 Data contract integrated by: `6.13.2.2`
 
+## Stage 8.20B.2.1 current layout amendment
+
+Engineering implementation; **USER PIE REQUIRED** for visual acceptance. This amendment supersedes the older outfield attribute/biography row counts below; the established card identity, art routes and inspection allowlist remain in force.
+
+- Full Card stays `360×540`. Outfield attributes are exactly two columns × three rows: left Shooting / Passing / Control; right Speed / Strength / Defense. Existing numeric badge tiers remain unchanged.
+- Semantic Stamina S/A/B is the fifth top-right profile row after Position, with label above value and the same dividers. GK retains its six attributes and four profile facts.
+- `特性` sits between attributes and skills. Offensive and Defensive columns each reserve at least two rows; empty categories show a quiet `—`. Ranked rows display the full Chinese name plus S/A/B, reusing attribute tiers 6/5/4. Binary `反越位专家` displays its name only, with no value, badge or placeholder. Subsection headings align with Trait-name left edges; the main `特性` heading stays centered. The visual follow-up adds only four units to the Trait section through small heading, row and lower-edge spacing changes, offset in the hero height without changing card dimensions or font sizes.
+- Assignments come from the frozen authoritative card snapshot, independent of current tactical activation. Viewer-safe projection and the Local read adapter retain only the current viewer's assigned Trait payload; the Widget never derives assignments from the static catalog, candidate status or Formula activation. Central Trait registry supplies names/categories.
+- Current 40-player capacity: Offensive max 2, Defensive max 2, total max 3; longest assigned names in either category have 6 Chinese characters. Production skills max 2. Every assigned row remains visible, with shrink-only text, no scrolling or ellipsis. No production content changes.
+- Existing hero portrait uses the same ratio-preserving crop, with reduced height to make room for the new section. Outfield profile rows use 30-unit spacing, section headings 20 units, preserving established font sizes and the profile text lane. Skills and footer remain visible.
+
 ## Purpose and boundary
 
 This specification owns the `360×540` In-Match Full Card visual family.

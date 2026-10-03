@@ -109,6 +109,8 @@ namespace FMCodexLocalMatchUMGPresentation
 		Result.BirthDate = Card.BirthDate;
 		Result.HeightCm = Card.HeightCm;
 		Result.WeightKg = Card.WeightKg;
+		Result.RankedTraits = Card.RankedTraits;
+		Result.BinaryTraits = Card.BinaryTraits;
 		for (const FFMCodexLocalMatchCardView::FAttribute& Attribute
 			: Card.AttributeValues)
 		{
@@ -2801,12 +2803,14 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 
 FFMCodexUMGMatchScreenViewModel
 FFMCodexLocalMatchUMGPresentationBuilder::Build(
-	const FFMCodexLocalMatchInteractionView& InteractionView,
+	const FFMCodexLocalMatchInteractionView& SourceInteractionView,
 	const FFMCodexLocalMatchResolutionFeedback& ResolutionFeedback,
 	const FString& DiagnosticMessage,
 	const EInitialTurnOrderPlayer LocalViewerSide,
 	const FFMCodexUMGSidePrimaryColors& SidePrimaryColors)
 {
+	auto InteractionView = SourceInteractionView;
+	FFMCodexLocalMatchInteractionViewBuilder::RedactFullCardTraitAssignments(InteractionView, LocalViewerSide);
 	using namespace FMCodexLocalMatchUMGPresentation;
 	FFMCodexUMGMatchScreenViewModel Result;
 	if (InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick
