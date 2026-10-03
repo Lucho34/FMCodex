@@ -16,7 +16,7 @@ struct FMCODEX_API FPlayerRankedTrait
 	bool operator==(const FPlayerRankedTrait& Other) const { return TraitId == Other.TraitId && Rank == Other.Rank; }
 };
 
-// Fixed storage taxonomy only. Activation and bonus evaluation are deliberately absent.
+// Stable storage taxonomy. Formula-local activation lives in PlayerTraitFormula.
 inline bool IsKnownRankedPlayerTrait(const FName Id)
 {
 	static const TSet<FName> Ids = {

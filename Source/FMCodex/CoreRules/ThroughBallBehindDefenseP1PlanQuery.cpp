@@ -1,4 +1,5 @@
 #include "ThroughBallBehindDefenseP1PlanQuery.h"
+#include "PlayerTraitFormula.h"
 
 namespace ThroughBallBehindDefenseP1PlanQuery
 {
@@ -67,8 +68,8 @@ namespace ThroughBallBehindDefenseP1PlanQuery
 			/ 2.0f);
 	}
 
-	FThroughBallBehindDefenseP1FormulaPlan BuildFormulaPlan(
-		const FThroughBallBehindDefenseP1PlanQueryInput& Input)
+	bool BuildFormulaPlan(
+		const FThroughBallBehindDefenseP1PlanQueryInput& Input, FThroughBallBehindDefenseP1FormulaPlan& Plan)
 	{
 		const FThroughBallParticipantEligibilityQueryResult& Eligibility =
 			Input.ParticipantEligibilityResult;
@@ -78,14 +79,21 @@ namespace ThroughBallBehindDefenseP1PlanQuery
 		const FPlayerCardRuleSnapshot& Runner = Participants.RunnerSnapshot;
 		const FPlayerCardRuleSnapshot& Marker = Participants.MarkerSnapshot;
 
-		FThroughBallBehindDefenseP1FormulaPlan Plan;
+		using R = FPlayerTraitFormula::Role;
+		using A = FPlayerTraitFormula::Attribute;
+		const FName Context = TEXT("ThroughBall.BehindDefense.P1");
+		const auto C = FPlayerTraitFormula::Resolve(Carrier, Context, R::Carrier, A::Passing);
+		const auto Rn = FPlayerTraitFormula::Resolve(Runner, Context, R::Runner, A::Speed);
+		const auto M = FPlayerTraitFormula::Resolve(Marker, Context, R::Marker, A::Defense);
+		const auto H = Eligibility.bHasHelper ? FPlayerTraitFormula::Resolve(Participants.HelperSnapshot, Context, R::Helper, A::Speed) : FPlayerTraitFormulaOperand();
+		if (!C.bValid || !Rn.bValid || !M.bValid || (Eligibility.bHasHelper && !H.bValid)) return false;
 		Plan.FormulaType = EFormulaType::Transition;
 
 		Plan.CarrierId = Carrier.CardId;
-		Plan.CarrierPassing = Carrier.Attributes.Passing;
+		Plan.CarrierPassing = C.EffectiveValue;
 		Plan.CarrierStamina = PlayerStaminaGameplayValue(Carrier.Attributes.StaminaTier);
 		Plan.RunnerId = Runner.CardId;
-		Plan.RunnerSpeed = Runner.Attributes.Speed;
+		Plan.RunnerSpeed = Rn.EffectiveValue;
 		Plan.RunnerStamina = PlayerStaminaGameplayValue(Runner.Attributes.StaminaTier);
 		Plan.AttackD6 = Input.AttackD6;
 		Plan.AttackBaseValue = AverageOneDecimal(
@@ -98,14 +106,14 @@ namespace ThroughBallBehindDefenseP1PlanQuery
 		};
 
 		Plan.MarkerId = Marker.CardId;
-		Plan.MarkerDefense = Marker.Attributes.Defense;
+		Plan.MarkerDefense = M.EffectiveValue;
 		Plan.MarkerStamina = PlayerStaminaGameplayValue(Marker.Attributes.StaminaTier);
 		Plan.bHasHelper = Eligibility.bHasHelper;
 		if (Plan.bHasHelper)
 		{
 			const FPlayerCardRuleSnapshot& Helper = Participants.HelperSnapshot;
 			Plan.HelperId = Helper.CardId;
-			Plan.HelperSpeed = Helper.Attributes.Speed;
+			Plan.HelperSpeed = H.EffectiveValue;
 			Plan.HelperStamina = PlayerStaminaGameplayValue(Helper.Attributes.StaminaTier);
 		}
 
@@ -137,7 +145,7 @@ namespace ThroughBallBehindDefenseP1PlanQuery
 		Plan.bAttackerVictoryRequiresOneOnOne = true;
 		Plan.bAttackerVictoryRequiresP2 = false;
 		Plan.bDefenderVictoryEndsAttack = true;
-		return Plan;
+		return true;
 	}
 }
 
@@ -253,7 +261,12 @@ FThroughBallBehindDefenseP1PlanQuery::Evaluate(
 		return Result;
 	}
 
-	Result.FormulaPlan = BuildFormulaPlan(Input);
+	if (!BuildFormulaPlan(Input, Result.FormulaPlan))
+	{
+		SetFailure(Result, EThroughBallBehindDefenseP1PlanQueryErrorCode::InvalidTraitConfiguration,
+			TEXT("Invalid ranked Trait configuration."), TEXT("RankedTraits"));
+		return Result;
+	}
 	Result.bSuccess = true;
 	Result.Decision =
 		EThroughBallBehindDefenseP1PlanQueryDecision

@@ -598,8 +598,8 @@ void RefreshSide(UWidgetTree& Tree, const FString& Prefix, const FFMCodexUMGInli
 	{
 		if (Term.Kind==K::RawRoll || !Term.bResolved) continue;
 		FText Line;
-		if (Term.AttributeLabel.IsEmpty() && Term.ModifierSourceLabel.IsEmpty())
-			Line=FText::FromString(Term.DisplayLabel);
+		if (!Term.AttributeOperands.IsEmpty() || (Term.AttributeLabel.IsEmpty() && Term.ModifierSourceLabel.IsEmpty()))
+			Line=FText::FromString(Term.ContributorDisplayName.IsEmpty() ? Term.DisplayLabel : Term.ContributorDisplayName + TEXT(" · ") + Term.DisplayLabel);
 		else if (Term.Kind==K::FixedModifier)
 			Line=FText::Format(LOCTEXT("ModifierLine","{0} +{1}"),FText::FromString(Term.ModifierSourceLabel),FText::AsNumber(Term.Contribution));
 		else

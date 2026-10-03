@@ -291,10 +291,20 @@ FCutInsideShotDirectShotPlanQuery::BuildPlan(
 		return Result;
 	}
 
+	using R = FPlayerTraitFormula::Role;
+	using A = FPlayerTraitFormula::Attribute;
+	const auto AttackOperand = FPlayerTraitFormula::Resolve(AttackerSnapshot, TEXT("CutInsideShot.DirectShot"), R::Carrier, A::Control);
+	const auto DefenseOperand = FPlayerTraitFormula::Resolve(DefenderSnapshot, TEXT("CutInsideShot.DirectShot"), R::Marker, A::Defense);
+	if (!AttackOperand.bValid || !DefenseOperand.bValid)
+	{
+		CutInsideShotDirectShotPlanQuery::SetFailure(Result, ECutInsideShotDirectShotPlanQueryErrorCode::InvalidTraitConfiguration,
+			TEXT("Invalid ranked Trait configuration."), TEXT("RankedTraits"));
+		return Result;
+	}
 	const float AttackerModifier =
 		CutInsideShotDirectShotPlanQuery::MakeDerivedAverageModifier(
 			AttackerSnapshot.Attributes.Shooting,
-			AttackerSnapshot.Attributes.Control);
+			AttackOperand.EffectiveValue);
 
 	Result.FormulaPlan.AttackerQueryInput =
 		CutInsideShotDirectShotPlanQuery::MakeFormulaQueryInput(
@@ -311,8 +321,9 @@ FCutInsideShotDirectShotPlanQuery::BuildPlan(
 			ESingleCardFormulaAttribute::Defense,
 			Input.ExternalDefenseD6,
 			2.0f + CutInsideShotDirectShotPlanQuery::MakeDerivedAverageModifier(
-				DefenderSnapshot.Attributes.Defense, DefenderSnapshot.Attributes.Speed),
+				DefenseOperand.EffectiveValue, DefenderSnapshot.Attributes.Speed),
 			Input);
+	Result.FormulaPlan.DefenderQueryInput.PrimaryOperand = DefenseOperand;
 	Result.FormulaPlan.AttackerPlayerId =
 		Input.AttackerPlayerId;
 	Result.FormulaPlan.DefenderPlayerId =

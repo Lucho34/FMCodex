@@ -1,4 +1,5 @@
 #include "MatchPlayPenaltyResolution.h"
+#include "PlayerTraitFormula.h"
 
 #include "GoalResolver.h"
 
@@ -315,11 +316,15 @@ FMatchPlayPenaltyResolution::ResolveDirectDefenseRoll(
 	Penalty.bHasDefenseD6 = true;
 	Penalty.DefenseD6 = Result.ProviderResult.RawD6;
 
+	const auto TakerFormula = FPlayerTraitFormula::ResolveTaker(Penalty.Carrier.Snapshot, TEXT("Penalty.Direct"));
+	if (!TakerFormula.bValid)
+	{
+		Fail(Result, EError::FormulaResolutionFailed, TEXT("Invalid ranked Trait configuration."));
+		return Result;
+	}
 	FFormulaResolverInput FormulaInput;
 	FormulaInput.FormulaType = EFormulaType::Finishing;
-	FormulaInput.Attacker.BaseValue = FMath::Max(
-		Penalty.Carrier.Snapshot.Attributes.Shooting,
-		Penalty.Carrier.Snapshot.Attributes.Passing);
+	FormulaInput.Attacker.BaseValue = TakerFormula.SelectedEffectiveValue;
 	FormulaInput.Attacker.ComparePoint = Penalty.AttackD6;
 	FormulaInput.Attacker.bComparePointWasRolledOnD6 = true;
 	FormulaInput.Attacker.ParticipatingStamina.Add(

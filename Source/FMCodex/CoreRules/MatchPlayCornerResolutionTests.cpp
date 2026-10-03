@@ -1069,4 +1069,43 @@ bool FMatchPlayCornerPreviewTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+
+#include "../LocalPlay/FMCodexLocalMatchInteractionView.h"
+#include "../LocalPlay/FMCodexLocalMatchUMGPresentation.h"
+#include "../LocalPlay/FMCodexLocalMatchResolutionFeedback.h"
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCornerRankedIsolation, "FMCodex.RankedTraits.Corner.SelectionAndDisclosure", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FCornerRankedIsolation::RunTest(const FString&)
+{
+ using namespace MatchPlayCornerResolutionTests;
+ for(bool High:{true,false})for(bool Selected:{true,false})
+ {
+  auto State=MakeAwaitingAttacker(TEXT("TraitCorner"));const auto A=State.RuntimeState.CurrentAttackingPlayer;const auto D=Other(A);
+  FPlayerRankedTrait AttackTrait;AttackTrait.TraitId=High?TEXT("Trait.CornerHighThreat"):TEXT("Trait.CornerLowThreat");AttackTrait.Rank=EPlayerTraitRank::A;
+  FPlayerRankedTrait DefenseTrait;DefenseTrait.TraitId=High?TEXT("Trait.CornerHighDefense"):TEXT("Trait.CornerLowDefense");DefenseTrait.Rank=EPlayerTraitRank::B;
+  auto* AP=FindSnapshot(State,A,false,Selected?0:1);auto* DP=FindSnapshot(State,D,false,Selected?0:1);
+  AP->RankedTraits.Add(AttackTrait);DP->RankedTraits.Add(DefenseTrait);
+  const auto Result=MakeTerminal(State,2,2,1,High?EMatchPlayCornerRouteIntent::High:EMatchPlayCornerRouteIntent::Low,1,4,3);
+  if(!TestTrue(TEXT("Selected-only Corner lifecycle"),Result.bSuccess))return false;
+  const auto Preview=FMatchPlayCornerResolution::QueryFormulaPreview(Result.AfterState);
+  if(!TestTrue(TEXT("Exactly two actual outfield facts"),Preview.bAvailable&&Preview.AttributeOperands.Num()==2))return false;
+  TestEqual(TEXT("Only selected Runner gains bonus"),Preview.AttributeOperands[0].Bonus,Selected?2:0);
+  TestEqual(TEXT("Only selected Helper gains bonus"),Preview.AttributeOperands[1].Bonus,Selected?1:0);
+  TestEqual(TEXT("Preview agrees with gameplay"),Preview.AttackCurrentTotal,Result.FormulaResolution.AttackerFinalValue);
+  TestEqual(TEXT("Helper half coefficient agrees with gameplay"),Preview.DefenseCurrentTotal,Result.FormulaResolution.DefenderFinalValue);
+  auto Safe=FFMCodexLocalMatchInteractionViewBuilder::Build(Result.AfterState,{});
+  TestEqual(TEXT("Only actual participants disclosed"),Safe.SetPieceAttributeOperands.Num(),2);
+  if(!Selected)for(const auto& Fact:Safe.SetPieceAttributeOperands)TestTrue(TEXT("Candidate Trait absent from safe fact"),Fact.TraitId.IsNone()&&Fact.Bonus==0);
+  FFMCodexLocalMatchViewerDisclosure Hidden;Hidden.bRevealInitialActionPointRoll=Hidden.bRevealSetPieceTypeRoll=true;
+  auto Redacted=FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(Result.AfterState,{},A,Hidden);
+  TestTrue(TEXT("No selected Trait before selection/route disclosure"),Redacted.SetPieceAttributeOperands.IsEmpty());
+  auto UI=FFMCodexLocalMatchUMGPresentationBuilder::Build(Safe,FFMCodexLocalMatchResolutionFeedback(),TEXT(""));
+  if(Selected)
+  {
+   TestTrue(TEXT("Runner bonus in own row"),UI.InlineFormula.AttackRow.Terms.ContainsByPredicate([](const auto& T){return T.AttributeOperands.Num()==1&&T.AttributeOperands[0].Bonus==2;}));
+   TestTrue(TEXT("Helper bonus in own row"),UI.InlineFormula.DefenseRow.Terms.ContainsByPredicate([](const auto& T){return T.AttributeOperands.Num()==1&&T.AttributeOperands[0].Bonus==1;}));
+  }
+ }
+ return true;
+}
+
 #endif

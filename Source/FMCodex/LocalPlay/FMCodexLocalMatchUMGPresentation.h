@@ -1306,6 +1306,9 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaTermViewModel
 	EFMCodexUMGInlineFormulaTermKind Kind =
 		EFMCodexUMGInlineFormulaTermKind::Attribute;
 
+	UPROPERTY()
+	TArray<FPlayerTraitFormulaOperand> AttributeOperands;
+
 	/** Complete player-facing text for this one structured operand. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")

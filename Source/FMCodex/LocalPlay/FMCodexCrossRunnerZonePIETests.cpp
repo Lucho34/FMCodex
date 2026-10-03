@@ -3,6 +3,9 @@
 #include "FMCodexLocalMatchScreenWidget.h"
 #include "FMCodexPrototypeTeamContent.h"
 #include "Editor.h"
+#include "Components/Border.h"
+#include "Components/SizeBox.h"
+#include "Components/TextBlock.h"
 #include "Engine/World.h"
 #include "Misc/AutomationTest.h"
 #include "PlayInEditorDataTypes.h"
@@ -25,7 +28,7 @@ public:
 	}
 };
 
-// Real Local PIE, canonical Prototype40_v2, Screen typed actions and the existing
+// Real Local PIE, canonical Prototype40_v3, Screen typed actions and the existing
 // DEV provider. No gameplay-state edits, fake candidates or reveal-clock jumps.
 class FCrossRunnerZonePIE final : public IAutomationLatentCommand
 {
@@ -41,7 +44,7 @@ public:
 		if (!S || FPlatformTime::Seconds() - Changed < .6) return false;
 		if (Step == 0)
 		{
-			Test->TestEqual(TEXT("Committed four-tactic production content"), FFMCodexPrototypeTeamContent::GetBalanceContentVersion(), FString(TEXT("Prototype40_v2")));
+			Test->TestEqual(TEXT("Committed four-tactic production content"), FFMCodexPrototypeTeamContent::GetBalanceContentVersion(), FString(TEXT("Prototype40_v3")));
 			S->RequestStartNewMatch(); ++Step; Changed = FPlatformTime::Seconds(); return false;
 		}
 		if (S->IsInlineFormulaRevealInputBlocked()) return false;
@@ -101,13 +104,30 @@ public:
 			if (!Override(*C, EFMCodexLocalDevRollTarget::CrossRoute, 2)) return true;
 			S->RequestContinueResolution(); break;
 		case Category::RollCrossAttack:
+		{
+			const auto* Term = S->GetPresentation().InlineFormula.AttackRow.Terms.FindByPredicate([&](const auto& T)
+			{ return T.AttributeOperands.Num() == 1 && T.AttributeOperands[0].CardId == Carrier; });
+			if (!Test->TestNotNull(TEXT("Production Cross carries authoritative Carrier operand"), Term)) return true;
+			const auto& Fact = Term->AttributeOperands[0];
+			if (!Test->TestTrue(TEXT("Approved production Cross B Trait actually activates"),
+				Fact.TraitId == TEXT("Trait.CrossCarrier") && Fact.Rank == EPlayerTraitRank::B && Fact.Bonus == 1
+				&& Fact.EffectiveValue == Fact.BaseValue + 1 && Term->DisplayLabel.Contains(TEXT("传中专家 B")))) return true;
+			const auto* Hover = Cast<UBorder>(S->GetWidgetFromName(TEXT("TheaterAttackBaseHover")));
+			if (!Test->TestNotNull(TEXT("Production formula explanation surface"), Hover)) return true;
+			const auto* Tip = CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(Hover->GetToolTip())->GetContent())->GetContent());
+			if (!Test->TestTrue(TEXT("Production hover visibly preserves base, bonus and attribution"),
+				Tip->GetText().ToString().Contains(Term->DisplayLabel))) return true;
+			bObservedRankedTrait = true;
+			Test->AddInfo(FString::Printf(TEXT("RANKED_TRAIT_PIE Carrier=%s Base=%d Bonus=%d Effective=%d Label=%s"),
+				*Carrier.ToString(), Fact.BaseValue, Fact.Bonus, Fact.EffectiveValue, *Term->DisplayLabel));
 			if (!Override(*C, EFMCodexLocalDevRollTarget::CrossHighAttack, 4)) return true;
 			S->RequestContinueResolution(); break;
+		}
 		case Category::RollCrossDefense:
 			if (!Override(*C, EFMCodexLocalDevRollTarget::CrossHighDefense, 3)) return true;
 			S->RequestContinueResolution(); break;
 		case Category::AdvanceAfterTerminal:
-			Test->TestTrue(TEXT("Original Cross flow reaches terminal after canonical selection"), bSelectedRunner && bSelectedCross && V.bTerminalPendingAdvance);
+			Test->TestTrue(TEXT("Original Cross flow reaches terminal after canonical selection"), bSelectedRunner && bSelectedCross && bObservedRankedTrait && V.bTerminalPendingAdvance);
 			Test->AddInfo(FString::Printf(TEXT("CROSS_ZONE_PIE PASS Runner=%s canonicalRunner=1 CrossAvailable=1 CrossTerminal=1 game=%.3f"),
 				*Runner.ToString(), GEditor->PlayWorld->GetTimeSeconds()));
 			return true;
@@ -143,7 +163,7 @@ private:
 	double Started = FPlatformTime::Seconds(), Changed = 0;
 	int32 Step = 0;
 	FName Carrier, Runner;
-	bool bSelectedRunner = false, bSelectedCross = false;
+	bool bSelectedRunner = false, bSelectedCross = false, bObservedRankedTrait = false;
 };
 }
 

@@ -8,6 +8,7 @@
 struct FMCODEX_API FSingleCardFormulaInputAssemblyQueryInput
 {
 	FName CardId = NAME_None;
+	FPlayerTraitFormulaOperand PrimaryOperand;
 	EFormulaType FormulaType = EFormulaType::None;
 	ESingleCardFormulaParticipantRole ParticipantRole =
 		ESingleCardFormulaParticipantRole::None;

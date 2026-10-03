@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PlayerTraitFormula.h"
 
 #include "MatchPlayCurrentAttackCompletion.h"
 #include "MatchPlayDefendingGoalkeeperQuery.h"
@@ -79,6 +80,7 @@ struct FMCODEX_API FMatchPlayCornerResolutionResult
 struct FMCODEX_API FMatchPlayCornerFormulaPreview
 {
 	bool bAvailable = false;
+	TArray<FPlayerTraitFormulaOperand> AttributeOperands;
 	float AttackKnownSubtotal = 0.0f;
 	float DefenseKnownSubtotal = 0.0f;
 	float AttackCurrentTotal = 0.0f;
@@ -94,7 +96,7 @@ public:
 		const FMatchPlayCornerRouteState& Corner,
 		const FMatchPlayDefendingGoalkeeperQueryResult& Goalkeeper,
 		EInitialTurnOrderPlayer Attacker, EInitialTurnOrderPlayer Defender,
-		int64 AttackSequence);
+		int64 AttackSequence, TArray<FPlayerTraitFormulaOperand>* OutOperands = nullptr);
 	static FMatchPlayCornerFormulaPreview QueryFormulaPreview(const FMatchPlayState& State);
 
 	static FMatchPlayCornerResolutionResult SubmitAttackerNominations(

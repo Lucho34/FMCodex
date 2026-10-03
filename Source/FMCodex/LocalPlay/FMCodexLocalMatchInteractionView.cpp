@@ -1170,7 +1170,7 @@ namespace FMCodexLocalMatchInteractionView
 		Result.ActionLabel = TEXT("定位球");
 
 		auto ProjectDirectCurrentTotals = [&Snapshot, Defender, &Result](
-			const float AttackBase,
+			const FName FormulaContext,
 			const TFunction<float(const FPlayerCardRuleSnapshot&)>& DefenseBase,
 			const float DefenseModifier)
 		{
@@ -1190,6 +1190,11 @@ namespace FMCodexLocalMatchInteractionView
 				Result.LongFormulaGoalkeeperCardId = Goalkeeper.CardId;
 			else if (Result.SetPieceType == ESetPieceSelectedType::Penalty)
 				Result.PenaltyFormulaGoalkeeperCardId = Goalkeeper.CardId;
+			const auto TakerFormula = FPlayerTraitFormula::ResolveTaker(Result.SetPieceCarrier.Snapshot, FormulaContext);
+			if (!TakerFormula.bValid) return;
+			Result.SetPieceAttributeOperands = TakerFormula.Operands;
+			Result.SetPieceSelectedEffectiveValue = TakerFormula.SelectedEffectiveValue;
+			const float AttackBase = TakerFormula.SelectedEffectiveValue;
 			Result.bHasSetPieceAttackKnownSubtotal = true;
 			Result.SetPieceAttackKnownSubtotal = AttackBase;
 			Result.bHasSetPieceAttackCurrentTotal = true;
@@ -1288,8 +1293,7 @@ namespace FMCodexLocalMatchInteractionView
 			if (Short.Method == EMatchPlayShortFreeKickMethod::Direct)
 			{
 				ProjectDirectCurrentTotals(
-					FMath::Max(Short.Carrier.Snapshot.Attributes.Shooting,
-						Short.Carrier.Snapshot.Attributes.Passing),
+					TEXT("NearFreeKick.Direct"),
 					[](const FPlayerCardRuleSnapshot& Goalkeeper)
 					{
 						return Goalkeeper.GoalkeeperAttributes.Handling;
@@ -1328,7 +1332,7 @@ namespace FMCodexLocalMatchInteractionView
 			if (Long.Method == EMatchPlayLongFreeKickMethod::Direct)
 			{
 				ProjectDirectCurrentTotals(
-					Long.Carrier.Snapshot.Attributes.Shooting,
+					TEXT("LongFreeKick.Direct"),
 					[](const FPlayerCardRuleSnapshot& Goalkeeper)
 					{
 						return Goalkeeper.GoalkeeperAttributes.Positioning;
@@ -1367,8 +1371,7 @@ namespace FMCodexLocalMatchInteractionView
 			if (Penalty.Method == EMatchPlayPenaltyMethod::Direct)
 			{
 				ProjectDirectCurrentTotals(
-					FMath::Max(Penalty.Carrier.Snapshot.Attributes.Shooting,
-						Penalty.Carrier.Snapshot.Attributes.Passing),
+					TEXT("Penalty.Direct"),
 					[](const FPlayerCardRuleSnapshot& Goalkeeper)
 					{
 						return Goalkeeper.GoalkeeperAttributes.Anticipation;
@@ -1423,6 +1426,7 @@ namespace FMCodexLocalMatchInteractionView
 			const auto Preview = FMatchPlayCornerResolution::QueryFormulaPreview(Snapshot);
 			if (Preview.bAvailable)
 			{
+				Result.SetPieceAttributeOperands = Preview.AttributeOperands;
 				Result.bHasSetPieceAttackKnownSubtotal = true;
 				Result.bHasSetPieceDefenseKnownSubtotal = true;
 				Result.bHasSetPieceAttackCurrentTotal = true;
@@ -1869,6 +1873,8 @@ namespace FMCodexLocalMatchInteractionView
 				|| (Corner.bHasSharedParticipantD6 && (bHiddenParticipant || bHiddenRoute || ContestCount < 2)));
 			if (!Disclosure.bRevealParticipantSelectionRoll || !Disclosure.bRevealRouteRoll)
 			{
+				View.SetPieceAttributeOperands.Reset();
+				View.SetPieceSelectedEffectiveValue = 0;
 				View.bHasSetPieceAttackKnownSubtotal = View.bHasSetPieceDefenseKnownSubtotal = false;
 				View.SetPieceAttackKnownSubtotal = View.SetPieceDefenseKnownSubtotal = 0.0f;
 				View.bHasSetPieceAttackCurrentTotal = View.bHasSetPieceDefenseCurrentTotal = false;

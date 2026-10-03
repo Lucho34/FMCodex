@@ -275,15 +275,22 @@ FFormulaResolverInput FMatchPlayCornerResolution::BuildFormulaInput(
 	const FMatchPlayDefendingGoalkeeperQueryResult& Goalkeeper,
 	const EInitialTurnOrderPlayer Attacker,
 	const EInitialTurnOrderPlayer Defender,
-	const int64 AttackSequence)
+	const int64 AttackSequence, TArray<FPlayerTraitFormulaOperand>* OutOperands)
 {
 	using namespace MatchPlayCornerResolution;
 	FFormulaResolverInput Input;
+	using R = EMatchPlayResolutionParticipantRole;
+	using A = EMatchPlayResolutionFormulaAttribute;
+	if (OutOperands) OutOperands->Reset();
+	const bool bHigh = Corner.ActualRoute == EMatchPlayCornerRouteIntent::High;
+	if (!Corner.Runner.bIsBound || !Corner.Helper.bIsBound || Corner.ActualRoute == EMatchPlayCornerRouteIntent::None) return Input;
+	const FName Context = bHigh ? TEXT("Corner.High") : TEXT("Corner.Low");
+	const auto Runner = FPlayerTraitFormula::Resolve(Corner.Runner.Snapshot, Context, R::Runner, bHigh ? A::Strength : A::Control);
+	const auto Helper = FPlayerTraitFormula::Resolve(Corner.Helper.Snapshot, Context, R::Helper, bHigh ? A::Strength : A::Defense);
+	if (!Runner.bValid || !Helper.bValid) return Input;
+	if (OutOperands) *OutOperands = { Runner, Helper };
 	Input.FormulaType = EFormulaType::Finishing;
-	Input.Attacker.BaseValue = Corner.ActualRoute
-		== EMatchPlayCornerRouteIntent::High
-			? Corner.Runner.Snapshot.Attributes.Strength
-			: Corner.Runner.Snapshot.Attributes.Control;
+	Input.Attacker.BaseValue = Runner.EffectiveValue;
 	Input.Attacker.Modifier = Corner.CandidateBonusSide == Attacker
 		? static_cast<float>(Corner.CandidateBonus) : 0.0f;
 	Input.Attacker.ComparePoint = Corner.AttackD6;
@@ -291,10 +298,7 @@ FFormulaResolverInput FMatchPlayCornerResolution::BuildFormulaInput(
 	Input.Attacker.ParticipatingStamina.Add(
 		PlayerStaminaGameplayValue(Corner.Runner.Snapshot.Attributes.StaminaTier));
 
-	const float HelperAttribute = Corner.ActualRoute
-		== EMatchPlayCornerRouteIntent::High
-			? Corner.Helper.Snapshot.Attributes.Strength
-			: Corner.Helper.Snapshot.Attributes.Defense;
+	const float HelperAttribute = Helper.EffectiveValue;
 	const float GoalkeeperAttribute = Corner.ActualRoute
 		== EMatchPlayCornerRouteIntent::High
 			? Goalkeeper.Snapshot.GoalkeeperAttributes.Aerial
@@ -333,7 +337,8 @@ FMatchPlayCornerFormulaPreview FMatchPlayCornerResolution::QueryFormulaPreview(
 	const auto Goalkeeper = FMatchPlayDefendingGoalkeeperQuery::Query(State, Defender);
 	if (!Goalkeeper.bSuccess) return Result;
 	const auto Input = BuildFormulaInput(Corner, Goalkeeper, Attacker, Defender,
-		State.CurrentAttack.AttackSequence);
+		State.CurrentAttack.AttackSequence, &Result.AttributeOperands);
+	if (Input.FormulaType != EFormulaType::Finishing) return Result;
 	Result.bAvailable = true;
 	Result.AttackKnownSubtotal = Input.Attacker.BaseValue + Input.Attacker.Modifier;
 	Result.DefenseKnownSubtotal = Input.Defender.BaseValue + Input.Defender.Modifier;

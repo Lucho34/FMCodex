@@ -1,4 +1,5 @@
 #include "ThroughBallFeetPlanQuery.h"
+#include "PlayerTraitFormula.h"
 
 namespace ThroughBallFeetPlanQuery
 {
@@ -64,8 +65,8 @@ namespace ThroughBallFeetPlanQuery
 		return RoundOneDecimal(static_cast<float>(Value) / 2.0f);
 	}
 
-	FThroughBallFeetFormulaPlan BuildFormulaPlan(
-		const FThroughBallFeetPlanQueryInput& Input)
+	bool BuildFormulaPlan(
+		const FThroughBallFeetPlanQueryInput& Input, FThroughBallFeetFormulaPlan& Plan)
 	{
 		const FThroughBallParticipantEligibilityQueryResult& Eligibility =
 			Input.ParticipantEligibilityResult;
@@ -76,14 +77,21 @@ namespace ThroughBallFeetPlanQuery
 		const FPlayerCardRuleSnapshot& Runner = Participants.RunnerSnapshot;
 		const FPlayerCardRuleSnapshot& Marker = Participants.MarkerSnapshot;
 
-		FThroughBallFeetFormulaPlan Plan;
+		using R = FPlayerTraitFormula::Role;
+		using A = FPlayerTraitFormula::Attribute;
+		const FName Context = TEXT("ThroughBall.Feet");
+		const auto C = FPlayerTraitFormula::Resolve(Carrier, Context, R::Carrier, A::Passing);
+		const auto Rn = FPlayerTraitFormula::Resolve(Runner, Context, R::Runner, A::Control);
+		const auto M = FPlayerTraitFormula::Resolve(Marker, Context, R::Marker, A::Defense);
+		const auto H = Eligibility.bHasHelper ? FPlayerTraitFormula::Resolve(Participants.HelperSnapshot, Context, R::Helper, A::Defense) : FPlayerTraitFormulaOperand();
+		if (!C.bValid || !Rn.bValid || !M.bValid || (Eligibility.bHasHelper && !H.bValid)) return false;
 		Plan.FormulaType = EFormulaType::Finishing;
 
 		Plan.CarrierId = Carrier.CardId;
-		Plan.CarrierPassing = Carrier.Attributes.Passing;
+		Plan.CarrierPassing = C.EffectiveValue;
 		Plan.CarrierStamina = PlayerStaminaGameplayValue(Carrier.Attributes.StaminaTier);
 		Plan.RunnerId = Runner.CardId;
-		Plan.RunnerControl = Runner.Attributes.Control;
+		Plan.RunnerControl = Rn.EffectiveValue;
 		Plan.RunnerStamina = PlayerStaminaGameplayValue(Runner.Attributes.StaminaTier);
 		Plan.AttackD6 = Input.AttackD6;
 		Plan.AttackBaseValue = AverageOneDecimal(
@@ -96,7 +104,7 @@ namespace ThroughBallFeetPlanQuery
 		};
 
 		Plan.MarkerId = Marker.CardId;
-		Plan.MarkerDefense = Marker.Attributes.Defense;
+		Plan.MarkerDefense = M.EffectiveValue;
 		Plan.MarkerStamina = PlayerStaminaGameplayValue(Marker.Attributes.StaminaTier);
 		Plan.bHasHelper = Eligibility.bHasHelper;
 		if (Plan.bHasHelper)
@@ -104,7 +112,7 @@ namespace ThroughBallFeetPlanQuery
 			const FPlayerCardRuleSnapshot& Helper =
 				Participants.HelperSnapshot;
 			Plan.HelperId = Helper.CardId;
-			Plan.HelperDefense = Helper.Attributes.Defense;
+			Plan.HelperDefense = H.EffectiveValue;
 			Plan.HelperStamina = PlayerStaminaGameplayValue(Helper.Attributes.StaminaTier);
 		}
 
@@ -157,7 +165,7 @@ namespace ThroughBallFeetPlanQuery
 		Plan.bDefenderVictoryIsMiss = true;
 		Plan.bAttackEndsAfterResolution = true;
 		Plan.bContinueResolution = false;
-		return Plan;
+		return true;
 	}
 }
 
@@ -299,7 +307,12 @@ FThroughBallFeetPlanQueryResult FThroughBallFeetPlanQuery::Evaluate(
 		}
 	}
 
-	Result.FormulaPlan = BuildFormulaPlan(Input);
+	if (!BuildFormulaPlan(Input, Result.FormulaPlan))
+	{
+		SetFailure(Result, EThroughBallFeetPlanQueryErrorCode::InvalidTraitConfiguration,
+			TEXT("Invalid ranked Trait configuration."), TEXT("RankedTraits"));
+		return Result;
+	}
 	Result.bSuccess = true;
 	Result.Decision =
 		EThroughBallFeetPlanQueryDecision::FormulaResolutionRequired;

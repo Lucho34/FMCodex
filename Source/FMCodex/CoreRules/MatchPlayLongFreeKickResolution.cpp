@@ -1,4 +1,5 @@
 #include "MatchPlayLongFreeKickResolution.h"
+#include "PlayerTraitFormula.h"
 
 #include "GoalResolver.h"
 
@@ -325,9 +326,15 @@ FMatchPlayLongFreeKickResolution::ResolveDirectDefenseRoll(
 	Long.bHasDefenseD6 = true;
 	Long.DefenseD6 = Result.FirstProviderResult.RawD6;
 
+	const auto TakerFormula = FPlayerTraitFormula::ResolveTaker(Long.Carrier.Snapshot, TEXT("LongFreeKick.Direct"));
+	if (!TakerFormula.bValid)
+	{
+		Fail(Result, EError::FormulaResolutionFailed, TEXT("Invalid ranked Trait configuration."));
+		return Result;
+	}
 	FFormulaResolverInput FormulaInput;
 	FormulaInput.FormulaType = EFormulaType::Finishing;
-	FormulaInput.Attacker.BaseValue = Long.Carrier.Snapshot.Attributes.Shooting;
+	FormulaInput.Attacker.BaseValue = TakerFormula.SelectedEffectiveValue;
 	FormulaInput.Attacker.ComparePoint = Long.AttackD6;
 	FormulaInput.Attacker.bComparePointWasRolledOnD6 = true;
 	FormulaInput.Attacker.ParticipatingStamina.Add(

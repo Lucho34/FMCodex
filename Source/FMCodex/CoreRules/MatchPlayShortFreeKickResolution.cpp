@@ -1,4 +1,5 @@
 #include "MatchPlayShortFreeKickResolution.h"
+#include "PlayerTraitFormula.h"
 
 #include "GoalResolver.h"
 
@@ -335,11 +336,15 @@ FMatchPlayShortFreeKickResolution::ResolveDirectDefenseRoll(
 	Short.bHasDefenseD6 = true;
 	Short.DefenseD6 = Result.FirstProviderResult.RawD6;
 
+	const auto TakerFormula = FPlayerTraitFormula::ResolveTaker(Short.Carrier.Snapshot, TEXT("NearFreeKick.Direct"));
+	if (!TakerFormula.bValid)
+	{
+		Fail(Result, EError::FormulaResolutionFailed, TEXT("Invalid ranked Trait configuration."));
+		return Result;
+	}
 	FFormulaResolverInput FormulaInput;
 	FormulaInput.FormulaType = EFormulaType::Finishing;
-	FormulaInput.Attacker.BaseValue = FMath::Max(
-		Short.Carrier.Snapshot.Attributes.Shooting,
-		Short.Carrier.Snapshot.Attributes.Passing);
+	FormulaInput.Attacker.BaseValue = TakerFormula.SelectedEffectiveValue;
 	FormulaInput.Attacker.ComparePoint = Short.AttackD6;
 	FormulaInput.Attacker.bComparePointWasRolledOnD6 = true;
 	FormulaInput.Attacker.ParticipatingStamina.Add(

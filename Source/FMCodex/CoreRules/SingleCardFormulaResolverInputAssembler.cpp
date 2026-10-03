@@ -309,6 +309,8 @@ FSingleCardFormulaResolverInputAssembler::Assemble(
 		return Result;
 	}
 
+	if (AttackerContract.PrimaryOperand.bValid) AttackerBaseValue = AttackerContract.PrimaryOperand.EffectiveValue;
+	if (DefenderContract.PrimaryOperand.bValid) DefenderBaseValue = DefenderContract.PrimaryOperand.EffectiveValue;
 	FFormulaResolverInput ResolverInput;
 	ResolverInput.FormulaType = AttackerContract.FormulaType;
 	ResolverInput.Attacker =

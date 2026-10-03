@@ -512,15 +512,23 @@ FCrossPlanQueryResult FCrossPlanQuery::BuildPlan(
 		return Result;
 	}
 
-	const int32 RunnerAttackAttribute = Input.ActualCrossType
-		== ECrossPlanActualType::High
-		? RunnerSnapshot.Attributes.Strength
-		: RunnerSnapshot.Attributes.Speed;
-	const int32 HelperDefenseAttribute = Input.bHasHelper
-		? (Input.ActualCrossType == ECrossPlanActualType::High
-			? Result.HelperSnapshotQueryResult.Snapshot.Attributes.Strength
-			: Result.HelperSnapshotQueryResult.Snapshot.Attributes.Speed)
-		: 0;
+	using R = FPlayerTraitFormula::Role;
+	using A = FPlayerTraitFormula::Attribute;
+	const bool bHigh = Input.ActualCrossType == ECrossPlanActualType::High;
+	const FName Context = bHigh ? TEXT("Cross.High") : TEXT("Cross.Low");
+	const auto CarrierOperand = FPlayerTraitFormula::Resolve(CarrierSnapshot, Context, R::Carrier, A::Passing);
+	const auto RunnerOperand = FPlayerTraitFormula::Resolve(RunnerSnapshot, Context, R::Runner, bHigh ? A::Strength : A::Speed);
+	const auto MarkerOperand = FPlayerTraitFormula::Resolve(MarkerSnapshot, Context, R::Marker, A::Defense);
+	const auto HelperOperand = Input.bHasHelper ? FPlayerTraitFormula::Resolve(Result.HelperSnapshotQueryResult.Snapshot,
+		Context, R::Helper, bHigh ? A::Strength : A::Speed) : FPlayerTraitFormulaOperand();
+	if (!CarrierOperand.bValid || !RunnerOperand.bValid || !MarkerOperand.bValid || (Input.bHasHelper && !HelperOperand.bValid))
+	{
+		CrossPlanQuery::SetFailure(Result, ECrossPlanQueryErrorCode::InvalidTraitConfiguration,
+			TEXT("Invalid ranked Trait configuration."), TEXT("RankedTraits"));
+		return Result;
+	}
+	const int32 RunnerAttackAttribute = RunnerOperand.EffectiveValue;
+	const int32 HelperDefenseAttribute = Input.bHasHelper ? HelperOperand.EffectiveValue : 0;
 	const float GoalkeeperModifier = Input.bUseGoalkeeper
 		? static_cast<float>(Input.ActualCrossType == ECrossPlanActualType::High
 			? Result.GoalkeeperSnapshotQueryResult.Snapshot.GoalkeeperAttributes.Aerial
@@ -528,10 +536,10 @@ FCrossPlanQueryResult FCrossPlanQuery::BuildPlan(
 			* 0.5f
 		: 0.0f;
 	const float AttackerModifier = CrossPlanQuery::MakeAverageModifier(
-		CarrierSnapshot.Attributes.Passing,
+		CarrierOperand.EffectiveValue,
 		RunnerAttackAttribute);
 	const float DefenderModifier = CrossPlanQuery::MakeAverageModifier(
-		MarkerSnapshot.Attributes.Defense,
+		MarkerOperand.EffectiveValue,
 		HelperDefenseAttribute)
 		+ GoalkeeperModifier + CrossPlanQuery::DefenseBonus;
 
@@ -552,6 +560,8 @@ FCrossPlanQueryResult FCrossPlanQuery::BuildPlan(
 			Input.DefenseD6,
 			DefenderModifier,
 			Input);
+	Result.FormulaPlan.AttackerQueryInput.PrimaryOperand = CarrierOperand;
+	Result.FormulaPlan.DefenderQueryInput.PrimaryOperand = MarkerOperand;
 	Result.FormulaPlan.CarrierCardId = Input.CarrierCardId;
 	Result.FormulaPlan.CarrierPlayerId = Input.CarrierPlayerId;
 	Result.FormulaPlan.RunnerCardId = Input.RunnerCardId;

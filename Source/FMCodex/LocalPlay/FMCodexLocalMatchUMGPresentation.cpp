@@ -1,4 +1,5 @@
 #include "FMCodexLocalMatchUMGPresentation.h"
+#include "FMCodexTraitFormulaPresentation.h"
 
 #include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPrototypeTeamContent.h"
@@ -905,6 +906,11 @@ namespace FMCodexLocalMatchUMGPresentation
 					: FString::Printf(TEXT("%s %s \u00D7%s"), *View.AttributeLabel,
 						*CompactNumber(Term.SourceValue),
 						*CompactNumber(Term.Multiplier));
+				if (Term.AttributeOperand.bValid)
+				{
+					View.AttributeOperands.Add(Term.AttributeOperand);
+					View.DisplayLabel = FMCodexTraitFormulaPresentation::Operand(Term.AttributeOperand, Term.Multiplier);
+				}
 				if (!Term.CardId.IsNone())
 				{
 					View.ContributorDisplayName = PlayerFacingName(
@@ -1579,17 +1585,25 @@ namespace FMCodexLocalMatchUMGPresentation
 					Result.DefenseRow, InteractionView, Defender);
 			}
 
-			const FPlayerCardRuleSnapshot& CarrierSnapshot =
-				InteractionView.SetPieceCarrier.Snapshot;
+			auto TakerAttributeTerm = [&InteractionView]()
+			{
+				TArray<FString> Labels;
+				for (const auto& Operand : InteractionView.SetPieceAttributeOperands)
+					Labels.Add(FMCodexTraitFormulaPresentation::Operand(Operand));
+				FString Label = FString::Join(Labels, TEXT(" / "));
+				if (Labels.Num() == 2)
+					Label += FString::Printf(TEXT("（取较高值 → %d）"), InteractionView.SetPieceSelectedEffectiveValue);
+				auto Term = SetPieceAttributeTerm(Label);
+				Term.AttributeOperands = InteractionView.SetPieceAttributeOperands;
+				Term.SourceValue = Term.Contribution = InteractionView.SetPieceSelectedEffectiveValue;
+				return Term;
+			};
 			const FFMCodexLocalMatchCardView* Goalkeeper =
 				FindSetPieceGoalkeeper(InteractionView, Defender);
 			switch (InteractionView.SetPieceType)
 			{
 			case ESetPieceSelectedType::ShortFreeKick:
-				Result.AttackRow.Terms.Add(SetPieceAttributeTerm(FString::Printf(
-					TEXT("射门 %d / 传球 %d（取较高）"),
-					CarrierSnapshot.Attributes.Shooting,
-					CarrierSnapshot.Attributes.Passing)));
+				Result.AttackRow.Terms.Add(TakerAttributeTerm());
 				Result.DefenseRow.Terms.Add(SetPieceAttributeTerm(FString::Printf(
 					TEXT("%s %d"),
 					*FFMCodexPlayerUIPresentationText::AttributeLabel(TEXT("HAN")).ToString(),
@@ -1603,8 +1617,7 @@ namespace FMCodexLocalMatchUMGPresentation
 						*FFMCodexPlayerUIPresentationText::AttributeLabel(TEXT("HAN")).ToString());
 				break;
 			case ESetPieceSelectedType::LongFreeKick:
-				Result.AttackRow.Terms.Add(SetPieceAttributeTerm(FString::Printf(
-					TEXT("射门 %d"), CarrierSnapshot.Attributes.Shooting)));
+				Result.AttackRow.Terms.Add(TakerAttributeTerm());
 				Result.DefenseRow.Terms.Add(SetPieceAttributeTerm(FString::Printf(
 					TEXT("站位 %d"),
 					SetPieceCardAttribute(Goalkeeper, TEXT("POS")))));
@@ -1615,10 +1628,7 @@ namespace FMCodexLocalMatchUMGPresentation
 					TEXT("门将站位与防守加成");
 				break;
 			case ESetPieceSelectedType::Penalty:
-				Result.AttackRow.Terms.Add(SetPieceAttributeTerm(FString::Printf(
-					TEXT("射门 %d / 传球 %d（取较高）"),
-					CarrierSnapshot.Attributes.Shooting,
-					CarrierSnapshot.Attributes.Passing)));
+				Result.AttackRow.Terms.Add(TakerAttributeTerm());
 				Result.DefenseRow.Terms.Add(SetPieceAttributeTerm(FString::Printf(
 					TEXT("预判 %d"),
 					SetPieceCardAttribute(Goalkeeper, TEXT("ANT")))));
@@ -1633,20 +1643,16 @@ namespace FMCodexLocalMatchUMGPresentation
 			{
 				const bool bHigh = InteractionView.CornerActualRoute
 					== EMatchPlayCornerRouteIntent::High;
-				const FString AttackBasis = bHigh
-					? FString::Printf(TEXT("力量 %d"),
-						InteractionView.CornerRunner.Snapshot.Attributes.Strength)
-					: FString::Printf(TEXT("控球 %d"),
-						InteractionView.CornerRunner.Snapshot.Attributes.Control);
-				const FString DefenseBasis = bHigh
-					? FString::Printf(TEXT("防守力量 %d / 门将制空 %d（取平均）"),
-						InteractionView.CornerHelper.Snapshot.Attributes.Strength,
-						SetPieceCardAttribute(Goalkeeper, TEXT("AER")))
-					: FString::Printf(TEXT("防守 %d / 门将反应 %d（取平均）"),
-						InteractionView.CornerHelper.Snapshot.Attributes.Defense,
-						SetPieceCardAttribute(Goalkeeper, TEXT("REF")));
-				Result.AttackRow.Terms.Add(SetPieceAttributeTerm(AttackBasis));
-				Result.DefenseRow.Terms.Add(SetPieceAttributeTerm(DefenseBasis));
+				for (const auto& Operand : InteractionView.SetPieceAttributeOperands)
+				{
+					const bool bRunner = Operand.Role == EMatchPlayResolutionParticipantRole::Runner;
+					auto Term = SetPieceAttributeTerm(FMCodexTraitFormulaPresentation::Operand(Operand, bRunner ? 1.f : .5f));
+					Term.AttributeOperands.Add(Operand);
+					(bRunner ? Result.AttackRow : Result.DefenseRow).Terms.Add(Term);
+				}
+				Result.DefenseRow.Terms.Add(SetPieceAttributeTerm(FString::Printf(
+					bHigh ? TEXT("门将制空 %d ×0.5") : TEXT("门将反应 %d ×0.5"),
+					SetPieceCardAttribute(Goalkeeper, bHigh ? TEXT("AER") : TEXT("REF")))));
 				Result.DefenseRow.Terms.Add(SetPieceModifierTerm(2, TEXT("防守加成 2")));
 				if (InteractionView.CornerCandidateBonus > 0)
 				{

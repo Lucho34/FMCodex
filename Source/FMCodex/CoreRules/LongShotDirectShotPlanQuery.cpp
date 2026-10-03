@@ -282,6 +282,16 @@ FLongShotDirectShotPlanQuery::BuildPlan(
 		return Result;
 	}
 
+	using R = FPlayerTraitFormula::Role;
+	using A = FPlayerTraitFormula::Attribute;
+	const auto AttackOperand = FPlayerTraitFormula::Resolve(AttackerSnapshot, TEXT("LongShot.DirectShot"), R::Carrier, A::Shooting);
+	const auto DefenseOperand = FPlayerTraitFormula::Resolve(DefenderSnapshot, TEXT("LongShot.DirectShot"), R::Marker, A::Defense);
+	if (!AttackOperand.bValid || !DefenseOperand.bValid)
+	{
+		LongShotDirectShotPlanQuery::SetFailure(Result, ELongShotDirectShotPlanQueryErrorCode::InvalidTraitConfiguration,
+			TEXT("Invalid ranked Trait configuration."), TEXT("RankedTraits"));
+		return Result;
+	}
 	Result.FormulaPlan.AttackerQueryInput =
 		LongShotDirectShotPlanQuery::MakeFormulaQueryInput(
 			Input.AttackerCardId,
@@ -298,6 +308,8 @@ FLongShotDirectShotPlanQuery::BuildPlan(
 			Input.ExternalDefenseD6,
 			3.0f,
 			Input);
+	Result.FormulaPlan.DefenderQueryInput.PrimaryOperand = DefenseOperand;
+	Result.FormulaPlan.AttackerQueryInput.PrimaryOperand = AttackOperand;
 	Result.FormulaPlan.AttackerPlayerId =
 		Input.AttackerPlayerId;
 	Result.FormulaPlan.DefenderPlayerId =

@@ -856,4 +856,31 @@ bool FMatchPlayPenaltyAdvanceRecoveryReconstructionTest::RunTest(
 	return true;
 }
 
+
+#include "../LocalPlay/FMCodexLocalMatchInteractionView.h"
+#include "../LocalPlay/FMCodexLocalMatchUMGPresentation.h"
+#include "../LocalPlay/FMCodexLocalMatchResolutionFeedback.h"
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPenaltyRankedIntegration, "FMCodex.RankedTraits.Penalty.ResolutionAndSafeUI", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPenaltyRankedIntegration::RunTest(const FString&)
+{
+ using namespace MatchPlayPenaltyResolutionTests;
+ auto State=MakeAwaitingCarrier(TEXT("TraitPenalty"));
+ FPlayerRankedTrait Trait;Trait.TraitId=TEXT("Trait.PenaltyTaker");Trait.Rank=EPlayerTraitRank::A;
+ FindSnapshot(State,State.RuntimeState.CurrentAttackingPlayer,false)->RankedTraits.Add(Trait);
+ const auto Result=MakeDirectTerminal(State,4,5,4,4,3);
+ if(!TestTrue(TEXT("Trait direct lifecycle resolves"),Result.bSuccess))return false;
+ const auto& Formula=Result.FormulaExecutionResult.FormulaResolutionResult;
+ TestEqual(TEXT("Effective max seven plus die four"),Formula.AttackerFinalValue,11.f);
+ const auto Safe=FFMCodexLocalMatchInteractionViewBuilder::Build(Result.AfterState,{});
+ if(!TestEqual(TEXT("Both candidate facts survive safe projection"),Safe.SetPieceAttributeOperands.Num(),2))return false;
+ TestEqual(TEXT("First base"),Safe.SetPieceAttributeOperands[0].BaseValue,4);
+ TestEqual(TEXT("Second base"),Safe.SetPieceAttributeOperands[1].BaseValue,5);
+ TestEqual(TEXT("Both enhanced before max"),Safe.SetPieceSelectedEffectiveValue,7);
+ const auto UI=FFMCodexLocalMatchUMGPresentationBuilder::Build(Safe,FFMCodexLocalMatchResolutionFeedback(),TEXT(""));
+ const auto* Term=UI.InlineFormula.AttackRow.Terms.FindByPredicate([](const auto& T){return T.AttributeOperands.Num()==2;});
+ if(!TestNotNull(TEXT("Production UI carries dual candidates"),Term))return false;
+ TestTrue(TEXT("Dual transparent semantics"),Term->DisplayLabel.Contains(TEXT("射门 4 +2"))&&Term->DisplayLabel.Contains(TEXT("传球 5 +2"))&&Term->DisplayLabel.Contains(TEXT("取较高值 → 7")));
+ return true;
+}
+
 #endif

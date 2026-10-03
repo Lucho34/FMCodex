@@ -836,4 +836,27 @@ bool FMatchPlayLongFreeKickAdvanceAndNoCarrierTest::RunTest(
 	return true;
 }
 
+
+#include "PlayerTraitFormula.h"
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLongFreeKickRankedIntegration, "FMCodex.RankedTraits.LongFreeKick.Resolution", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FLongFreeKickRankedIntegration::RunTest(const FString&)
+{
+ using namespace MatchPlayLongFreeKickResolutionTests;
+ auto State=MakeLongAwaitingCarrier(TEXT("TraitLongFK"));
+ auto* Taker=FindSnapshot(State,State.RuntimeState.CurrentAttackingPlayer,false);
+ Taker->Attributes.Shooting=4;Taker->Attributes.Passing=6;
+ FPlayerRankedTrait Trait;Trait.TraitId=TEXT("Trait.LongFreeKickTaker");Trait.Rank=EPlayerTraitRank::A;Taker->RankedTraits.Add(Trait);
+ State=BindCarrier(State);
+ State=FMatchPlayLongFreeKickResolution::SubmitMethod(State,MethodRequest(State,EMatchPlayLongFreeKickMethod::Direct)).AfterState;
+ FQueueRollProvider Provider;Provider.Results={RollSuccess(4),RollSuccess(3)};
+ auto Prefix=FMatchPlayLongFreeKickResolution::ResolveDirectAttackRoll(State,RollRequest(State,false),&Provider);
+ if(!TestTrue(TEXT("Attack roll accepted"),Prefix.bSuccess))return false;
+ auto Result=FMatchPlayLongFreeKickResolution::ResolveDirectDefenseRoll(Prefix.AfterState,RollRequest(Prefix.AfterState,true),&Provider);
+ if(!TestTrue(TEXT("Long Direct resolves"),Result.bSuccess))return false;
+ TestEqual(TEXT("Shooting only plus roll"),Result.FormulaExecutionResult.FormulaResolutionResult.AttackerFinalValue,10.f);
+ TestEqual(TEXT("Fixed defense stays plus two"),Result.FormulaExecutionResult.FormulaResolutionResult.DefenderFinalValue,
+  float(Result.GoalkeeperQueryResult.Snapshot.GoalkeeperAttributes.Positioning+2+3));
+ return true;
+}
+
 #endif

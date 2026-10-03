@@ -13,6 +13,7 @@ enum class EThroughBallFeetPlanQueryErrorCode : uint8
 	InvalidParticipantEligibilityResult,
 	InvalidAttackD6,
 	InvalidDefenseD6,
+	InvalidTraitConfiguration,
 	InvalidLogContext,
 	InvalidActiveGoalkeeperIdentity,
 	InvalidActiveGoalkeeperSnapshot,

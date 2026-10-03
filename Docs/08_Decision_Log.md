@@ -2609,3 +2609,16 @@ A.2 基础矩阵现已实施：远射 Direct 防守固定 +3，远任意球仍 +
 23 Ranked + 1 Binary assignment 以固定非本地化 `Trait.*` ID 被动加载并复制到权威 snapshot，Ranked 保留 S/A/B。B.1 不读取这些数据来修改 Formula，不启用反越位双骰，也不显示 Trait bonus；B.2 / B.3 继续负责这些效果。PassControl 维持暂退，旧三路线 Plan 明确返回 unavailable，保留稳定身份但不发明六属性替代公式。
 
 基础字段、总评与公式说明按当前规则同步；不重做 Theater、Roll v2、卡面美术、RPC、RNG 或 shared lifecycle。验证按 B 计划选内容复现、受改 Formula / tier / snapshot、相关安全投影与共享 UI，以及一条真实 Local PIE。全量 CoreRules / Runtime 集成收尾与独立 Host/Remote Golden Path 留 B.4；自动 PIE 不代替 USER PIE milestone 验收。用户手动 staging / commit。
+
+
+## 2026-10-03 — Stage 8.20B.2: ranked traits and transparent Formula facts
+
+以 `main` / `dc76823ab7e1cdc4ccd148d5c582b3c2139b2f41`（B.1 后的 Excel 锁文件 housekeeping 提交）为干净基线，启用全部 23 Ranked Trait。`FPlayerTraitFormula` 集中保存既有 stable ID 与锁定映射，按当前 Formula context、实际角色和权威 snapshot 查询；B/A/S 分别为 +1/+2/+3，先增强映射属性，再应用既有系数。有效值可以超过 6，永不写回基础属性；未知 ID、缺失 rank、Ranked/Binary 混用及重复适用匹配返回无效配置，不建立优先级或叠加仲裁。不同实际参与者独立生效，无全公式 Trait 上限。
+
+普通战术 Plan、定位球结算、持久状态重建与解释投影复用同一查询。Near FK / Penalty 分别增强 Shooting 和 Passing，再取 max；Long FK 只增强 Shooting，防守 +2 保留，LongShot 防守仍 +3。Corner 只使用实际选中的 Runner / Helper，候选 Trait 不进入生效事实；ThroughBall 仅在对应 Feet / BehindDefense P1 增强，后续 OneOnOne 不继承。纯骰方法、前置失败、GK 属性与优先平局规则不变。
+
+权威属性事实保存 participant、attribute、base、Trait ID/rank、bonus、effective；共享 Formula term 经既有安全 DTO 传递。UI 只格式化事实，保留各参与者基础值与独立来源，例如“射门 5 +1 — 远射专家 B”；Near FK / Penalty 展示两项与权威选取结果。生产 Theater 复用基础值悬浮解释，fallback Formula term 复用原显示表面；不改 Roll v2 布局或揭示时序。Corner 参与者/路线未披露时同步清除新事实。客户端不能提交 bonus、effective 或 active Trait 身份，无新增 RPC。
+
+生产 workbook、JSON、importer、名单属性和 Trait assignments/ranks 均未修改；OVR 继续仅计六项 base，Stamina / Recovery / tie 的 5/3/1 不变。AntiOffside Expert 2D6 is NOT implemented in B.2. 反越位仍是一次动作、一个事件、原单骰；PassControl 暂退，Tactical Scene 延后。A.2/A.3 合同无矛盾，不重写。
+
+工程验证采用新增 `FMCodex.RankedTraits`、直接受影响的 Formula Plan / SingleCard 装配 / 定位球重建，以及共享 Formula/Theater 与 Corner 安全 DTO 检查；执行反射结构所需 UHT、增量 Development Editor build 和一条生产名单 Cross 的真实 Local PIE。结果为 8 项新增 focused、249 项受影响 CoreRules、22 项共享 UI 与 1 项 Corner SecurityAndWire 全部通过；一条真实 `FMCodex.PIE.CrossRunnerZone.Production` 通过，萨卡传球 base 5 + B bonus 1 = effective 6，既有 0.5 系数与悬浮解释均核对。UHT、增量 build 与 `git diff --check` 通过；重复运行按唯一测试计数，主动收敛的未完成 suite 不宣称全量通过。真实独立 Host/Remote 与 full CoreRules / Runtime / LocalPlay / NetworkPlay 留 B.4：本阶段未改 transport、RNG、ACK、共享生命周期或安全披露规则。REGRESSION SCOPE JUSTIFIED: YES。USER PIE REQUIRED；自动 PIE 仅提供工程证据，不冒充用户视觉/手感验收。最终 staging / commit 由用户手动完成。

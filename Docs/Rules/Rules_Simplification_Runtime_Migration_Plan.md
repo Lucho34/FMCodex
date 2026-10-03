@@ -2,11 +2,11 @@
 
 ## 1. 状态、基线与结论
 
-**Stage 8.20B — AUDIT / MIGRATION PLANNING ONLY。尚未实施运行时迁移。**
+**当前实施状态：B.1 基础切换已提交；B.2 Ranked Trait 与透明 Formula 已实现，等待用户可见效果验收；B.3 Binary 与 B.4 集成收尾尚未实施。** 下列原始审计基线保留供追溯。
 
 审计日期：2026-10-02。实际基线：`main` / `eb51165d1a85f8d8c05018640f331536e52981c6`，提交标题 `Stage 8.20A.3: lock ranked trait effect contract`。开始时 staged 0、modified tracked 0、deleted tracked 1、untracked 0；唯一删除是预先存在的 `ContentSource/PlayerContent/~$FMCodex_Rules_Simplification_Draft.xlsx`，属于 Excel 临时锁文件，不在本阶段范围，未处理。
 
-未来规则只采用已锁定的 [A.2 Formula Contract](Rules_Simplification_Formula_Contract.md) 与 [A.3 Trait Contract](Trait_System_Design_Contract.md)。下文审计表描述 B 规划节点的旧属性/schema v3 基线；Stage 8.20B.1 已实施 schema 4、六属性基础 Formula、体力与被动 Trait 存储。Ranked/Binary 效果仍待 B.2/B.3；不修改上述锁定合同。PassControl / 传控暂时退出目标战术，不能借迁移恢复或重新设计其三个公式。
+未来规则只采用已锁定的 [A.2 Formula Contract](Rules_Simplification_Formula_Contract.md) 与 [A.3 Trait Contract](Trait_System_Design_Contract.md)。下文审计表描述 B 规划节点的旧属性/schema v3 基线；Stage 8.20B.1 已实施 schema 4、六属性基础 Formula、体力与被动 Trait 存储。B.2 已启用 23 Ranked 效果、权威属性事实与共享解释显示；Binary 效果仍待 B.3。不修改上述锁定合同。PassControl / 传控暂时退出目标战术，不能借迁移恢复或重新设计其三个公式。
 
 建议 **one-shot schema cutover**，不建立双 schema 运行时。将数据、六属性基础 Formula、体力与基础显示合为一个完整切换节点；随后分别完成 Ranked Trait（含权威解释事实与显示）、AntiOffside Binary（含原子双骰与显示），最后进行集成收尾。开发工作可拆分，不能提交只换 JSON 却仍依赖旧属性的不可运行节点。
 
@@ -184,6 +184,8 @@ Ranked 事实最少包含 stable Trait ID、rank、实际 CardId/role、attribut
 - **提交关系：**节点N1合并数据/模型/基础Formula/体力/基础显示，不能独立提交“数据已换、旧Formula待改”。若用户不希望保存无Trait效果的内部节点，可与N2/N3合并提交；无须为此引入运行时双版本。
 
 ### 8.20B.2 — Ranked Trait 与权威解释事实、显示
+
+**实施状态（2026-10-03）：**已接入共享权威 Formula。`FPlayerTraitFormula` 按 stable ID、当前 Formula context 与实际角色解析 B/A/S→1/2/3，产生 base / bonus / effective 事实；不写回 snapshot，不截断有效值。普通战术与定位球消费同一查询，Near / Penalty 两项分别增强后取 max，定位球持久状态重建也复用该查询。Corner 只披露选中者，ThroughBall 后续单刀重新使用自身合同；反越位仍是原单骰。共享 Formula term 和既有 Theater 基础值悬浮解释展示各参与者原值、加成、中文来源；不改 Roll v2 布局。生产 roster、OVR、Stamina、Recovery 和 tie-break 规则不变。工程验证记录见 Decision Log；USER PIE REQUIRED，不将自动 PIE 等同用户验收。
 
 - **范围 / 文件：**小型CoreRules Trait registry/query/helper；实际Formula构建点（普通/复合/定位球）；ResolutionFactProjection、set-piece progressive facts、InteractionView / BuildForViewer、UMG term/max group、NetworkMatchPresentation与相关widget/中文映射。同步合同实施状态。
 - **实现合同：**23项固定映射、rank+3/+2/+1、实际role/actualroute、系数前增强；Near/Penalty双属性增强再max；UI同时展示base、bonus、来源和权威选取结果。结构化facts先完成，再开放UI消费；基础属性不改。

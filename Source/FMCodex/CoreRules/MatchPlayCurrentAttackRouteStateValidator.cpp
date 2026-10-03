@@ -5,6 +5,7 @@
 #include "MatchPlayDefendingGoalkeeperQuery.h"
 #include "SetPieceTypeSelectionQuery.h"
 #include "SingleCardFormulaResolutionExecutor.h"
+#include "PlayerTraitFormula.h"
 
 namespace MatchPlayCurrentAttackRouteStateValidator
 {
@@ -349,9 +350,9 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 					{
 						FFormulaResolverInput Input;
 						Input.FormulaType = EFormulaType::Finishing;
-						Input.Attacker.BaseValue = FMath::Max(
-							Short.Carrier.Snapshot.Attributes.Shooting,
-							Short.Carrier.Snapshot.Attributes.Passing);
+						const auto TakerFormula = FPlayerTraitFormula::ResolveTaker(Short.Carrier.Snapshot, TEXT("NearFreeKick.Direct"));
+						if (!TakerFormula.bValid) return false;
+						Input.Attacker.BaseValue = TakerFormula.SelectedEffectiveValue;
 						Input.Attacker.ComparePoint = Short.AttackD6;
 						Input.Attacker.bComparePointWasRolledOnD6 = true;
 						Input.Attacker.ParticipatingStamina.Add(
@@ -608,8 +609,9 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 					{
 						FFormulaResolverInput Input;
 						Input.FormulaType = EFormulaType::Finishing;
-						Input.Attacker.BaseValue =
-							Long.Carrier.Snapshot.Attributes.Shooting;
+						const auto TakerFormula = FPlayerTraitFormula::ResolveTaker(Long.Carrier.Snapshot, TEXT("LongFreeKick.Direct"));
+						if (!TakerFormula.bValid) return false;
+						Input.Attacker.BaseValue = TakerFormula.SelectedEffectiveValue;
 						Input.Attacker.ComparePoint = Long.AttackD6;
 						Input.Attacker.bComparePointWasRolledOnD6 = true;
 						Input.Attacker.ParticipatingStamina.Add(
@@ -848,9 +850,9 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 				{
 					FFormulaResolverInput Input;
 					Input.FormulaType = EFormulaType::Finishing;
-					Input.Attacker.BaseValue = FMath::Max(
-						Penalty.Carrier.Snapshot.Attributes.Shooting,
-						Penalty.Carrier.Snapshot.Attributes.Passing);
+					const auto TakerFormula = FPlayerTraitFormula::ResolveTaker(Penalty.Carrier.Snapshot, TEXT("Penalty.Direct"));
+					if (!TakerFormula.bValid) return false;
+					Input.Attacker.BaseValue = TakerFormula.SelectedEffectiveValue;
 					Input.Attacker.ComparePoint = Penalty.AttackD6;
 					Input.Attacker.bComparePointWasRolledOnD6 = true;
 					Input.Attacker.ParticipatingStamina.Add(

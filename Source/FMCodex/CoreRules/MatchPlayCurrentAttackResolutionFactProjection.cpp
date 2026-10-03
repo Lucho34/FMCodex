@@ -963,6 +963,22 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 		{
 			return false;
 		}
+		// Reconstruct from the same immutable authoritative snapshots and resolver as
+		// the gameplay plans. Never read a display catalog or carry a prior stage bonus.
+		for (FRow* Row : { &Contest.AttackRow, &Contest.DefenseRow })
+		{
+			for (auto& Term : Row->Terms)
+			{
+				if (Term.Kind != ETermKind::Attribute) continue;
+				const auto Query = FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+					State.CardSnapshotAuthority, Term.Side, Term.CardId);
+				if (!Query.bSuccess) { OutError = Query.ErrorMessage; return false; }
+				Term.AttributeOperand = FPlayerTraitFormula::Resolve(Query.Snapshot, Contest.ContestId, Term.ParticipantRole, Term.Attribute);
+				if (!Term.AttributeOperand.bValid) { OutError = TEXT("Invalid ranked Trait configuration in Formula facts."); return false; }
+				Term.SourceValue = Term.AttributeOperand.EffectiveValue;
+				Term.Contribution = UFormulaResolver::RoundToOneDecimal(Term.SourceValue * Term.Multiplier);
+			}
+		}
 		AddTacticalPlayerAdvantageTerms(Contest, Projection);
 		ProjectKnownRowValues(Contest.AttackRow);
 		ProjectKnownRowValues(Contest.DefenseRow);

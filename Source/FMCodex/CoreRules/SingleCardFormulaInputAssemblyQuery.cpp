@@ -7,6 +7,7 @@ namespace SingleCardFormulaInputAssemblyQuery
 	{
 		FSingleCardFormulaInputContract Contract;
 		Contract.CardId = Input.CardId;
+		Contract.PrimaryOperand = Input.PrimaryOperand;
 		Contract.FormulaType = Input.FormulaType;
 		Contract.ParticipantRole = Input.ParticipantRole;
 		Contract.Attribute = Input.Attribute;
@@ -106,6 +107,12 @@ FSingleCardFormulaInputAssemblyQuery::Assemble(
 		return Result;
 	}
 
+	if (!Input.PrimaryOperand.CardId.IsNone() && (!Input.PrimaryOperand.bValid || Input.PrimaryOperand.CardId != Input.CardId))
+	{
+		SingleCardFormulaInputAssemblyQuery::SetFailure(Result, ESingleCardFormulaInputAssemblyQueryErrorCode::ContractValidationFailed,
+			TEXT("Invalid authoritative Trait operand."), TEXT("PrimaryOperand"));
+		return Result;
+	}
 	Result.bSuccess = true;
 	Result.Contract = CandidateContract;
 	return Result;

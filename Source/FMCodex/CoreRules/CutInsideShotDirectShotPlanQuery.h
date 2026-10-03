@@ -29,6 +29,7 @@ enum class ECutInsideShotDirectShotPlanQueryErrorCode : uint8
 	InvalidAttackD6,
 	MissingExternalDefenseD6,
 	InvalidDefenseD6,
+	InvalidTraitConfiguration,
 	InvalidLogContext
 };
 

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 #include "CoreRuleEnums.h"
+#include "PlayerTraitFormula.h"
 
 enum class ESingleCardFormulaParticipantRole : uint8
 {
@@ -32,6 +33,7 @@ enum class ESingleCardFormulaAttribute : uint8
 struct FMCODEX_API FSingleCardFormulaInputContract
 {
 	FName CardId = NAME_None;
+	FPlayerTraitFormulaOperand PrimaryOperand;
 	EFormulaType FormulaType = EFormulaType::None;
 	ESingleCardFormulaParticipantRole ParticipantRole =
 		ESingleCardFormulaParticipantRole::None;

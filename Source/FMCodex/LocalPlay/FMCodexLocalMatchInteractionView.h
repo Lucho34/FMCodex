@@ -386,6 +386,8 @@ struct FMCODEX_API FFMCodexLocalMatchInteractionView
 	bool bHasSetPieceDefenseD6 = false;
 	int32 SetPieceDefenseD6 = 0;
 	/** Read-only formula inputs/totals projected from frozen authority state. */
+	TArray<FPlayerTraitFormulaOperand> SetPieceAttributeOperands;
+	int32 SetPieceSelectedEffectiveValue = 0;
 	bool bHasSetPieceAttackKnownSubtotal = false;
 	float SetPieceAttackKnownSubtotal = 0.0f;
 	bool bHasSetPieceDefenseKnownSubtotal = false;

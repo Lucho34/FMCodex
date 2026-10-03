@@ -21,6 +21,7 @@ enum class EThroughBallBehindDefenseP1PlanQueryErrorCode : uint8
 	UnsupportedBranch,
 	MissingAttackD6,
 	InvalidAttackD6,
+	InvalidTraitConfiguration,
 	InvalidLogContext,
 	MissingDefenseD6,
 	InvalidDefenseD6

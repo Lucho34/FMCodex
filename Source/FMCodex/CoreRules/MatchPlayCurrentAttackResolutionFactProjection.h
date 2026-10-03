@@ -3,37 +3,10 @@
 #include "CoreMinimal.h"
 
 #include "FormulaResolver.h"
+#include "PlayerTraitFormula.h"
 #include "MatchPlayState.h"
 
 #include "MatchPlayCurrentAttackResolutionFactProjection.generated.h"
-
-UENUM(BlueprintType)
-enum class EMatchPlayResolutionParticipantRole : uint8
-{
-	None = 0 UMETA(DisplayName = "None"),
-	Carrier = 1 UMETA(DisplayName = "Carrier"),
-	Runner = 2 UMETA(DisplayName = "Runner"),
-	Marker = 3 UMETA(DisplayName = "Marker"),
-	Helper = 4 UMETA(DisplayName = "Helper"),
-	Goalkeeper = 5 UMETA(DisplayName = "Goalkeeper")
-};
-
-UENUM(BlueprintType)
-enum class EMatchPlayResolutionFormulaAttribute : uint8
-{
-	None = 0 UMETA(DisplayName = "None"),
-	Shooting = 1 UMETA(DisplayName = "Shooting"),
-	Control = 2 UMETA(DisplayName = "Control"),
-	Passing = 3 UMETA(DisplayName = "Passing"),
-	Defense = 6 UMETA(DisplayName = "Defense"),
-	Speed = 7 UMETA(DisplayName = "Speed"),
-	Strength = 8 UMETA(DisplayName = "Strength"),
-	GoalkeeperHandling = 10 UMETA(DisplayName = "Goalkeeper Handling"),
-	GoalkeeperPositioning = 11 UMETA(DisplayName = "Goalkeeper Positioning"),
-	GoalkeeperReflex = 12 UMETA(DisplayName = "Goalkeeper Reflex"),
-	GoalkeeperAerial = 13 UMETA(DisplayName = "Goalkeeper Aerial"),
-	GoalkeeperOneOnOne = 14 UMETA(DisplayName = "Goalkeeper One-on-One")
-};
 
 UENUM(BlueprintType)
 enum class EMatchPlayResolutionRollSemantics : uint8
@@ -193,6 +166,9 @@ struct FMCODEX_API FMatchPlayResolutionFormulaTermFact
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
 	float SourceValue = 0.0f;
+
+	UPROPERTY()
+	FPlayerTraitFormulaOperand AttributeOperand;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Facts")
 	float Multiplier = 1.0f;

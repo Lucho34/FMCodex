@@ -53,6 +53,7 @@ enum class ECrossPlanQueryErrorCode : uint8
 	ActionPointOutOfRange,
 	InvalidAttackD6,
 	InvalidDefenseD6,
+	InvalidTraitConfiguration,
 	InvalidLogContext
 };
 
