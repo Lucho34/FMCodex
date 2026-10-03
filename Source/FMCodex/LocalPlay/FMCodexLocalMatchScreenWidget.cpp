@@ -4164,6 +4164,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedThroughBallResolution() const
 		Result.RevealPhase = InlineFormulaRevealPhase;
 		Result.bDiceRevealVisible = true;
 		Result.RollReel = BuildActiveRollReelPresentation();
+		Result.AntiOffsideSecondReel = BuildAntiOffsideSecondReelPresentation();
 		Result.OneOnOneChoices.Reset();
 		Result.PrimaryAction.bVisible = false;
 		Result.bCanContinue = false;
@@ -4514,6 +4515,20 @@ UFMCodexLocalMatchScreenWidget::BuildActiveRollReelPresentation() const
 		RollRevealCosmeticSeed, UsesTheaterRollMotion());
 }
 
+FFMCodexUMGRollReelViewModel
+UFMCodexLocalMatchScreenWidget::BuildAntiOffsideSecondReelPresentation() const
+{
+	if (!IsInlineFormulaRevealInputBlocked() || !bInlineFormulaAuthorityResultAvailable
+		|| ActiveCrossRollReveal.ContestId != TEXT("ThroughBall.AntiOffside")
+		|| CachedResolvedThroughBall.AntiOffsideSecondD6 == 0)
+		return {};
+	// The same event clock, capture geometry and hold gate drive both reels.
+	return FMCodexLocalMatchScreenWidget::BuildReelPresentation(
+		InlineFormulaRevealPhase, InlineFormulaRevealPhaseElapsed, 1, 6,
+		CachedResolvedThroughBall.AntiOffsideSecondD6, RollRevealCaptureStartPositionCells,
+		RollRevealCaptureDistanceCells, RollRevealCosmeticSeed ^ 0x9e3779b9u, UsesTheaterRollMotion());
+}
+
 void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 	float DeltaSeconds,
 	const bool bForceFullRefresh)
@@ -4839,6 +4854,11 @@ void UFMCodexLocalMatchScreenWidget::RefreshActiveRollReelVisuals()
 	}
 	const FFMCodexUMGRollReelViewModel Reel =
 		BuildActiveRollReelPresentation();
+	const auto SecondReel = BuildAntiOffsideSecondReelPresentation();
+	if (auto* EventSecond = Cast<UFMCodexRollReelWidget>(GetWidgetFromName(TEXT("TheaterEventSecondReel"))))
+		EventSecond->RefreshFromPresentation(SecondReel);
+	if (ThroughBallResolutionSurface && ThroughBallResolutionSurface->GetAntiOffsideSecondReelWidget())
+		ThroughBallResolutionSurface->GetAntiOffsideSecondReelWidget()->RefreshFromPresentation(SecondReel);
 	if (TheaterMotion.bActive)
 		FMCodexResolutionTheaterPrototype::RefreshReel(*WidgetTree, Reel);
 

@@ -21,7 +21,8 @@ enum class EThroughBallAntiOffsideOutcomeQueryErrorCode : uint8
 	ParticipantEligibilityFailed,
 	InvalidParticipantEligibilityResult,
 	MissingAntiOffsideAttackD6,
-	InvalidAntiOffsideAttackD6
+	InvalidAntiOffsideAttackD6,
+	InvalidAntiOffsideSecondD6
 };
 
 struct FMCODEX_API FThroughBallAntiOffsideOutcomeQueryInput
@@ -33,6 +34,8 @@ struct FMCODEX_API FThroughBallAntiOffsideOutcomeQueryInput
 
 	bool bHasAntiOffsideAttackD6 = false;
 	int32 AntiOffsideAttackD6 = 0;
+	// Zero for ordinary runners; otherwise the second die of the same event.
+	int32 AntiOffsideSecondD6 = 0;
 };
 
 struct FMCODEX_API FThroughBallAntiOffsideOutcomeQueryResult
@@ -60,6 +63,8 @@ struct FMCODEX_API FThroughBallAntiOffsideOutcomeQueryResult
 class FMCODEX_API FThroughBallAntiOffsideOutcomeQuery final
 {
 public:
+	static bool UsesTwoDice(const FPlayerCardRuleSnapshot& ActualRunner);
+
 	static FThroughBallAntiOffsideOutcomeQueryResult Evaluate(
 		const FThroughBallAntiOffsideOutcomeQueryInput& Input);
 };

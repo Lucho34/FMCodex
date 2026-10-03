@@ -2831,4 +2831,60 @@ bool FFMCodexThroughBallProductionFeetAuthorityCapabilityBoundaryTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexAntiOffsideFailureReasonTest,
+	"FMCodex.LocalPlay.ThroughBallProductionPresentation.AntiOffsideFailureReason",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexAntiOffsideFailureReasonTest::RunTest(const FString&)
+{
+	using namespace FMCodexThroughBallProductionPresentationTests;
+	struct FCase { int32 First, Second; bool bSuccess; };
+	for (const FCase Case : {FCase{4,0,false}, FCase{4,3,false}, FCase{3,2,false}, FCase{6,0,true}, FCase{3,6,true}})
+	{
+		const int32 First = Case.First, Second = Case.Second;
+		const bool bPair = Second > 0, bSuccess = Case.bSuccess;
+		auto View = MakeAntiView(true, bSuccess ? EMatchPlayResolutionDecisionOutcome::OneOnOneRequired
+			: EMatchPlayResolutionDecisionOutcome::Offside, First);
+		View.ResolutionFacts.Rolls.Last().AntiOffsideSecondD6 = Second;
+		const auto Before = View.ResolutionFacts;
+		const auto Model = Build(View);
+		const auto& P = Model.ThroughBallResolution;
+		const FString ExpectedReason = bPair ? TEXT("两次判定均未掷出 6，因此越位。")
+			: TEXT("反越位判定未掷出 6，因此越位。");
+		TestEqual(TEXT("Projected second die preserves authoritative pair/absence"), P.AntiOffsideSecondD6, Second);
+		TestEqual(TEXT("Authority outcome unchanged"), P.ResultTitle, FString(bSuccess ? TEXT("形成单刀") : TEXT("越位")));
+		TestTrue(TEXT("Presentation leaves authoritative facts unchanged"), FMatchPlayCurrentAttackResolutionFactProjection::StaticStruct()->CompareScriptStruct(&Before, &View.ResolutionFacts, 0));
+		if (bSuccess)
+		{
+			TestFalse(TEXT("No failure reason on single six or second-die six success"), P.OutcomeRollDetail.Contains(TEXT("因此越位")));
+		}
+		else
+		{
+			const FString ExpectedRoll = bPair ? FString::Printf(TEXT("反越位专家 · D6：%d、%d"), First, Second)
+				: FString::Printf(TEXT("D6：%d"), First);
+			TestEqual(TEXT("Exact roll disclosure then subordinate reason"), P.OutcomeRollDetail, ExpectedRoll + TEXT("\n") + ExpectedReason);
+			TestEqual(TEXT("Trait attribution only for the authoritative pair"), P.OutcomeRollDetail.Contains(TEXT("反越位专家")), bPair);
+			TestEqual(TEXT("Existing main headline preserved"), P.NarrativeHeadline, FString(TEXT("厄德高送出直塞，哈兰德越位。")));
+		}
+		auto* Screen = NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
+		Screen->TakeWidget(); Screen->RefreshFromPresentation(Model);
+		auto* Reason = CastChecked<UTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterReasonSecondary")));
+		if (!bSuccess)
+		{
+			TestEqual(TEXT("One existing secondary explanation slot displays approved sentence"), Reason->GetText().ToString(), ExpectedReason);
+			TestTrue(TEXT("Failure reason is visible and smaller than roll detail"), Reason->GetVisibility() != ESlateVisibility::Collapsed && Reason->GetFont().Size == 14);
+			const FString ExpectedMarkup = (bPair ? FString(TEXT("反越位专家 · ")) : FString())
+				+ FString::Printf(TEXT("D6：<Value>%d</>"), First)
+				+ (bPair ? FString::Printf(TEXT("、<Value>%d</>"), Second) : FString());
+			TestEqual(TEXT("Dice label stays plain; only disclosed operands use the existing Value style"),
+				CastChecked<URichTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterReasonPrimary")))->GetText().ToString(), ExpectedMarkup);
+			TestFalse(TEXT("Reason is not duplicated in roll disclosure"), CastChecked<URichTextBlock>(Screen->GetWidgetFromName(TEXT("TheaterReasonPrimary")))->GetText().ToString().Contains(TEXT("因此越位")));
+			const auto* Fallback = CastChecked<UTextBlock>(Screen->GetThroughBallResolutionSurface()->GetWidgetFromName(TEXT("OutcomeDetail")));
+			TestEqual(TEXT("Fallback reuses existing detail slot"), Fallback->GetText().ToString(), P.OutcomeRollDetail);
+		}
+		else
+			TestFalse(TEXT("No failure reason leaks into successful choice page"), Reason->GetText().ToString().Contains(TEXT("因此越位")));
+	}
+	return true;
+}
+
 #endif

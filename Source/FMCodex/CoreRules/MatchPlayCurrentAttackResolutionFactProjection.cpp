@@ -291,6 +291,7 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 		{
 			Roll.bResolved = true;
 			Roll.RawD6 = Record->RawD6;
+			Roll.AntiOffsideSecondD6 = Record->AntiOffsideSecondD6;
 		}
 		Projection.Rolls.Add(Roll);
 	}
@@ -1158,7 +1159,7 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 				ERollSemantics::OutcomeDecision,
 				{ EPostPurpose::PrimaryAttack },
 				bResolved,
-				bResolved && Roll->RawD6 == 6
+				bResolved && (Roll->RawD6 == 6 || Roll->AntiOffsideSecondD6 == 6)
 					? EOutcome::OneOnOneRequired : EOutcome::Offside);
 		}
 		if (Session.ThroughBallOneOnOneShotChoice

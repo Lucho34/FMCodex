@@ -229,6 +229,22 @@ FString ReasonMarkup(const FString& Plain)
 	return Result;
 }
 
+// AntiOffside detail already separates the dice-type label from disclosed operands.
+// Style those semantic segments, not numeric characters inside the label.
+FString AntiOffsideRollMarkup(const FString& Plain)
+{
+	FString Label, Operands;
+	if (!Plain.Split(TEXT("："), &Label, &Operands)) return Plain;
+	const auto Escape = [](FString Text) {
+		return Text.Replace(TEXT("&"), TEXT("&amp;")).Replace(TEXT("<"), TEXT("&lt;"))
+			.Replace(TEXT(">"), TEXT("&gt;"));
+	};
+	TArray<FString> Values;
+	Operands.ParseIntoArray(Values, TEXT("、"), false);
+	for (FString& Value : Values) Value = TEXT("<Value>") + Escape(Value) + TEXT("</>");
+	return Escape(Label) + TEXT("：") + FString::Join(Values, TEXT("、"));
+}
+
 // Reuse the live Match Board stadium asset. Vertex alpha dissolves its upper
 // lights/stands into the real turf below, without a second pitch or render target.
 class STheaterBackdrop final : public SLeafWidget
@@ -1022,7 +1038,14 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 	EventReel->SetVisualVariant(EFMCodexRollVisualVariant::CompactBox);
 	auto* EventReelHost=Bounds(Tree,EventReel,84,72); EventReelHost->Rename(TEXT("TheaterEventReelHost"),&Tree);
 	auto* EventCell=Bounds(Tree,EventReelHost,84,72); EventCell->Rename(TEXT("TheaterEventCell"),&Tree);
-	auto* EventBounds=Bounds(Tree,EventCell,84,72); EventBounds->Rename(TEXT("TheaterTacticalEvent"),&Tree);
+	auto* EventLine=Tree.ConstructWidget<UHorizontalBox>();
+	EventLine->AddChildToHorizontalBox(EventCell);
+	auto* SecondReel=Tree.ConstructWidget<UFMCodexRollReelWidget>(UFMCodexRollReelWidget::StaticClass(),TEXT("TheaterEventSecondReel"));
+	SecondReel->SetVisualVariant(EFMCodexRollVisualVariant::CompactBox);
+	auto* SecondCell=Bounds(Tree,SecondReel,84,72); SecondCell->Rename(TEXT("TheaterEventSecondCell"),&Tree);
+	EventLine->AddChildToHorizontalBox(SecondCell)->SetPadding(FMargin(16,0,0,0));
+	Show(*SecondCell,false);
+	auto* EventBounds=Bounds(Tree,EventLine,84,72); EventBounds->Rename(TEXT("TheaterTacticalEvent"),&Tree);
 	auto* EventSlot=ActionLane->AddChildToOverlay(EventBounds);
 	EventSlot->SetHorizontalAlignment(HAlign_Center); EventSlot->SetVerticalAlignment(VAlign_Center);
 	Show(*EventBounds,false);
@@ -1104,6 +1127,11 @@ void RefreshThroughBallEvent(UWidgetTree& Tree, const FFMCodexUMGMatchScreenView
 					NSLOCTEXT("FMCodexThroughBall","AntiFormsOneOnOne","形成单刀")).ToString():Entry.DisplayLabel);
 		Rule=FText::FromString(FString::Join(Ranges,TEXT("　｜　")));
 	}
+	const bool bPair = P.Stage == EFMCodexUMGThroughBallStage::AntiOffsideCheck && P.AntiOffsideSecondReel.bVisible;
+	Show(*Tree.FindWidget(TEXT("TheaterEventSecondCell")), bPair);
+	Find<USizeBox>(Tree,TEXT("TheaterTacticalEvent"))->SetWidthOverride(bPair ? 184.f : 84.f);
+	Find<UFMCodexRollReelWidget>(Tree,TEXT("TheaterEventSecondReel"))->RefreshFromPresentation(P.AntiOffsideSecondReel);
+	if (bPair) Rule = P.AntiOffsideTraitHint;
 	// Hidden keeps the 84x72 lane geometry during the pre-roll CTA. The same
 	// allocation then paints motion, landed value and hold without moving the card.
 	Tree.FindWidget(TEXT("TheaterEventReelHost"))->SetVisibility(
@@ -1112,7 +1140,7 @@ void RefreshThroughBallEvent(UWidgetTree& Tree, const FFMCodexUMGMatchScreenView
 	// These are display-gated semantic facts. Never derive an outcome from CenterValue.
 	FText Detail=Rule;
 	if (bRoute && !P.RouteResultLabel.IsEmpty()) Detail=FText::FromString(P.RouteResultLabel);
-	if (!bRoute && P.bNarrativeAvailable && !P.ResultTitle.IsEmpty()) Detail=FText::FromString(P.ResultTitle);
+	if (!bRoute && !bPair && P.bNarrativeAvailable && !P.ResultTitle.IsEmpty()) Detail=FText::FromString(P.ResultTitle);
 	Find<UTextBlock>(Tree,TEXT("TheaterDetail"))->SetText(Detail); Show(*Tree.FindWidget(TEXT("TheaterDetail")),true);
 
 	const bool bAction=!bRolling && !bRequestPending && P.PrimaryAction.bVisible && P.PrimaryAction.Action.bAvailable;
@@ -1471,7 +1499,9 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	Show(*Tree.FindWidget(TEXT("TheaterReasonMark"))->GetParent(),bFinal);
 	Show(*Tree.FindWidget(TEXT("TheaterReasonSeparator"))->GetParent(),bFinal);
 	auto* Reason=Find<URichTextBlock>(Tree,TEXT("TheaterReasonPrimary"));
-	Reason->SetText(bFinal?FText::FromString(ReasonMarkup(MainReason)):FText::GetEmpty());
+	Reason->SetText(bFinal?FText::FromString(bThroughEvent
+		&& Through.Stage == EFMCodexUMGThroughBallStage::AntiOffsideCheck
+		? AntiOffsideRollMarkup(MainReason) : ReasonMarkup(MainReason)):FText::GetEmpty());
 	Show(*Reason,bFinal && !MainReason.IsEmpty());
 	Show(*Tree.FindWidget(TEXT("TheaterDetail")),!bFinal && !Detail.IsEmpty());
 	// The resolved composition is denser; the reel's stable allocation is untouched.

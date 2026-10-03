@@ -41,6 +41,7 @@ public:
 
 	const FFMCodexUMGThroughBallResolutionViewModel& GetPresentation() const;
 	UFMCodexRollReelWidget* GetRollReelWidget() const;
+	UFMCodexRollReelWidget* GetAntiOffsideSecondReelWidget() const { return AntiOffsideSecondReel; }
 	UFMCodexInlineResolutionFormulaSurfaceWidget* GetFormulaSurface() const;
 	const TArray<TObjectPtr<UFMCodexInteractionOptionWidget>>&
 		GetOneOnOneChoiceWidgets() const;
@@ -96,6 +97,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UFMCodexRollReelWidget> RollReel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexRollReelWidget> AntiOffsideSecondReel;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> RouteResultText;

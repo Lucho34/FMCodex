@@ -2,7 +2,7 @@
 
 ## Status
 
-Stage 8.20A.3 — **DESIGN / CONTRACT ONLY — APPROVED DESIGN, NOT IMPLEMENTED。**
+Stage 8.20A.3 锁定设计。**当前实施：B.2 已启用 23 Ranked；B.3 已实现反越位专家的单事件双骰，等待 USER PIE 视觉验收；B.4 集成收尾待实施。** 下文 A.3 工作簿与迁移叙述保留为历史范围。
 
 沿用 Stage 8.20A Patch 的 taxonomy v1：14 个进攻 Trait、10 个防守 Trait，共 24 个；其中 23 个 Ranked，1 个 Binary Procedural。Stage 8.20A.3 在已提交的 8.20A.2 基线 `625939ea5ee011260bba18f898cb16c6cc642bd7` 上锁定下表全部效果，取代此前 Ranked 效果 TBD / 候选加法的表述；不增删 Trait，不表示现有游戏已具备 Trait 系统，不启动 Stage 8.20B。
 
@@ -46,7 +46,7 @@ Stage 8.20A.3 — **DESIGN / CONTRACT ONLY — APPROVED DESIGN, NOT IMPLEMENTED�
 
 ## Approved Procedural Trait
 
-**反越位专家 — APPROVED DESIGN — NOT IMPLEMENTED**
+**反越位专家 — IMPLEMENTED IN 8.20B.3**
 
 这是当前**唯一**已批准的 Binary Procedural Trait，仅由实际 ThroughBall / AntiOffside 的 Runner 激活，数据为“有”／空白，无 S/A/B。
 
@@ -55,11 +55,11 @@ Stage 8.20A.3 — **DESIGN / CONTRACT ONLY — APPROVED DESIGN, NOT IMPLEMENTED�
 - 两枚骰子属于同一事件，不是两次玩家动作或失败后的重掷。不增加第二 CTA、第二动作或新的流程阶段。
 - 不增加防守骰、防守参与者或 Formula，也不为此引入门将参与。
 
-无该 Trait 时保留普通 1D6、仅 6 成功。当前生产代码仍为 1D6，尚未实现此例外。本阶段不改变骰子、事件载荷、披露、揭示时序或生命周期；实际实施须另行授权，不自动启动 Stage 8.20B。
+无该 Trait 时保留普通 1D6、仅 6 成功。B.3 在同一 PrimaryAttack 记录中保存可选 `AntiOffsideSecondD6`（0 表示无第二骰）；实际 Runner 权威 snapshot 决定是否需要双骰。两次 provider 返回均验证通过后才提交记录，第一枚为 6 也必须消费第二枚。重建读取已存记录，重复／过期请求不新增 RNG；第二次 provider 失败不提交部分状态，已尝试的熵不回滚。共享安全投影按同一事件披露两枚结果，沿用单刀或越位终结。
 
 ## Trait Taxonomy v1
 
-下表为完整 canonical 效果表，每项仅列一次。所有效果状态为 **APPROVED DESIGN — NOT IMPLEMENTED**，角色均指本次实际权威角色；Ranked 为 Additive，Binary 为 Procedural。`S+3/A+2/B+1` 表示对 Modified Attribute 中**每项属性**使用相同等级加成。
+下表为完整 canonical 效果表，每项仅列一次。效果设计已锁定，Ranked 已在 B.2、Binary 已在 B.3 实施，角色均指本次实际权威角色；Ranked 为 Additive，Binary 为 Procedural。`S+3/A+2/B+1` 表示对 Modified Attribute 中**每项属性**使用相同等级加成。
 
 | Trait | Category | Rank Type | Tactic | Route/Method | Actual Role | Modified Attribute | Rank Effect | Notes | TraitKeyDraft（临时） |
 |---|---|---|---|---|---|---|---|---|---|

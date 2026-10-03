@@ -171,9 +171,9 @@
 
 ### 4.3 AntiOffside 与 Trait 的边界
 
-继承 [Trait System Design Contract](Trait_System_Design_Contract.md)：实际 AntiOffside Runner 持有“反越位专家”时，未来**一次玩家动作、一个权威 AntiOffside 事件**包含 2D6，任一为6成功，否则越位；无 Trait 时保留1D6。不得增加第二 CTA、第二动作、重掷步骤、工作流阶段、防守者、Marker / Helper、防守骰、GK Formula。成功仍进入同一 Runner 的既有单刀选择。
+继承 [Trait System Design Contract](Trait_System_Design_Contract.md)：实际 AntiOffside Runner 持有“反越位专家”时，**一次玩家动作、一个权威 AntiOffside 事件**包含 2D6，任一为6成功，否则越位；无 Trait 时保留1D6。不得增加第二 CTA、第二动作、重掷步骤、工作流阶段、防守者、Marker / Helper、防守骰、GK Formula。成功仍进入同一 Runner 的既有单刀选择。
 
-该 Binary 设计已批准，**当前代码仍是1D6，尚未实现 Trait 例外**。Stage 8.20A.3 已在上述 Trait 合同锁定全部 Ranked 为 S/A/B = +3/+2/+1，在既有属性系数前应用；不同实际参与者可同时生效，同一参与者重复匹配属于配置错误。近任意球与点球各增强 Shooting、Passing 后仍取 max；低球传中接应只增强 Speed。完整逐项效果与程序分支排除以 Trait 合同为准，均为设计、尚未实现，不改变等级或球员分配。
+该 Binary 设计已在 **B.3 实施：普通 1D6、实际 Runner 持有 Trait 时同事件 2D6**。Stage 8.20A.3 已在上述 Trait 合同锁定全部 Ranked 为 S/A/B = +3/+2/+1，在既有属性系数前应用；不同实际参与者可同时生效，同一参与者重复匹配属于配置错误。近任意球与点球各增强 Shooting、Passing 后仍取 max；低球传中接应只增强 Speed。完整逐项效果与程序分支排除以 Trait 合同为准；Ranked 已在 B.2 实施，B.3 不改变其行为、等级或球员分配。
 
 ## 5. 审计差异与产品范围
 

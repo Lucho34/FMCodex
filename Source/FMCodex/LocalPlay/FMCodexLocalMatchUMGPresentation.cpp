@@ -2291,6 +2291,19 @@ namespace FMCodexLocalMatchUMGPresentation
 					InitialRouteRoll->RawD6, CanonicalRoute).ToString();
 		}
 
+		if (CanonicalRoute == EMatchPlayThroughBallActualBranch::AntiOffside)
+		{
+			const auto* AntiRoll = Facts.Rolls.FindByPredicate([](const auto& R) {
+				return R.bResolved && R.PostRoutePurpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryAttack;
+			});
+			if (AntiRoll && AntiRoll->AntiOffsideSecondD6 > 0)
+			{
+				Result.AntiOffsideSecondD6 = AntiRoll->AntiOffsideSecondD6;
+				Result.AntiOffsideTraitHint = NSLOCTEXT("FMCodexThroughBall", "AntiExpertDiceRule",
+					"反越位专家 · 双骰任一为 6：形成单刀 ｜ 均非 6：越位");
+			}
+		}
+
 		auto FindDecision = [&Facts](const FName DecisionId)
 		{
 			return Facts.Decisions.FindByPredicate(
@@ -2329,6 +2342,29 @@ namespace FMCodexLocalMatchUMGPresentation
 				Result.ResultTitle = Narrative.ResultTitle.ToString();
 				Result.NarrativeHeadline = Narrative.NarrativeText.ToString();
 				Result.OutcomeText = Narrative.OutcomeText;
+				if (Branch == EFMCodexTacticalNarrativeBranch::ThroughBallAntiOffside)
+				{
+					const auto* Roll = Facts.Rolls.FindByPredicate([](const auto& R) {
+						return R.bResolved && R.PostRoutePurpose == EMatchPlayCurrentAttackPostRouteRollPurpose::PrimaryAttack;
+					});
+					if (Roll && Roll->AntiOffsideSecondD6 > 0)
+						Result.OutcomeRollDetail = FText::Format(NSLOCTEXT("FMCodexThroughBall", "AntiExpertDiceDetail",
+							"反越位专家 · D6：{0}、{1}"), FText::AsNumber(Roll->RawD6), FText::AsNumber(Roll->AntiOffsideSecondD6)).ToString();
+					if (Roll && Decision->Outcome == EMatchPlayResolutionDecisionOutcome::Offside)
+					{
+						const bool bPair = Roll->AntiOffsideSecondD6 > 0;
+						if (!bPair)
+							Result.OutcomeRollDetail = FText::Format(NSLOCTEXT("FMCodexThroughBall", "AntiSingleDiceDetail",
+								"D6：{0}"), FText::AsNumber(Roll->RawD6)).ToString();
+						// Describe the disclosed authoritative Offside decision, never
+						// decide success/failure from the visible dice in presentation.
+						const FText Reason = bPair
+							? NSLOCTEXT("FMCodexThroughBall", "AntiExpertOffsideReason", "两次判定均未掷出 6，因此越位。")
+							: NSLOCTEXT("FMCodexThroughBall", "AntiSingleOffsideReason", "反越位判定未掷出 6，因此越位。");
+						Result.OutcomeRollDetail = FText::Format(NSLOCTEXT("FMCodexThroughBall", "AntiOffsideDetailAndReason",
+							"{0}\n{1}"), FText::FromString(Result.OutcomeRollDetail), Reason).ToString();
+					}
+				}
 			}
 		};
 		const FMatchPlayResolutionDecisionFact* AntiDecision = FindDecision(

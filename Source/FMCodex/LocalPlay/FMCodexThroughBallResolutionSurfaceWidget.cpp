@@ -250,7 +250,12 @@ void UFMCodexThroughBallResolutionSurfaceWidget::BuildWidgetTree()
 		TEXT("ThroughBallSharedRollReel"));
 	auto* ReelBounds = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(), TEXT("ThroughBallRollBounds"));
-	ReelBounds->AddChild(RollReel);
+	auto* ReelLine = WidgetTree->ConstructWidget<UHorizontalBox>();
+	ReelLine->AddChildToHorizontalBox(RollReel);
+	AntiOffsideSecondReel = WidgetTree->ConstructWidget<UFMCodexRollReelWidget>();
+	AntiOffsideSecondReel->SetVisualVariant(EFMCodexRollVisualVariant::CompactBox);
+	ReelLine->AddChildToHorizontalBox(AntiOffsideSecondReel)->SetPadding(FMargin(16, 0, 0, 0));
+	ReelBounds->AddChild(ReelLine);
 	if (UVerticalBoxSlot* ReelBoxSlot =
 		RevealBody->AddChildToVerticalBox(ReelBounds))
 	{
@@ -388,7 +393,7 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals(
 	auto* ReelBounds = CastChecked<USizeBox>(GetWidgetFromName(TEXT("ThroughBallRollBounds")));
 	ReelBounds->SetVisibility(Presentation.bDiceRevealVisible
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
-	if (bCompactEvent) { ReelBounds->SetWidthOverride(84.f); ReelBounds->SetHeightOverride(72.f); }
+	if (bCompactEvent) { ReelBounds->SetWidthOverride(Presentation.AntiOffsideSecondReel.bVisible ? 184.f : 84.f); ReelBounds->SetHeightOverride(72.f); }
 	else { ReelBounds->ClearWidthOverride(); ReelBounds->ClearHeightOverride(); }
 	Style.ApplyBorder(*DiceRevealRegion, EFMCodexPlayerUIColorRole::PanelInset, FMargin(14,10));
 	if (bCompactEvent) DiceRevealRegion->SetBrushColor(FLinearColor::Transparent);
@@ -427,6 +432,9 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals(
 		Presentation.OutcomeRollHint.bVisible
 			? Presentation.OutcomeRollHint.DisplayLabel : FString());
 	RollReel->RefreshFromPresentation(Presentation.RollReel);
+	AntiOffsideSecondReel->RefreshFromPresentation(Presentation.AntiOffsideSecondReel);
+	AntiOffsideSecondReel->SetVisibility(Presentation.AntiOffsideSecondReel.bVisible
+		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	SetOptionalText(ResultTitleText,
 		Presentation.bNarrativeAvailable ? Presentation.ResultTitle : FString());
 	SetOptionalText(NarrativeText,
@@ -455,7 +463,8 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals(
 	FMCodexOutcomePresentation::Refresh(*WidgetTree, bOutcome,
 		Presentation.NarrativeHeadline.IsEmpty() ? Presentation.ResultTitle : Presentation.NarrativeHeadline,
 		FMCodexOutcomePresentation::JoinContext({Presentation.TitleLabel, Presentation.RouteLabel, Presentation.StageLabel, Presentation.ResultTitle}),
-		Presentation.RouteResultLabel,
+		Presentation.Stage == EFMCodexUMGThroughBallStage::AntiOffsideCheck && !Presentation.OutcomeRollDetail.IsEmpty()
+			? Presentation.OutcomeRollDetail : Presentation.RouteResultLabel,
 		Presentation.OutcomeRollHint.bVisible ? Presentation.OutcomeRollHint.DisplayLabel : FString(),
 		ContinueButton->GetParent()->GetVisibility() != ESlateVisibility::Collapsed || !OneOnOneChoiceWidgets.IsEmpty(),
 		Presentation.OutcomeText);
@@ -500,6 +509,8 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals(
 					: Entry.DisplayLabel);
 			SetOptionalText(OutcomeHintText, FString::Join(Ranges, TEXT("　｜　")));
 		}
+		if (Presentation.AntiOffsideSecondReel.bVisible)
+			SetOptionalText(OutcomeHintText, Presentation.AntiOffsideTraitHint.ToString());
 		ResultTitleText->SetVisibility(ESlateVisibility::Collapsed);
 		NarrativeText->SetVisibility(ESlateVisibility::Collapsed);
 		if (Presentation.bDiceRevealVisible)

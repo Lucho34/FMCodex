@@ -746,4 +746,44 @@ THROUGH_BALL_ANTI_OFFSIDE_OUTCOME_TEST(38, "38DependencyAndStateBoundary")
 
 #undef THROUGH_BALL_ANTI_OFFSIDE_OUTCOME_TEST
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAntiOffsideBinaryMatrix,
+	"FMCodex.CoreRules.ThroughBallAntiOffsideOutcomeQuery.BinaryTrait",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FAntiOffsideBinaryMatrix::RunTest(const FString&)
+{
+	using namespace ThroughBallAntiOffsideOutcomeQueryTests;
+	for (int32 A = 1; A <= 6; ++A) for (int32 B = 1; B <= 6; ++B)
+	{
+		auto Input = MakeInput(A);
+		auto Participants = Input.ParticipantEligibilityResult.Input;
+		Participants.RunnerSnapshot.BinaryTraits = {TEXT("Trait.ThroughBallAntiRunner")};
+		Input.ParticipantEligibilityResult = FThroughBallParticipantEligibilityQuery::Evaluate(MakeSkillRules(), Participants);
+		Input.AntiOffsideSecondD6 = B;
+		const auto Result = ExpectSuccess(*this, Input);
+		TestEqual(TEXT("Either die is six; no sum or reroll"), Result.bRequiresOneOnOne, A == 6 || B == 6);
+		TestEqual(TEXT("Same offside failure"), Result.bAttackEnded, A != 6 && B != 6);
+	}
+	for (const int32 Second : {0, -1, 7})
+	{
+		auto Input = MakeInput(6);
+		auto Participants = Input.ParticipantEligibilityResult.Input;
+		Participants.RunnerSnapshot.BinaryTraits = {TEXT("Trait.ThroughBallAntiRunner")};
+		Input.ParticipantEligibilityResult = FThroughBallParticipantEligibilityQuery::Evaluate(MakeSkillRules(), Participants);
+		Input.AntiOffsideSecondD6 = Second;
+		TestFalse(TEXT("First six cannot excuse missing/malformed second die"), FThroughBallAntiOffsideOutcomeQuery::Evaluate(Input).bSuccess);
+	}
+	for (int32 Role = 0; Role < 3; ++Role)
+	{
+		auto Input = MakeInput(3, 5, true);
+		auto Participants = Input.ParticipantEligibilityResult.Input;
+		auto& NonRunner = Role == 0 ? Participants.CarrierSnapshot : Role == 1 ? Participants.MarkerSnapshot : Participants.HelperSnapshot;
+		NonRunner.BinaryTraits = {TEXT("Trait.ThroughBallAntiRunner")};
+		Input.ParticipantEligibilityResult = FThroughBallParticipantEligibilityQuery::Evaluate(MakeSkillRules(), Participants);
+		ExpectOffside(*this, ExpectSuccess(*this, Input));
+		Input.AntiOffsideSecondD6 = 6;
+		TestFalse(TEXT("Other roles cannot authorize a second die"), FThroughBallAntiOffsideOutcomeQuery::Evaluate(Input).bSuccess);
+	}
+	return true;
+}
+
 #endif

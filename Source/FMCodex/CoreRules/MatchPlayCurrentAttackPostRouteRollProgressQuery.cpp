@@ -314,12 +314,13 @@ namespace MatchPlayCurrentAttackPostRouteRollProgressQuery
 		if (Branch.ThroughBall
 			== EMatchPlayThroughBallActualBranch::AntiOffside)
 		{
-			if (Records[0].RawD6 != AntiOffsideOneOnOneD6)
+			if (Records[0].RawD6 != AntiOffsideOneOnOneD6
+				&& Records[0].AntiOffsideSecondD6 != AntiOffsideOneOnOneD6)
 			{
 				SetFailure(
 					Result,
 					EError::InvalidLaterPhasePrerequisite,
-					TEXT("AntiOffside OneOnOne requires its accepted Primary Attack roll to be 6."));
+					TEXT("AntiOffside OneOnOne requires at least one accepted AntiOffside die to be 6."));
 				return Result;
 			}
 		}
@@ -391,12 +392,13 @@ namespace MatchPlayCurrentAttackPostRouteRollProgressQuery
 		if (Branch.ThroughBall
 			== EMatchPlayThroughBallActualBranch::AntiOffside)
 		{
-			if (Records[0].RawD6 != AntiOffsideOneOnOneD6)
+			if (Records[0].RawD6 != AntiOffsideOneOnOneD6
+				&& Records[0].AntiOffsideSecondD6 != AntiOffsideOneOnOneD6)
 			{
 				SetFailure(
 					Result,
 					EError::InvalidLaterPhasePrerequisite,
-					TEXT("AntiOffside OneOnOne DirectShot requires its accepted Primary Attack roll to be 6."));
+					TEXT("AntiOffside OneOnOne DirectShot requires at least one accepted AntiOffside die to be 6."));
 				return Result;
 			}
 		}
@@ -449,6 +451,18 @@ FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(
 
 	const FMatchPlayCurrentAttackPostRouteRollProgress& Progress =
 		Session.PostRouteRollProgress;
+	for (const FRecord& Record : Progress.RollRecords)
+	{
+		if (Record.AntiOffsideSecondD6 != 0
+			&& (Session.ActualBranch.ActionType != ESkillRuleType::ThroughBall
+				|| Session.ActualBranch.ThroughBall != EMatchPlayThroughBallActualBranch::AntiOffside
+				|| Record.Purpose != EPurpose::PrimaryAttack
+				|| Record.AntiOffsideSecondD6 < 1 || Record.AntiOffsideSecondD6 > 6))
+		{
+			SetFailure(Result, EError::InvalidD6, TEXT("Only the AntiOffside primary event may contain a second D6."));
+			return Result;
+		}
+	}
 	switch (Progress.Phase)
 	{
 	case EMatchPlayCurrentAttackPostRouteRollPhase::None:

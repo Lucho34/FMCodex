@@ -1729,6 +1729,11 @@ struct FMCODEX_API FFMCodexUMGThroughBallResolutionViewModel
 		Category = "Local Match|Through Ball")
 	FFMCodexUMGRollReelViewModel RollReel;
 
+	/** Disclosed second die of the same AntiOffside event. Zero for all other events. */
+	UPROPERTY() int32 AntiOffsideSecondD6 = 0;
+	UPROPERTY() FFMCodexUMGRollReelViewModel AntiOffsideSecondReel;
+	UPROPERTY() FText AntiOffsideTraitHint;
+
 	/** Canonical outcome ranges shown only while an outcome roll awaits input. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Through Ball")
@@ -1907,6 +1912,7 @@ struct FMCODEX_API FFMCodexUMGResolvedRollViewModel
 	UPROPERTY() int32 SequenceIndex = INDEX_NONE;
 	UPROPERTY() EInitialTurnOrderPlayer OwnerSide = EInitialTurnOrderPlayer::None;
 	UPROPERTY() int32 RawD6 = 0;
+	UPROPERTY() int32 AntiOffsideSecondD6 = 0;
 };
 
 USTRUCT(BlueprintType)

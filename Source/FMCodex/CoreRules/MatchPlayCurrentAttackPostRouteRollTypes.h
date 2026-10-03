@@ -60,6 +60,10 @@ struct FMCODEX_API FMatchPlayCurrentAttackPostRouteRollRecord
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Resolution Session")
 	int32 RawD6 = 0;
+
+	/** Same AntiOffside event, never another roll purpose. Zero when absent. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Resolution")
+	int32 AntiOffsideSecondD6 = 0;
 };
 
 UENUM(BlueprintType)

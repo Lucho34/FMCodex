@@ -1,4 +1,6 @@
 #include "MatchPlayCurrentAttackResolutionSessionStateValidator.h"
+#include "MatchPlayCardSnapshotAuthority.h"
+#include "ThroughBallAntiOffsideOutcomeQuery.h"
 
 #include "MatchPlayCurrentAttackInitialRouteMappingQuery.h"
 #include "MatchPlayCurrentAttackPostRouteRollProgressQuery.h"
@@ -829,6 +831,21 @@ FMatchPlayCurrentAttackResolutionSessionStateValidator::Validate(
 				::InvalidSessionBundle,
 			TEXT("Resolution Session bundle is not canonical."));
 		return Result;
+	}
+	if (Session.bHasActualBranch && Session.ActualBranch.ActionType == ESkillRuleType::ThroughBall
+		&& Session.ActualBranch.ThroughBall == EMatchPlayThroughBallActualBranch::AntiOffside
+		&& !Session.PostRouteRollProgress.RollRecords.IsEmpty())
+	{
+		const auto Runner = FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(
+			State.CardSnapshotAuthority, Session.Bundle.Runner.Side, Session.Bundle.Runner.CardId);
+		const int32 Second = Session.PostRouteRollProgress.RollRecords[0].AntiOffsideSecondD6;
+		if (!Runner.bSuccess || (FThroughBallAntiOffsideOutcomeQuery::UsesTwoDice(Runner.Snapshot)
+			? (Second < 1 || Second > 6) : Second != 0))
+		{
+			SetFailure(Result, EMatchPlayCurrentAttackResolutionSessionStateValidationErrorCode::InvalidPostRouteRollProgress,
+				TEXT("Stored AntiOffside dice must match the authoritative Runner's Binary Trait."));
+			return Result;
+		}
 	}
 	if (!ValidateRouteState(Session, Result))
 	{

@@ -134,6 +134,7 @@ FFMCodexNetworkMatchPresentation FFMCodexNetworkMatchPresentationAdapter::Projec
 			FFMCodexUMGResolvedRollViewModel Event;
 			Event.AttackSequence = Facts.AttackSequence;
 			Event.OwnerSide = Roll.OwningSide; Event.SequenceIndex = Roll.SequenceIndex; Event.RawD6 = Roll.RawD6;
+			Event.AntiOffsideSecondD6 = Roll.AntiOffsideSecondD6;
 			if (Roll.bInitialRoute && Roll.Semantics == EMatchPlayResolutionRollSemantics::BranchSelection)
 			{
 				Event.Kind = EFMCodexUMGCrossRollRevealKind::InitialRoute;

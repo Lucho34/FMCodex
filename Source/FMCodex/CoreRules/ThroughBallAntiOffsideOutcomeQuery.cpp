@@ -358,7 +358,16 @@ FThroughBallAntiOffsideOutcomeQuery::Evaluate(
 		return Result;
 	}
 
-	if (Input.AntiOffsideAttackD6 == MaxD6)
+	const bool bTwoDice = UsesTwoDice(Runner);
+	if (bTwoDice ? !IsD6InRange(Input.AntiOffsideSecondD6) : Input.AntiOffsideSecondD6 != 0)
+	{
+		SetFailure(Result, EThroughBallAntiOffsideOutcomeQueryErrorCode::InvalidAntiOffsideSecondD6,
+			TEXT("The AntiOffside second die must match the actual Runner's Binary Trait."),
+			TEXT("AntiOffsideSecondD6"));
+		return Result;
+	}
+
+	if (Input.AntiOffsideAttackD6 == MaxD6 || Input.AntiOffsideSecondD6 == MaxD6)
 	{
 		Result.Decision =
 			EThroughBallAntiOffsideOutcomeDecision::OneOnOneRequired;
@@ -374,4 +383,10 @@ FThroughBallAntiOffsideOutcomeQuery::Evaluate(
 
 	Result.bSuccess = true;
 	return Result;
+}
+
+bool FThroughBallAntiOffsideOutcomeQuery::UsesTwoDice(const FPlayerCardRuleSnapshot& ActualRunner)
+{
+	return !ActualRunner.bIsGoalkeeper
+		&& ActualRunner.BinaryTraits.Contains(FName(TEXT("Trait.ThroughBallAntiRunner")));
 }

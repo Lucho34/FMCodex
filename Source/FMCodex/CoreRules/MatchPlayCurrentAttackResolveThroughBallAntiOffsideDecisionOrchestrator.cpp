@@ -145,6 +145,7 @@ namespace MatchPlayCurrentAttackResolveThroughBallAntiOffsideDecision
 			Result.ParticipantEligibilityResult;
 		Result.QueryInput.bHasAntiOffsideAttackD6 = true;
 		Result.QueryInput.AntiOffsideAttackD6 = Records[0].RawD6;
+		Result.QueryInput.AntiOffsideSecondD6 = Records[0].AntiOffsideSecondD6;
 		return true;
 	}
 
@@ -298,9 +299,15 @@ FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator::Resolv
 			TEXT("AntiOffside decision requires authoritative SkillRuleSet."));
 		return Result;
 	}
-	const int32 MaximumRollsThisCommand = bExplicitAttackRoll ? 1 : MAX_int32;
-	while (!Result.ProgressResult.bContractComplete
-		&& Result.ProviderCallCount < MaximumRollsThisCommand)
+	FPlayerCardRuleSnapshot Runner;
+	FString SnapshotError;
+	if (!QueryBoundSnapshot(BeforeState, BeforeSession.Bundle.Runner, Runner, SnapshotError))
+	{
+		SetFailure(Result, EError::ParticipantSnapshotUnavailable, SnapshotError);
+		return Result;
+	}
+	const bool bTwoDice = FThroughBallAntiOffsideOutcomeQuery::UsesTwoDice(Runner);
+	while (!Result.ProgressResult.bContractComplete)
 	{
 		const EPurpose Purpose = Result.ProgressResult.NextPurpose;
 		const FMatchPlayPostRouteRollProviderResult ProviderResult =
@@ -319,6 +326,22 @@ FMatchPlayCurrentAttackResolveThroughBallAntiOffsideDecisionOrchestrator::Resolv
 		FMatchPlayCurrentAttackPostRouteRollRecord Record;
 		Record.Purpose = Purpose;
 		Record.RawD6 = ProviderResult.RawD6;
+		if (bTwoDice)
+		{
+			// Always sample both dice, including when the first is six. Publish
+			// one complete record only after both provider results validate.
+			const auto Second = RollProvider->RollD6(Purpose);
+			++Result.ProviderCallCount;
+			Result.ProviderResults.Add(Second);
+			const auto SecondValidation = FMatchPlayPostRouteRollProviderResultValidator::Validate(Purpose, Second);
+			Result.ProviderValidationResults.Add(SecondValidation);
+			if (!SecondValidation.bIsCanonical)
+			{
+				SetFailure(Result, MapProviderValidationError(SecondValidation.ErrorCode), SecondValidation.ErrorMessage);
+				return Result;
+			}
+			Record.AntiOffsideSecondD6 = Second.RawD6;
+		}
 		CandidateSession.PostRouteRollProgress.RollRecords.Add(Record);
 		Result.ProgressResult =
 			FMatchPlayCurrentAttackPostRouteRollProgressQuery::Evaluate(

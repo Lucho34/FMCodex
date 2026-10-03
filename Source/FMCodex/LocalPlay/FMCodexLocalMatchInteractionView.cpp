@@ -1678,7 +1678,7 @@ namespace FMCodexLocalMatchInteractionView
 				? Disclosure.bRevealRouteRoll
 				: SeenContestFacts++
 					< FMath::Max(0, Disclosure.RevealedContestD6Count));
-			if (bDisclosed || (bKeepPendingOrdinary && !Roll.bResolved && Roll.RawD6 == 0))
+			if (bDisclosed || (bKeepPendingOrdinary && !Roll.bResolved && Roll.RawD6 == 0 && Roll.AntiOffsideSecondD6 == 0))
 			{
 				DisclosedFacts.Add(Roll);
 			}
