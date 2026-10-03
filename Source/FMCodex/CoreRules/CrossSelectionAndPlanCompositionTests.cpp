@@ -22,25 +22,12 @@ namespace CrossSelectionAndPlanCompositionTests
 	const FName GoalkeeperPlayerId(TEXT("Player.CrossComposition.Goalkeeper"));
 	const FGuid LogId(841, 842, 843, 844);
 
-	FPlayerAttributes MakeAttributes(
-		const int32 Passing,
-		const int32 Shooting,
-		const int32 Strength,
-		const int32 Marking,
-		const int32 Tackling)
+	FPlayerAttributes MakeAttributes(const int32 Passing, const int32 Speed,
+		const int32 Strength, const int32 Defense)
 	{
-		FPlayerAttributes Attributes;
-		Attributes.Shooting = Shooting;
-		Attributes.Dribbling = 1;
-		Attributes.Passing = Passing;
-		Attributes.OffBall = 1;
-		Attributes.Marking = Marking;
-		Attributes.Tackling = Tackling;
-		Attributes.Speed = 1;
-		Attributes.Strength = Strength;
-		Attributes.Stamina = 1;
-		Attributes.LongShot = 1;
-		return Attributes;
+		FPlayerAttributes A;
+		A.Passing = Passing; A.Speed = Speed; A.Strength = Strength; A.Defense = Defense;
+		return A;
 	}
 
 	FPlayerCardRuleSnapshot MakeOutfieldCard(
@@ -62,7 +49,7 @@ namespace CrossSelectionAndPlanCompositionTests
 		FPlayerCardRuleSnapshot Card;
 		Card.CardId = GoalkeeperCardId;
 		Card.PositionTypes = { EPlayerPositionType::Goalkeeper };
-		Card.Attributes = MakeAttributes(1, 1, 1, 1, 1);
+		Card.Attributes = MakeAttributes(1, 1, 1, 1);
 		Card.bIsGoalkeeper = true;
 		Card.bHasGoalkeeperAttributes = true;
 		Card.GoalkeeperAttributes.Handling = 1;
@@ -81,20 +68,20 @@ namespace CrossSelectionAndPlanCompositionTests
 			MakeOutfieldCard(
 				CarrierCardId,
 				EPlayerPositionType::Midfield,
-				MakeAttributes(3, 1, 1, 1, 1),
+				MakeAttributes(3, 1, 1, 1),
 				true),
 			MakeOutfieldCard(
 				RunnerCardId,
 				EPlayerPositionType::Attack,
-				MakeAttributes(1, 6, 4, 1, 1)),
+				MakeAttributes(1, 6, 4, 1)),
 			MakeOutfieldCard(
 				MarkerCardId,
 				EPlayerPositionType::Defense,
-				MakeAttributes(1, 1, 1, 1, 5)),
+				MakeAttributes(1, 1, 1, 5)),
 			MakeOutfieldCard(
 				HelperCardId,
 				EPlayerPositionType::Midfield,
-				MakeAttributes(1, 1, 6, 4, 1)),
+				MakeAttributes(1, 4, 6, 1)),
 			MakeGoalkeeperCard()
 		};
 		return Snapshots;

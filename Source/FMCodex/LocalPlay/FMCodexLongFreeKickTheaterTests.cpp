@@ -95,7 +95,7 @@ bool FLongTheaterLifecycle::RunTest(const FString& P)
  TestEqual(TEXT("Canonical alternative name"),Text(S,TEXT("TheaterNearCombinationLabel")),FString(TEXT("重炮轰门")));
  if (!PairMethod)
  {
-  TestTrue(TEXT("Direct tooltip explains LongShot"),Tip(S,TEXT("TheaterAttackBaseHover")).Contains(TEXT("远射")));
+  TestTrue(TEXT("Direct tooltip explains Shooting"),Tip(S,TEXT("TheaterAttackBaseHover")).Contains(TEXT("射门")));
   TestTrue(TEXT("Direct tooltip preserves fixed plus two"),Tip(S,TEXT("TheaterDefenseBaseHover")).Contains(TEXT("防守加成 2")));
  }
 	const auto Before=S->GetPresentation().Header;

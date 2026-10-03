@@ -17,8 +17,8 @@ namespace MatchPlayLongFreeKickAuthoritativeSessionTests
 		Card.PositionTypes = { bGoalkeeper
 			? EPlayerPositionType::Goalkeeper
 			: EPlayerPositionType::Attack };
-		Card.Attributes.LongShot = 6;
-		Card.Attributes.Stamina = 5;
+		Card.Attributes.Shooting = 6;
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::S;
 		Card.GoalkeeperAttributes.Positioning = 4;
 		return Card;
 	}

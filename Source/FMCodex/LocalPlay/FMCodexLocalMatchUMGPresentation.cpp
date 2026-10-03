@@ -115,6 +115,7 @@ namespace FMCodexLocalMatchUMGPresentation
 				Result.AttributeValues.AddDefaulted_GetRef();
 			AttributeView.CanonicalLabel = Attribute.CanonicalLabel;
 			AttributeView.Value = Attribute.Value;
+			AttributeView.ValueLabel = Attribute.ValueLabel;
 		}
 		for (const FFMCodexLocalMatchCardView::FSkill& Skill : Card.Skills)
 		{
@@ -1603,7 +1604,7 @@ namespace FMCodexLocalMatchUMGPresentation
 				break;
 			case ESetPieceSelectedType::LongFreeKick:
 				Result.AttackRow.Terms.Add(SetPieceAttributeTerm(FString::Printf(
-					TEXT("远射 %d"), CarrierSnapshot.Attributes.LongShot)));
+					TEXT("射门 %d"), CarrierSnapshot.Attributes.Shooting)));
 				Result.DefenseRow.Terms.Add(SetPieceAttributeTerm(FString::Printf(
 					TEXT("站位 %d"),
 					SetPieceCardAttribute(Goalkeeper, TEXT("POS")))));
@@ -1635,14 +1636,14 @@ namespace FMCodexLocalMatchUMGPresentation
 				const FString AttackBasis = bHigh
 					? FString::Printf(TEXT("力量 %d"),
 						InteractionView.CornerRunner.Snapshot.Attributes.Strength)
-					: FString::Printf(TEXT("射门 %d"),
-						InteractionView.CornerRunner.Snapshot.Attributes.Shooting);
+					: FString::Printf(TEXT("控球 %d"),
+						InteractionView.CornerRunner.Snapshot.Attributes.Control);
 				const FString DefenseBasis = bHigh
 					? FString::Printf(TEXT("防守力量 %d / 门将制空 %d（取平均）"),
 						InteractionView.CornerHelper.Snapshot.Attributes.Strength,
 						SetPieceCardAttribute(Goalkeeper, TEXT("AER")))
-					: FString::Printf(TEXT("盯防 %d / 门将反应 %d（取平均）"),
-						InteractionView.CornerHelper.Snapshot.Attributes.Marking,
+					: FString::Printf(TEXT("防守 %d / 门将反应 %d（取平均）"),
+						InteractionView.CornerHelper.Snapshot.Attributes.Defense,
 						SetPieceCardAttribute(Goalkeeper, TEXT("REF")));
 				Result.AttackRow.Terms.Add(SetPieceAttributeTerm(AttackBasis));
 				Result.DefenseRow.Terms.Add(SetPieceAttributeTerm(DefenseBasis));
@@ -1656,10 +1657,10 @@ namespace FMCodexLocalMatchUMGPresentation
 								*FFMCodexPlayerUIPresentationText::CornerCandidateBonus(InteractionView.CornerCandidateBonus).ToString()));
 				}
 				Result.AttackRow.KnownNonRollSubtotalLabel = bHigh
-					? TEXT("进攻球员力量") : TEXT("进攻球员射门");
+					? TEXT("进攻球员力量") : TEXT("进攻球员控球");
 				Result.DefenseRow.KnownNonRollSubtotalLabel = bHigh
 					? TEXT("防守球员力量与门将制空取平均，再加防守加成 2")
-					: TEXT("防守球员盯防与门将反应取平均，再加防守加成 2");
+					: TEXT("防守球员防守与门将反应取平均，再加防守加成 2");
 				break;
 			}
 			default:

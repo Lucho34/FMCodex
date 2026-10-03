@@ -42,7 +42,7 @@
 
 生产内容的完整导入、版本、校验与维护流程见 `Docs/Canonical_Player_Content.md`。运行时记录由 `Content/Data/CanonicalPlayerContent.json` 提供，不读取 XLSX。
 
-当前权威平衡源表为仓库内 `ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx`，身份与表现 sidecar 仍为同目录 `CanonicalPlayerImportConfig.json`。Stage 8.15S 从已验证基线恢复新的源表，历史原表仍遗失；恢复 provenance 见同目录 `CanonicalPlayerSourceRecovery.md`。JSON 只由前向导入器生成，禁止作为源手工编辑。Stage 8.15B 的六人临时 PassControl 退出实验使用 `Prototype40_v2`，schema 仍为 3；精确迁移及恢复流程见内容文档。
+当前权威平衡源表为仓库内 `ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx`，身份与表现 sidecar 仍为同目录 `CanonicalPlayerImportConfig.json`。Stage 8.15S 从已验证基线恢复新的源表，历史原表仍遗失；恢复 provenance 见同目录 `CanonicalPlayerSourceRecovery.md`。JSON 只由前向导入器生成，禁止作为源手工编辑。Stage 8.20B.1 使用 `Prototype40_v3`、runtime schema 4；sidecar schema 3 不变。六属性与 S/A/B 体力一次切换，旧 runtime schema 不再接受；精确迁移及恢复流程见内容文档。
 
 - `PlayerKey`：稳定技术身份，进入运行时 `CardId`；不从姓名或展示编号临时推导。
 - `Team + RosterSlot`：每队 1–20 的确定性阵容顺序；`RosterSlot` 不是身份。
@@ -54,7 +54,7 @@
 - `Presentation`：现有已批准的国籍、出生日期、身高、体重、稀有度覆盖；未提供时使用明确安全默认，不从工作簿外猜测事实。
 - `schemaVersion`：数据形状版本；`balanceContentVersion`：批准平衡内容版本；`sourceWorkbookSha256`：导入来源审计值。
 
-当前实验规模：40 人、Arsenal 20、Manchester City 20、门将 2、非门将 38、Skill assignments 31。家族配置为 LongShot 5、CutInsideShot 8、Cross 10、ThroughBall 8、PassControl 0；每人技能数分布为 `0:18 / 1:13 / 2:9 / 3:0`。每名球员每个 TP 2–8 的活跃技能数不得超过 2。PassControl 的枚举、规则和传输数据合同保留。
+当前实验规模：40 人、Arsenal 20、Manchester City 20、门将 2、非门将 38、Skill assignments 31。家族配置为 LongShot 5、CutInsideShot 8、Cross 10、ThroughBall 8、PassControl 0；每人技能数分布为 `0:18 / 1:13 / 2:9 / 3:0`。每名球员每个 TP 2–8 的活跃技能数不得超过 2。PassControl 的枚举与传输身份保留，但生产入口不可用，旧算术 Plan 不再执行。
 
 ## CardRarity
 
@@ -89,18 +89,19 @@
 
 表示球员属性集合。
 
-通用属性：
+非门将基础属性（整数 1–6）：
 
 - `Shooting`：射门。
-- `Dribbling`：盘带。
 - `Passing`：传球。
-- `OffBall`：跑位。
-- `Marking`：盯人。
-- `Tackling`：抢断。
+- `Control`：控球。
 - `Speed`：速度。
-- `Strength`：强壮。
-- `Stamina`：体力。
-- `LongShot`：远射。
+- `Strength`：力量。
+- `Defense`：防守。
+- `StaminaTier`：独立语义 enum S/A/B；None 只用于缺席值或 GK。非 GK 必填；集中转换 `PlayerStaminaGameplayValue` 为 5/3/1。
+
+`FPlayerCardData` 与 authoritative `FPlayerCardRuleSnapshot` 被动保存 `RankedTraits: [{TraitId, Rank}]` 与 `BinaryTraits: [TraitId]`。固定 23 Ranked + 1 Binary 身份以 `Trait.` 命名空间独立于中文名；Rank 为 S/A/B；拒绝未知、重复、非法 Rank、GK Trait。B.1 无加成计算、触发器或双骰效果。详细固定 ID 见 `PlayerTraitData.h` 与 canonical importer `TRAIT_KEYS`。
+
+JSON 非 GK 为六键 `outfieldAttributes`、`staminaTier` 字符串；GK 为 `goalkeeperAttributes`、`staminaTier: null`，另一属性对象为 null。每人必须有 `rankedTraits` 与 `binaryTraits` 数组。非 GK OVR 由六项 base 得出 65–95，仅显示，不新增可编辑或持久化 OVR 字段。
 
 门将属性：
 

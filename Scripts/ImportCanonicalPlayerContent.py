@@ -25,19 +25,32 @@ from xml.etree import ElementTree as ET
 
 TEAMS = ("Arsenal", "Manchester City")
 POSITIONS = {"A", "M", "D", "A/M", "M/D", "GK"}
-SKILLS = {"LongShot", "CutInsideShot", "PassControl", "Cross", "ThroughBall"}
-OUTFIELD_ATTRIBUTES = ("SHO", "DRI", "PAS", "OFF", "MRK", "TKL", "SPD", "STR", "STA", "LS")
+SKILLS = {"LongShot", "CutInsideShot", "Cross", "ThroughBall"}
+OUTFIELD_ATTRIBUTES = ("SHO", "PAS", "CON", "SPD", "STR", "DEF")
+# Fixed production identities. Chinese labels are presentation, never identity.
+TRAIT_KEYS = (
+    "LongShotCarrier", "CutInsideCarrier", "CrossCarrier", "CrossHighRunner",
+    "CrossLowRunner", "ThroughBallCarrier", "ThroughBallAntiRunner",
+    "ThroughBallBehindRunner", "ThroughBallFeetRunner", "CornerHighThreat",
+    "CornerLowThreat", "NearFreeKickTaker", "LongFreeKickTaker", "PenaltyTaker",
+    "LongShotBlocker", "CutInsideStopper", "CrossMarkerBlocker", "CrossHighHelperDefense",
+    "CrossLowHelperDefense", "ThroughBallMarkerDefense", "ThroughBallFeetHelperDefense",
+    "ThroughBallBehindHelperDefense", "CornerHighDefense", "CornerLowDefense",
+)
+TRAIT_HEADERS = tuple("Trait." + key for key in TRAIT_KEYS)
+BINARY_TRAIT = "Trait.ThroughBallAntiRunner"
 GOALKEEPER_ATTRIBUTES = ("HAN", "POS_GK", "REF", "AER", "ANT", "1V1")
 SOURCE_HEADERS = (
     "RosterSlot", "Team", "PlayerId", "中文名", "EnglishName", "Position",
     *OUTFIELD_ATTRIBUTES,
+    "StaminaTier",
     *GOALKEEPER_ATTRIBUTES,
     "Skill1", "S1_MinTP", "S1_MaxTP",
     "Skill2", "S2_MinTP", "S2_MaxTP",
-    "Skill3", "S3_MinTP", "S3_MaxTP", "Notes",
+    "Skill3", "S3_MinTP", "S3_MaxTP", *TRAIT_HEADERS, "Notes",
 )
 CONFIG_SCHEMA_VERSION = 3
-RUNTIME_SCHEMA_VERSION = 3
+RUNTIME_SCHEMA_VERSION = 4
 PLAYER_KEY_PATTERN = re.compile(r"^[A-Za-z0-9.]+$")
 
 
@@ -223,9 +236,9 @@ def parse_players(
         raise ValidationFailure("Source sheet is empty")
     header = rows[0]
     actual_headers = tuple(header[index] if index < len(header) else None for index in range(len(SOURCE_HEADERS)))
-    if actual_headers != SOURCE_HEADERS:
+    if actual_headers != SOURCE_HEADERS or any(value is not None and value != "" for value in header[len(SOURCE_HEADERS):]):
         errors.append(
-            "Source columns A:AF do not match the required contract. "
+            "Source columns do not match the required six-attribute contract. "
             f"Expected {SOURCE_HEADERS!r}; found {actual_headers!r}"
         )
 
@@ -295,6 +308,31 @@ def parse_players(
                 if row[header_map[attribute]] is not None:
                     row_errors.append(f"{label} {attribute}: outfield field must be blank")
 
+        stamina_tier = optional_text(row[header_map["StaminaTier"]])
+        if position == "GK":
+            if stamina_tier:
+                row_errors.append(f"{label} StaminaTier: GK field must be blank")
+        elif stamina_tier not in {"S", "A", "B"}:
+            row_errors.append(f"{label} StaminaTier: required S/A/B, found {stamina_tier!r}")
+
+        ranked_traits: list[dict[str, str]] = []
+        binary_traits: list[str] = []
+        for trait_id in TRAIT_HEADERS:
+            value = optional_text(row[header_map[trait_id]])
+            if not value:
+                continue
+            if position == "GK":
+                row_errors.append(f"{label} {trait_id}: GK Trait must be blank")
+            if trait_id == BINARY_TRAIT:
+                if value != "有":
+                    row_errors.append(f"{label} {trait_id}: expected 有 or blank")
+                else:
+                    binary_traits.append(trait_id)
+            elif value not in {"S", "A", "B"}:
+                row_errors.append(f"{label} {trait_id}: expected S/A/B or blank")
+            else:
+                ranked_traits.append({"traitId": trait_id, "rank": value})
+
         skill_assignments: list[dict[str, Any]] = []
         skill_ids: set[str] = set()
         for skill_index in range(1, 4):
@@ -352,6 +390,9 @@ def parse_players(
             "position": position,
             "outfieldAttributes": outfield,
             "goalkeeperAttributes": goalkeeper,
+            "staminaTier": stamina_tier or None,
+            "rankedTraits": ranked_traits,
+            "binaryTraits": binary_traits,
             "skills": skill_assignments,
             "notes": optional_text(row[header_map["Notes"]]),
             "presentation": {

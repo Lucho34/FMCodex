@@ -256,7 +256,7 @@ bool FBoundActionNormalizationHelperAbsentTest::RunTest(
 			NormalizationFixtures::ValuesAreZero(
 				Result.Bundle.Helper.Values));
 		TestEqual(TEXT("Helper stamina is zero"),
-			Result.Bundle.Helper.Values.Stamina, 0);
+			PlayerStaminaGameplayValue(Result.Bundle.Helper.Values.StaminaTier), 0);
 	}
 	return true;
 }

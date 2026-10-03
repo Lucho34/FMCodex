@@ -512,7 +512,7 @@ namespace MatchPlayAuthoritativeSessionTests
 			&& Left.CarrierPassing == Right.CarrierPassing
 			&& Left.CarrierStamina == Right.CarrierStamina
 			&& Left.RunnerId == Right.RunnerId
-			&& Left.RunnerOffBall == Right.RunnerOffBall
+			&& Left.RunnerControl == Right.RunnerControl
 			&& Left.RunnerStamina == Right.RunnerStamina
 			&& Left.AttackD6 == Right.AttackD6
 			&& Left.AttackBaseValue == Right.AttackBaseValue
@@ -520,11 +520,11 @@ namespace MatchPlayAuthoritativeSessionTests
 			&& Left.AttackParticipatingStamina
 				== Right.AttackParticipatingStamina
 			&& Left.MarkerId == Right.MarkerId
-			&& Left.MarkerTackling == Right.MarkerTackling
+			&& Left.MarkerDefense == Right.MarkerDefense
 			&& Left.MarkerStamina == Right.MarkerStamina
 			&& Left.bHasHelper == Right.bHasHelper
 			&& Left.HelperId == Right.HelperId
-			&& Left.HelperMarking == Right.HelperMarking
+			&& Left.HelperDefense == Right.HelperDefense
 			&& Left.HelperStamina == Right.HelperStamina
 			&& Left.bHasActiveGoalkeeper
 				== Right.bHasActiveGoalkeeper
@@ -15286,15 +15286,12 @@ bool FMatchPlayAuthoritativeSessionResolvePassControlPostRoutePlanTest
 					Participant.CardId);
 			FPlayerCardRuleSnapshot Snapshot = Query.Snapshot;
 			Snapshot.Attributes.Shooting = Participant.Values.Shooting;
-			Snapshot.Attributes.Dribbling = Participant.Values.Dribbling;
+			Snapshot.Attributes.Control = Participant.Values.Control;
 			Snapshot.Attributes.Passing = Participant.Values.Passing;
-			Snapshot.Attributes.OffBall = Participant.Values.OffBall;
-			Snapshot.Attributes.Marking = Participant.Values.Marking;
-			Snapshot.Attributes.Tackling = Participant.Values.Tackling;
+			Snapshot.Attributes.Defense = Participant.Values.Defense;
 			Snapshot.Attributes.Speed = Participant.Values.Speed;
 			Snapshot.Attributes.Strength = Participant.Values.Strength;
-			Snapshot.Attributes.Stamina = Participant.Values.Stamina;
-			Snapshot.Attributes.LongShot = Participant.Values.LongShot;
+			Snapshot.Attributes.StaminaTier = Participant.Values.StaminaTier;
 			Snapshots.Cards.Add(MoveTemp(Snapshot));
 		};
 		AddParticipant(Bundle.Carrier);
@@ -16652,15 +16649,12 @@ bool FMatchPlayAuthoritativeSessionResolveThroughBallAntiOffsideDecisionTest
 		{
 			FPlayerAttributes Attributes;
 			Attributes.Shooting = Values.Shooting;
-			Attributes.Dribbling = Values.Dribbling;
+			Attributes.Control = Values.Control;
 			Attributes.Passing = Values.Passing;
-			Attributes.OffBall = Values.OffBall;
-			Attributes.Marking = Values.Marking;
-			Attributes.Tackling = Values.Tackling;
+			Attributes.Defense = Values.Defense;
 			Attributes.Speed = Values.Speed;
 			Attributes.Strength = Values.Strength;
-			Attributes.Stamina = Values.Stamina;
-			Attributes.LongShot = Values.LongShot;
+			Attributes.StaminaTier = Values.StaminaTier;
 			return Attributes;
 		};
 		auto GetSnapshot = [&State, &CopyValues](const auto& Participant)
@@ -17057,15 +17051,12 @@ bool FMatchPlayAuthoritativeSessionResolveDirectShotPostRouteDecisionOrPlanTest
 	{
 		FPlayerAttributes Attributes;
 		Attributes.Shooting = Values.Shooting;
-		Attributes.Dribbling = Values.Dribbling;
+		Attributes.Control = Values.Control;
 		Attributes.Passing = Values.Passing;
-		Attributes.OffBall = Values.OffBall;
-		Attributes.Marking = Values.Marking;
-		Attributes.Tackling = Values.Tackling;
+		Attributes.Defense = Values.Defense;
 		Attributes.Speed = Values.Speed;
 		Attributes.Strength = Values.Strength;
-		Attributes.Stamina = Values.Stamina;
-		Attributes.LongShot = Values.LongShot;
+		Attributes.StaminaTier = Values.StaminaTier;
 		return Attributes;
 	};
 	auto MakeDirectSnapshots = [&CopyValues](const FMatchPlayState& State)
@@ -17599,7 +17590,7 @@ bool FMatchPlayAuthoritativeSessionResolveThroughBallBehindDefenseP1DecisionOrPl
 	auto Reach=[](FMatchPlayAuthoritativeSession& S,const FString& P){FReachabilityTrace T;return BuildStage7166ToAwaitingRoute(S,P,ESkillRuleType::ThroughBall,EMatchPlayElectiveBranchIntent::None,T)&&S.ResolveInitialRoute().OrchestrationResult.bSuccess;};
 	auto MakeInput=[](const FMatchPlayState& S,const FSkillRuleSnapshotSet& Rules,FThroughBallBehindDefenseP1PlanQueryInput& O)
 	{
-		const auto& A=S.CurrentAttack;const auto& Session=A.ResolutionSession;const auto& B=Session.Bundle;auto Attr=[](const auto& V){FPlayerAttributes X;X.Shooting=V.Shooting;X.Dribbling=V.Dribbling;X.Passing=V.Passing;X.OffBall=V.OffBall;X.Marking=V.Marking;X.Tackling=V.Tackling;X.Speed=V.Speed;X.Strength=V.Strength;X.Stamina=V.Stamina;X.LongShot=V.LongShot;return X;};auto Snap=[&](const auto& P){auto Q=FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(S.CardSnapshotAuthority,P.Side,P.CardId);FPlayerCardRuleSnapshot X=Q.Snapshot;X.Attributes=Attr(P.Values);return X;};
+		const auto& A=S.CurrentAttack;const auto& Session=A.ResolutionSession;const auto& B=Session.Bundle;auto Attr=[](const auto& V){FPlayerAttributes X;X.Shooting=V.Shooting;X.Control=V.Control;X.Passing=V.Passing;X.Control=V.Control;X.Defense=V.Defense;X.Defense=V.Defense;X.Speed=V.Speed;X.Strength=V.Strength;X.StaminaTier=V.StaminaTier;return X;};auto Snap=[&](const auto& P){auto Q=FMatchPlayCardSnapshotAuthorityQuery::FindByPlayerSideAndCardId(S.CardSnapshotAuthority,P.Side,P.CardId);FPlayerCardRuleSnapshot X=Q.Snapshot;X.Attributes=Attr(P.Values);return X;};
 		FThroughBallParticipantEligibilityQueryInput I;I.SelectedSkillId=B.Binding.SkillId;I.CurrentActionPoint=A.ActionPoint;I.AttackingOwnerId=B.CurrentAttackingPlayer==EInitialTurnOrderPlayer::PlayerA?FName(TEXT("PlayerA")):FName(TEXT("PlayerB"));I.DefendingOwnerId=B.CurrentDefendingPlayer==EInitialTurnOrderPlayer::PlayerA?FName(TEXT("PlayerA")):FName(TEXT("PlayerB"));I.CarrierSnapshot=Snap(B.Carrier);I.RunnerSnapshot=Snap(B.Runner);I.MarkerSnapshot=Snap(B.Marker);I.bHasHelper=B.bHasHelper;if(B.bHasHelper)I.HelperSnapshot=Snap(B.Helper);I.bIsRunnerInAttackingForwardArea=true;O.ParticipantEligibilityResult=FThroughBallParticipantEligibilityQuery::Evaluate(Rules,I);O.SelectedBranch=EThroughBallSelectedBranch::BehindDefense;const auto& R=Session.PostRouteRollProgress.RollRecords;O.bHasAttackD6=true;O.AttackD6=R[0].RawD6;O.bHasDefenseD6=R.Num()==2;if(O.bHasDefenseD6)O.DefenseD6=R[1].RawD6;const uint64 Seq=static_cast<uint64>(Session.AttackSequence);O.LogId=FGuid(0x42445031,static_cast<uint32>(Seq>>32),static_cast<uint32>(Seq),0x504C414E);O.TurnIndex=static_cast<int32>(Session.AttackSequence-1);
 	};
 	struct FCase{const TCHAR* Name;int32 Initial;int32 Attack;int32 Defense;bool bOut;};
@@ -19017,7 +19008,7 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 			{
 				auto& B = State.CurrentAttack.ResolutionSession.Bundle;
 				B.Runner.Values.Shooting = B.Runner.Values.Strength;
-				B.Helper.Values.Marking = B.Helper.Values.Strength;
+				B.Helper.Values.Defense = B.Helper.Values.Strength;
 			}
 			auto& Records = State.CurrentAttack.ResolutionSession
 				.PostRouteRollProgress.RollRecords;
@@ -19065,10 +19056,10 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 			FMatchPlayState State = MakeCrossTieState();
 			auto& Bundle = State.CurrentAttack.ResolutionSession.Bundle;
 			TestTrue(TEXT("Canonical Cross fixture includes helper"), Bundle.bHasHelper);
-			Bundle.Carrier.Values.Stamina = Case.Carrier;
-			Bundle.Runner.Values.Stamina = Case.Runner;
-			Bundle.Marker.Values.Stamina = Case.Marker;
-			Bundle.Helper.Values.Stamina = Case.Helper;
+			Bundle.Carrier.Values.StaminaTier = (Case.Carrier) >= 5 ? EPlayerStaminaTier::S : (Case.Carrier) >= 3 ? EPlayerStaminaTier::A : (Case.Carrier) >= 1 ? EPlayerStaminaTier::B : EPlayerStaminaTier::None;
+			Bundle.Runner.Values.StaminaTier = (Case.Runner) >= 5 ? EPlayerStaminaTier::S : (Case.Runner) >= 3 ? EPlayerStaminaTier::A : (Case.Runner) >= 1 ? EPlayerStaminaTier::B : EPlayerStaminaTier::None;
+			Bundle.Marker.Values.StaminaTier = (Case.Marker) >= 5 ? EPlayerStaminaTier::S : (Case.Marker) >= 3 ? EPlayerStaminaTier::A : (Case.Marker) >= 1 ? EPlayerStaminaTier::B : EPlayerStaminaTier::None;
+			Bundle.Helper.Values.StaminaTier = (Case.Helper) >= 5 ? EPlayerStaminaTier::S : (Case.Helper) >= 3 ? EPlayerStaminaTier::A : (Case.Helper) >= 1 ? EPlayerStaminaTier::B : EPlayerStaminaTier::None;
 			const auto Tie = FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(State, &SemanticRules);
 			TestTrue(bLow ? TEXT("Low aggregate tie bridge succeeds") : TEXT("High aggregate tie bridge succeeds"), Tie.bSuccess);
 			const auto& Input = Tie.ResolverInputAssemblyResult.ResolverInput;
@@ -19089,9 +19080,9 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 		NoHelper.CurrentAttack.SelectedAction.HelperCardId = NAME_None;
 		Bundle.Helper = {};
 		Bundle.Helper.Side = Bundle.CurrentDefendingPlayer;
-		Bundle.Carrier.Values.Passing = Bundle.Runner.Values.Strength = Bundle.Marker.Values.Tackling = 4;
+		Bundle.Carrier.Values.Passing = Bundle.Runner.Values.Strength = Bundle.Marker.Values.Defense = 4;
 		Bundle.Runner.Values.Shooting = 4;
-		Bundle.Carrier.Values.Stamina = 1; Bundle.Runner.Values.Stamina = 6; Bundle.Marker.Values.Stamina = 4;
+		Bundle.Carrier.Values.StaminaTier = EPlayerStaminaTier::B; Bundle.Runner.Values.StaminaTier = EPlayerStaminaTier::S; Bundle.Marker.Values.StaminaTier = EPlayerStaminaTier::A;
 		NoHelper.CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords[0].RawD6 = 3;
 		const auto Absent = FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(NoHelper, &SemanticRules);
 		TestTrue(TEXT("Absent helper is a valid Cross participant set"), Absent.bSuccess);
@@ -19104,10 +19095,10 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 		FMatchPlayState Suppressed = MakeCrossTieState();
 		auto& SB = Suppressed.CurrentAttack.ResolutionSession.Bundle;
 		SB.Carrier.Values.Passing = SB.Runner.Values.Strength = 1;
-		SB.Marker.Values.Tackling = SB.Helper.Values.Strength = 6;
-		SB.Runner.Values.Shooting = 1; SB.Helper.Values.Marking = 6;
-		SB.Carrier.Values.Stamina = SB.Runner.Values.Stamina = 1;
-		SB.Marker.Values.Stamina = SB.Helper.Values.Stamina = 6;
+		SB.Marker.Values.Defense = SB.Helper.Values.Strength = 6;
+		SB.Runner.Values.Shooting = 1; SB.Helper.Values.Defense = 6;
+		SB.Carrier.Values.StaminaTier = SB.Runner.Values.StaminaTier = EPlayerStaminaTier::B;
+		SB.Marker.Values.StaminaTier = SB.Helper.Values.StaminaTier = EPlayerStaminaTier::S;
 		auto& SR = Suppressed.CurrentAttack.ResolutionSession.PostRouteRollProgress.RollRecords;
 		SR[0].RawD6 = 6; SR[1].RawD6 = 2;
 		const auto Quick = FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(Suppressed, &SemanticRules);
@@ -19132,10 +19123,10 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 			Records[0].RawD6 = AttackD6;
 			Records[1].RawD6 = DefenseD6;
 			auto& Bundle = State.CurrentAttack.ResolutionSession.Bundle;
-			Bundle.Carrier.Values.Stamina = 2;
-			Bundle.Runner.Values.Stamina = 2;
-			Bundle.Marker.Values.Stamina = 2;
-			Bundle.Helper.Values.Stamina = 2;
+			Bundle.Carrier.Values.StaminaTier = EPlayerStaminaTier::B;
+			Bundle.Runner.Values.StaminaTier = EPlayerStaminaTier::B;
+			Bundle.Marker.Values.StaminaTier = EPlayerStaminaTier::B;
+			Bundle.Helper.Values.StaminaTier = EPlayerStaminaTier::B;
 			return State;
 		};
 
@@ -19173,10 +19164,10 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 				MakeTieState(TieAttackD6, TieDefenseD6);
 			auto& AttackBundle = AttackStaminaState.CurrentAttack
 				.ResolutionSession.Bundle;
-			AttackBundle.Carrier.Values.Stamina = 4;
-			AttackBundle.Runner.Values.Stamina = 4;
-			AttackBundle.Marker.Values.Stamina = 1;
-			AttackBundle.Helper.Values.Stamina = 1;
+			AttackBundle.Carrier.Values.StaminaTier = EPlayerStaminaTier::A;
+			AttackBundle.Runner.Values.StaminaTier = EPlayerStaminaTier::A;
+			AttackBundle.Marker.Values.StaminaTier = EPlayerStaminaTier::B;
+			AttackBundle.Helper.Values.StaminaTier = EPlayerStaminaTier::B;
 			const auto AttackStamina =
 				FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator
 					::Resolve(AttackStaminaState, &PassControlSemanticRules);
@@ -19195,10 +19186,10 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 				MakeTieState(TieAttackD6, TieDefenseD6);
 			auto& DefenseBundle = DefenseStaminaState.CurrentAttack
 				.ResolutionSession.Bundle;
-			DefenseBundle.Carrier.Values.Stamina = 1;
-			DefenseBundle.Runner.Values.Stamina = 1;
-			DefenseBundle.Marker.Values.Stamina = 4;
-			DefenseBundle.Helper.Values.Stamina = 4;
+			DefenseBundle.Carrier.Values.StaminaTier = EPlayerStaminaTier::B;
+			DefenseBundle.Runner.Values.StaminaTier = EPlayerStaminaTier::B;
+			DefenseBundle.Marker.Values.StaminaTier = EPlayerStaminaTier::A;
+			DefenseBundle.Helper.Values.StaminaTier = EPlayerStaminaTier::A;
 			const auto DefenseStamina =
 				FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator
 					::Resolve(DefenseStaminaState, &PassControlSemanticRules);
@@ -19430,8 +19421,8 @@ bool FMatchPlayAuthoritativeSessionResolveSingleCardFinishingFormulaTest
 							TieGoalkeeperAttribute;
 					}
 					auto& Bundle = TieState.CurrentAttack.ResolutionSession.Bundle;
-					Bundle.Carrier.Values.Stamina = 6;
-					Bundle.Marker.Values.Stamina = 1;
+					Bundle.Carrier.Values.StaminaTier = EPlayerStaminaTier::S;
+					Bundle.Marker.Values.StaminaTier = EPlayerStaminaTier::B;
 					auto& Records = TieState.CurrentAttack.ResolutionSession
 						.PostRouteRollProgress.RollRecords;
 					Records[0].RawD6 = AttackD6;

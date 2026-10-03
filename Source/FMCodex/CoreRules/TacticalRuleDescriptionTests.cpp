@@ -67,10 +67,10 @@ bool FTacticalRuleDescriptionCompletenessTest::RunTest(const FString& Parameters
 	using namespace TacticalRuleDescriptionTests;
 	const TArray<FTacticalRuleDescription>& All =
 		FTacticalRuleDescriptionCatalog::GetAll();
-	TestEqual(TEXT("Exactly five canonical tactical families"), All.Num(), 5);
+	TestEqual(TEXT("Exactly four available tactical families"), All.Num(), 4);
 	const TArray<ESkillRuleType> Expected = {
 		ESkillRuleType::LongShot, ESkillRuleType::CutInsideShot,
-		ESkillRuleType::PassControl, ESkillRuleType::Cross,
+		ESkillRuleType::Cross,
 		ESkillRuleType::ThroughBall
 	};
 	TSet<uint8> StableTypes;
@@ -88,7 +88,7 @@ bool FTacticalRuleDescriptionCompletenessTest::RunTest(const FString& Parameters
 				Description->RequiredRoles.IsEmpty());
 		}
 	}
-	TestEqual(TEXT("All stable identities are unique"), StableTypes.Num(), 5);
+	TestEqual(TEXT("All stable identities are unique"), StableTypes.Num(), 4);
 	TestNull(TEXT("None has no educational description"),
 		FTacticalRuleDescriptionCatalog::FindBySkillType(ESkillRuleType::None));
 	return true;
@@ -113,7 +113,7 @@ bool FTacticalRuleDescriptionCanonicalSemanticsTest::RunTest(
 		ESkillRuleType::Cross);
 	const auto* ThroughBall = FTacticalRuleDescriptionCatalog::FindBySkillType(
 		ESkillRuleType::ThroughBall);
-	if (LongShot == nullptr || CutInside == nullptr || PassControl == nullptr
+	if (LongShot == nullptr || CutInside == nullptr
 		|| Cross == nullptr || ThroughBall == nullptr)
 	{
 		AddError(TEXT("Catalog completeness prerequisite failed"));
@@ -122,15 +122,15 @@ bool FTacticalRuleDescriptionCanonicalSemanticsTest::RunTest(
 
 	const auto* LongDirect = Branch(*LongShot, TEXT("LongShot.Direct"));
 	const auto* LongDead = Branch(*LongShot, TEXT("LongShot.DeadCorner"));
-	TestTrue(TEXT("Long Shot Direct uses LongShot/Tackling/+2/GK Positioning"),
+	TestTrue(TEXT("Long Shot Direct uses Shooting/Defense/+3/GK Positioning"),
 		LongDirect != nullptr
 			&& LongDirect->RollSemantics == ESemantics::ArithmeticContest
 			&& HasTerm(LongDirect->AttackTerms, EKind::Attribute,
-				ERole::Carrier, EAttribute::LongShot)
+				ERole::Carrier, EAttribute::Shooting)
 			&& HasTerm(LongDirect->DefenseTerms, EKind::Attribute,
-				ERole::Marker, EAttribute::Tackling)
+				ERole::Marker, EAttribute::Defense)
 			&& HasTerm(LongDirect->DefenseTerms, EKind::FixedModifier,
-				ERole::None, EAttribute::None, 1.0f, 2)
+				ERole::None, EAttribute::None, 1.0f, 3)
 			&& HasTerm(LongDirect->DefenseTerms, EKind::GoalkeeperContribution,
 				ERole::Goalkeeper, EAttribute::GoalkeeperPositioning, 0.5f)
 			&& LongDirect->bUsesTacticalPlayerAdvantage);
@@ -141,29 +141,16 @@ bool FTacticalRuleDescriptionCanonicalSemanticsTest::RunTest(
 			&& HasOutcome(*LongDead, 11, 12, TEXT("Goal")));
 
 	const auto* CutDirect = Branch(*CutInside, TEXT("CutInside.Direct"));
-	TestTrue(TEXT("Cut Inside Direct uses half Shooting/Dribbling and Handling"),
+	TestTrue(TEXT("Cut Inside Direct uses half Shooting/Control and Handling"),
 		CutDirect != nullptr
 			&& HasTerm(CutDirect->AttackTerms, EKind::Attribute,
 				ERole::Carrier, EAttribute::Shooting, 0.5f)
 			&& HasTerm(CutDirect->AttackTerms, EKind::Attribute,
-				ERole::Carrier, EAttribute::Dribbling, 0.5f)
+				ERole::Carrier, EAttribute::Control, 0.5f)
 			&& HasTerm(CutDirect->DefenseTerms, EKind::GoalkeeperContribution,
 				ERole::Goalkeeper, EAttribute::GoalkeeperHandling, 0.5f));
 
-	const auto* Pass = Branch(*PassControl, TEXT("PassControl.Pass"));
-	const auto* Dribble = Branch(*PassControl, TEXT("PassControl.Dribble"));
-	const auto* Run = Branch(*PassControl, TEXT("PassControl.Run"));
-	TestTrue(TEXT("Pass Control documents all three distinct arithmetic branches"),
-		Pass != nullptr && Dribble != nullptr && Run != nullptr
-			&& PassControl->InitialRouteOutcomes.Num() == 3
-			&& HasTerm(Pass->AttackTerms, EKind::Attribute,
-				ERole::Carrier, EAttribute::Passing, 0.5f)
-			&& HasTerm(Dribble->AttackTerms, EKind::Attribute,
-				ERole::Carrier, EAttribute::Dribbling, 0.5f)
-			&& HasTerm(Run->AttackTerms, EKind::Attribute,
-				ERole::Carrier, EAttribute::OffBall, 0.5f)
-			&& HasTerm(Run->DefenseTerms, EKind::Attribute,
-				ERole::Marker, EAttribute::Marking, 0.5f));
+	TestNull(TEXT("Withdrawn PassControl has no product rule description"), PassControl);
 
 	const auto* High = Branch(*Cross, TEXT("Cross.High"));
 	const auto* Low = Branch(*Cross, TEXT("Cross.Low"));
@@ -175,7 +162,7 @@ bool FTacticalRuleDescriptionCanonicalSemanticsTest::RunTest(
 			&& HasTerm(High->DefenseTerms, EKind::GoalkeeperContribution,
 				ERole::Goalkeeper, EAttribute::GoalkeeperAerial, 0.5f)
 			&& HasTerm(Low->AttackTerms, EKind::Attribute,
-				ERole::Runner, EAttribute::Shooting, 0.5f)
+				ERole::Runner, EAttribute::Speed, 0.5f)
 			&& HasTerm(Low->DefenseTerms, EKind::GoalkeeperContribution,
 				ERole::Goalkeeper, EAttribute::GoalkeeperReflex, 0.5f));
 

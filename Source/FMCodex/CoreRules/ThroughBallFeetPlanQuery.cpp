@@ -81,14 +81,14 @@ namespace ThroughBallFeetPlanQuery
 
 		Plan.CarrierId = Carrier.CardId;
 		Plan.CarrierPassing = Carrier.Attributes.Passing;
-		Plan.CarrierStamina = Carrier.Attributes.Stamina;
+		Plan.CarrierStamina = PlayerStaminaGameplayValue(Carrier.Attributes.StaminaTier);
 		Plan.RunnerId = Runner.CardId;
-		Plan.RunnerOffBall = Runner.Attributes.OffBall;
-		Plan.RunnerStamina = Runner.Attributes.Stamina;
+		Plan.RunnerControl = Runner.Attributes.Control;
+		Plan.RunnerStamina = PlayerStaminaGameplayValue(Runner.Attributes.StaminaTier);
 		Plan.AttackD6 = Input.AttackD6;
 		Plan.AttackBaseValue = AverageOneDecimal(
 			Plan.CarrierPassing,
-			Plan.RunnerOffBall);
+			Plan.RunnerControl);
 		Plan.AttackExternalModifier = 0.0f;
 		Plan.AttackParticipatingStamina = {
 			Plan.CarrierStamina,
@@ -96,16 +96,16 @@ namespace ThroughBallFeetPlanQuery
 		};
 
 		Plan.MarkerId = Marker.CardId;
-		Plan.MarkerTackling = Marker.Attributes.Tackling;
-		Plan.MarkerStamina = Marker.Attributes.Stamina;
+		Plan.MarkerDefense = Marker.Attributes.Defense;
+		Plan.MarkerStamina = PlayerStaminaGameplayValue(Marker.Attributes.StaminaTier);
 		Plan.bHasHelper = Eligibility.bHasHelper;
 		if (Plan.bHasHelper)
 		{
 			const FPlayerCardRuleSnapshot& Helper =
 				Participants.HelperSnapshot;
 			Plan.HelperId = Helper.CardId;
-			Plan.HelperMarking = Helper.Attributes.Marking;
-			Plan.HelperStamina = Helper.Attributes.Stamina;
+			Plan.HelperDefense = Helper.Attributes.Defense;
+			Plan.HelperStamina = PlayerStaminaGameplayValue(Helper.Attributes.StaminaTier);
 		}
 
 		Plan.bHasActiveGoalkeeper = Input.bHasActiveGoalkeeper;
@@ -123,8 +123,8 @@ namespace ThroughBallFeetPlanQuery
 
 		Plan.DefenseD6 = Input.DefenseD6;
 		Plan.DefenseBaseValue = AverageOneDecimal(
-			Plan.MarkerTackling,
-			Plan.bHasHelper ? Plan.HelperMarking : 0);
+			Plan.MarkerDefense,
+			Plan.bHasHelper ? Plan.HelperDefense : 0);
 		Plan.DefenseExternalModifier = GoalkeeperContribution + 2.0f;
 		Plan.DefenseParticipatingStamina.Add(Plan.MarkerStamina);
 		if (Plan.bHasHelper)

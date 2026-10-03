@@ -521,10 +521,10 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 		const bool bLongShot = Branch.ActionType == ESkillRuleType::LongShot;
 		if (bLongShot)
 		{
-			AddAttributeTerm(Contest.AttackRow, TEXT("Carrier.LongShot"),
+			AddAttributeTerm(Contest.AttackRow, TEXT("Carrier.Shooting"),
 				EParticipantRole::Carrier, Bundle.Carrier.Side,
-				Bundle.Carrier.CardId, EAttribute::LongShot,
-				Bundle.Carrier.Values.LongShot);
+				Bundle.Carrier.CardId, EAttribute::Shooting,
+				Bundle.Carrier.Values.Shooting);
 		}
 		else
 		{
@@ -532,22 +532,28 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 				EParticipantRole::Carrier, Bundle.Carrier.Side,
 				Bundle.Carrier.CardId, EAttribute::Shooting,
 				Bundle.Carrier.Values.Shooting, 0.5f);
-			AddAttributeTerm(Contest.AttackRow, TEXT("Carrier.DribblingHalf"),
+			AddAttributeTerm(Contest.AttackRow, TEXT("Carrier.ControlHalf"),
 				EParticipantRole::Carrier, Bundle.Carrier.Side,
-				Bundle.Carrier.CardId, EAttribute::Dribbling,
-				Bundle.Carrier.Values.Dribbling, 0.5f);
+				Bundle.Carrier.CardId, EAttribute::Control,
+				Bundle.Carrier.Values.Control, 0.5f);
 		}
 		AddRollTerm(Contest.AttackRow, Projection, EPostPurpose::PrimaryAttack);
-		AddAttributeTerm(Contest.DefenseRow, TEXT("Marker.Tackling"),
+		AddAttributeTerm(Contest.DefenseRow, TEXT("Marker.Defense"),
 			EParticipantRole::Marker, Bundle.Marker.Side,
-			Bundle.Marker.CardId, EAttribute::Tackling,
-			Bundle.Marker.Values.Tackling);
+			Bundle.Marker.CardId, EAttribute::Defense,
+			Bundle.Marker.Values.Defense, bLongShot ? 1.0f : 0.5f);
+		if (!bLongShot)
+		{
+			AddAttributeTerm(Contest.DefenseRow, TEXT("Marker.SpeedHalf"),
+				EParticipantRole::Marker, Bundle.Marker.Side, Bundle.Marker.CardId,
+				EAttribute::Speed, Bundle.Marker.Values.Speed, 0.5f);
+		}
 		AddRollTerm(Contest.DefenseRow, Projection, EPostPurpose::PrimaryDefense);
-		AddFixedTerm(Contest.DefenseRow, TEXT("Defense.FixedBonus"), 2.0f);
+		AddFixedTerm(Contest.DefenseRow, TEXT("Defense.FixedBonus"), bLongShot ? 3.0f : 2.0f);
 		Contest.AttackRow.ParticipatingStamina = {
-			Bundle.Carrier.Values.Stamina };
+			PlayerStaminaGameplayValue(Bundle.Carrier.Values.StaminaTier) };
 		Contest.DefenseRow.ParticipatingStamina = {
-			Bundle.Marker.Values.Stamina };
+			PlayerStaminaGameplayValue(Bundle.Marker.Values.StaminaTier) };
 
 		if (State.CurrentAttack.bCurrentDefenseGoalkeeperActivated)
 		{
@@ -605,8 +611,8 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 			bCompositeStamina = true;
 			CarrierAttackAttribute = EAttribute::Passing;
 			CarrierAttackValue = Bundle.Carrier.Values.Passing;
-			MarkerDefenseAttribute = EAttribute::Tackling;
-			MarkerDefenseValue = Bundle.Marker.Values.Tackling;
+			MarkerDefenseAttribute = EAttribute::Defense;
+			MarkerDefenseValue = Bundle.Marker.Values.Defense;
 			if (Branch.Cross == EMatchPlayCrossActualBranch::High)
 			{
 				RunnerAttackAttribute = EAttribute::Strength;
@@ -617,58 +623,29 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 			}
 			else
 			{
-				RunnerAttackAttribute = EAttribute::Shooting;
-				RunnerAttackValue = Bundle.Runner.Values.Shooting;
-				HelperDefenseAttribute = EAttribute::Marking;
-				HelperDefenseValue = Bundle.Helper.Values.Marking;
+				RunnerAttackAttribute = EAttribute::Speed;
+				RunnerAttackValue = Bundle.Runner.Values.Speed;
+				HelperDefenseAttribute = EAttribute::Speed;
+				HelperDefenseValue = Bundle.Helper.Values.Speed;
 				GoalkeeperAttribute = EAttribute::GoalkeeperReflex;
 			}
 		}
 		else if (Branch.ActionType == ESkillRuleType::PassControl)
 		{
-			bCompositeStamina = true;
-			RunnerAttackAttribute = Branch.PassControl
-				== EMatchPlayPassControlActualBranch::RunAdvance
-					? EAttribute::Dribbling : EAttribute::Passing;
-			RunnerAttackValue = Branch.PassControl
-				== EMatchPlayPassControlActualBranch::RunAdvance
-					? Bundle.Runner.Values.Dribbling
-					: Bundle.Runner.Values.Passing;
-			CarrierAttackAttribute = Branch.PassControl
-				== EMatchPlayPassControlActualBranch::PassAdvance
-					? EAttribute::Passing
-					: Branch.PassControl
-						== EMatchPlayPassControlActualBranch::DribbleAdvance
-							? EAttribute::Dribbling : EAttribute::OffBall;
-			CarrierAttackValue = Branch.PassControl
-				== EMatchPlayPassControlActualBranch::PassAdvance
-					? Bundle.Carrier.Values.Passing
-					: Branch.PassControl
-						== EMatchPlayPassControlActualBranch::DribbleAdvance
-							? Bundle.Carrier.Values.Dribbling
-							: Bundle.Carrier.Values.OffBall;
-			MarkerDefenseAttribute = Branch.PassControl
-				== EMatchPlayPassControlActualBranch::RunAdvance
-					? EAttribute::Marking : EAttribute::Tackling;
-			MarkerDefenseValue = Branch.PassControl
-				== EMatchPlayPassControlActualBranch::RunAdvance
-					? Bundle.Marker.Values.Marking
-					: Bundle.Marker.Values.Tackling;
-			HelperDefenseAttribute = EAttribute::Marking;
-			HelperDefenseValue = Bundle.Helper.Values.Marking;
-			GoalkeeperAttribute = EAttribute::GoalkeeperHandling;
+			OutError = TEXT("PassControl is temporarily unavailable.");
+			return;
 		}
 		else if (Branch.ActionType == ESkillRuleType::ThroughBall
 			&& Branch.ThroughBall == EMatchPlayThroughBallActualBranch::Feet)
 		{
 			CarrierAttackAttribute = EAttribute::Passing;
 			CarrierAttackValue = Bundle.Carrier.Values.Passing;
-			RunnerAttackAttribute = EAttribute::OffBall;
-			RunnerAttackValue = Bundle.Runner.Values.OffBall;
-			MarkerDefenseAttribute = EAttribute::Tackling;
-			MarkerDefenseValue = Bundle.Marker.Values.Tackling;
-			HelperDefenseAttribute = EAttribute::Marking;
-			HelperDefenseValue = Bundle.Helper.Values.Marking;
+			RunnerAttackAttribute = EAttribute::Control;
+			RunnerAttackValue = Bundle.Runner.Values.Control;
+			MarkerDefenseAttribute = EAttribute::Defense;
+			MarkerDefenseValue = Bundle.Marker.Values.Defense;
+			HelperDefenseAttribute = EAttribute::Defense;
+			HelperDefenseValue = Bundle.Helper.Values.Defense;
 			GoalkeeperAttribute = EAttribute::GoalkeeperOneOnOne;
 			bCompositeStamina = true;
 		}
@@ -678,8 +655,8 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 			CarrierAttackValue = Bundle.Carrier.Values.Passing;
 			RunnerAttackAttribute = EAttribute::Speed;
 			RunnerAttackValue = Bundle.Runner.Values.Speed;
-			MarkerDefenseAttribute = EAttribute::Marking;
-			MarkerDefenseValue = Bundle.Marker.Values.Marking;
+			MarkerDefenseAttribute = EAttribute::Defense;
+			MarkerDefenseValue = Bundle.Marker.Values.Defense;
 			HelperDefenseAttribute = EAttribute::Speed;
 			HelperDefenseValue = Bundle.Helper.Values.Speed;
 			DefenseFixed = 1.0f;
@@ -712,14 +689,14 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 		if (bCompositeStamina)
 		{
 			Contest.AttackRow.ParticipatingStamina = {
-				Bundle.Carrier.Values.Stamina,
-				Bundle.Runner.Values.Stamina };
+				PlayerStaminaGameplayValue(Bundle.Carrier.Values.StaminaTier),
+				PlayerStaminaGameplayValue(Bundle.Runner.Values.StaminaTier) };
 			Contest.DefenseRow.ParticipatingStamina = {
-				Bundle.Marker.Values.Stamina };
+				PlayerStaminaGameplayValue(Bundle.Marker.Values.StaminaTier) };
 			if (Bundle.bHasHelper)
 			{
 				Contest.DefenseRow.ParticipatingStamina.Add(
-					Bundle.Helper.Values.Stamina);
+					PlayerStaminaGameplayValue(Bundle.Helper.Values.StaminaTier));
 			}
 		}
 		else
@@ -727,9 +704,9 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 			// Single-participant families use their primary Carrier/Marker
 			// snapshots for the no-GK stamina tie-break.
 			Contest.AttackRow.ParticipatingStamina = {
-				Bundle.Carrier.Values.Stamina };
+				PlayerStaminaGameplayValue(Bundle.Carrier.Values.StaminaTier) };
 			Contest.DefenseRow.ParticipatingStamina = {
-				Bundle.Marker.Values.Stamina };
+				PlayerStaminaGameplayValue(Bundle.Marker.Values.StaminaTier) };
 		}
 
 		const bool bUsesActiveGoalkeeper =

@@ -1,7 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "CoreRuleEnums.h"
+#include "PlayerStaminaTier.h"
+#include "PlayerTraitData.h"
 
 #include "PlayerCardTypes.generated.h"
 
@@ -14,19 +16,13 @@ struct FMCODEX_API FPlayerAttributes
 	int32 Shooting = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Attributes")
-	int32 Dribbling = 1;
+	int32 Control = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Attributes")
 	int32 Passing = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Attributes")
-	int32 OffBall = 1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Attributes")
-	int32 Marking = 1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Attributes")
-	int32 Tackling = 1;
+	int32 Defense = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Attributes")
 	int32 Speed = 1;
@@ -35,10 +31,7 @@ struct FMCODEX_API FPlayerAttributes
 	int32 Strength = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Attributes")
-	int32 Stamina = 1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Attributes")
-	int32 LongShot = 1;
+	EPlayerStaminaTier StaminaTier = EPlayerStaminaTier::B;
 };
 
 USTRUCT(BlueprintType)
@@ -97,6 +90,12 @@ struct FMCODEX_API FPlayerCardData
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Player Card")
 	FPlayerAttributes Attributes;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Traits")
+	TArray<FPlayerRankedTrait> RankedTraits;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Traits")
+	TArray<FName> BinaryTraits;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Player Card")
 	FGoalkeeperAttributes GoalkeeperAttributes;

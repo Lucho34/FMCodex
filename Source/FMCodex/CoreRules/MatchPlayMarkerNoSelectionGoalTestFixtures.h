@@ -39,15 +39,12 @@ namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal
 	inline void SetAttributes(FPlayerAttributes& Attributes)
 	{
 		Attributes.Shooting = 3;
-		Attributes.Dribbling = 3;
+		Attributes.Control = 3;
 		Attributes.Passing = 3;
-		Attributes.OffBall = 3;
-		Attributes.Marking = 3;
-		Attributes.Tackling = 3;
+		Attributes.Defense = 3;
 		Attributes.Speed = 3;
 		Attributes.Strength = 3;
-		Attributes.Stamina = 3;
-		Attributes.LongShot = 3;
+		Attributes.StaminaTier = EPlayerStaminaTier::A;
 	}
 
 	inline void SetGoalkeeperAttributes(

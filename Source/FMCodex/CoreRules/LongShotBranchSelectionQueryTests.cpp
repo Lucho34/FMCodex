@@ -160,15 +160,12 @@ namespace LongShotBranchSelectionQueryTests
 		const FPlayerAttributes& Right)
 	{
 		return Left.Shooting == Right.Shooting
-			&& Left.Dribbling == Right.Dribbling
+			&& Left.Control == Right.Control
 			&& Left.Passing == Right.Passing
-			&& Left.OffBall == Right.OffBall
-			&& Left.Marking == Right.Marking
-			&& Left.Tackling == Right.Tackling
+			&& Left.Defense == Right.Defense
 			&& Left.Speed == Right.Speed
 			&& Left.Strength == Right.Strength
-			&& Left.Stamina == Right.Stamina
-			&& Left.LongShot == Right.LongShot;
+			&& Left.StaminaTier == Right.StaminaTier;
 	}
 
 	bool AreGoalkeeperAttributesEqual(

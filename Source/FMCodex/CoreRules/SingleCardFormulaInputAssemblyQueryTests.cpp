@@ -95,15 +95,15 @@ namespace SingleCardFormulaInputAssemblyQueryTests
 		return Left.CardId == Right.CardId
 			&& Left.PositionTypes == Right.PositionTypes
 			&& Left.Attributes.Shooting == Right.Attributes.Shooting
-			&& Left.Attributes.Dribbling == Right.Attributes.Dribbling
+			&& Left.Attributes.Control == Right.Attributes.Control
 			&& Left.Attributes.Passing == Right.Attributes.Passing
-			&& Left.Attributes.OffBall == Right.Attributes.OffBall
-			&& Left.Attributes.Marking == Right.Attributes.Marking
-			&& Left.Attributes.Tackling == Right.Attributes.Tackling
+			&& Left.Attributes.Control == Right.Attributes.Control
+			&& Left.Attributes.Defense == Right.Attributes.Defense
+			&& Left.Attributes.Defense == Right.Attributes.Defense
 			&& Left.Attributes.Speed == Right.Attributes.Speed
 			&& Left.Attributes.Strength == Right.Attributes.Strength
-			&& Left.Attributes.Stamina == Right.Attributes.Stamina
-			&& Left.Attributes.LongShot == Right.Attributes.LongShot
+			&& PlayerStaminaGameplayValue(Left.Attributes.StaminaTier) == PlayerStaminaGameplayValue(Right.Attributes.StaminaTier)
+			&& Left.Attributes.Shooting == Right.Attributes.Shooting
 			&& Left.bIsGoalkeeper == Right.bIsGoalkeeper
 			&& Left.bHasGoalkeeperAttributes
 				== Right.bHasGoalkeeperAttributes
@@ -252,7 +252,7 @@ bool FSingleCardFormulaInputAssemblyQueryDefenderSuccessTest::RunTest(
 	Input.ParticipantRole =
 		ESingleCardFormulaParticipantRole::Defender;
 	Input.Attribute =
-		ESingleCardFormulaAttribute::Tackling;
+		ESingleCardFormulaAttribute::Defense;
 
 	const FSingleCardFormulaInputAssemblyQueryResult Result =
 		FSingleCardFormulaInputAssemblyQuery::Assemble(
@@ -268,7 +268,7 @@ bool FSingleCardFormulaInputAssemblyQueryDefenderSuccessTest::RunTest(
 	TestEqual(
 		TEXT("Defender attribute is copied"),
 		Result.Contract.Attribute,
-		ESingleCardFormulaAttribute::Tackling);
+		ESingleCardFormulaAttribute::Defense);
 	return true;
 }
 

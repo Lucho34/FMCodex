@@ -187,7 +187,7 @@ namespace FMCodexCutInsideProductionPresentationTests
 				EAttribute::Shooting, 8.0f, 0.5f),
 			Attribute(TEXT("Carrier.DribblingHalf"), EParticipant::Carrier,
 				EInitialTurnOrderPlayer::PlayerA, CarrierId,
-				EAttribute::Dribbling, 6.0f, 0.5f),
+				EAttribute::Control, 6.0f, 0.5f),
 			RawTerm(0, bAttackResolved, AttackD6)
 		};
 		Contest.AttackRow.bKnownNonRollSubtotalResolved = true;
@@ -196,9 +196,9 @@ namespace FMCodexCutInsideProductionPresentationTests
 		Contest.AttackRow.FinalValue = bAttackResolved ? 7.0f + AttackD6 : 0.0f;
 		Contest.DefenseRow.Side = EInitialTurnOrderPlayer::PlayerB;
 		Contest.DefenseRow.Terms = {
-			Attribute(TEXT("Marker.Tackling"), EParticipant::Marker,
+			Attribute(TEXT("Marker.Defense"), EParticipant::Marker,
 				EInitialTurnOrderPlayer::PlayerB, MarkerId,
-				EAttribute::Tackling, 5.0f),
+				EAttribute::Defense, 5.0f),
 			RawTerm(1, bDefenseResolved, DefenseD6),
 			Fixed(2.0f),
 			Attribute(TEXT("Goalkeeper.HandlingHalf"), EParticipant::Goalkeeper,
@@ -283,7 +283,7 @@ bool FFMCodexCutInsideProductionBranchSurfaceTest::RunTest(
 			FString(TEXT("射向死角")));
 		TestEqual(TEXT("Direct helper is the canonical compact comparison"),
 			Direct.SecondaryLabel,
-			FString(TEXT("（射门 / 盘带 vs 抢断）")));
+			FString(TEXT("（射门 / 控球 vs 防守 / 速度）")));
 		TestEqual(TEXT("DeadCorner compact helper"), Dead.SecondaryLabel,
 			FString(TEXT("（只看两枚掷点）")));
 	}
@@ -313,8 +313,8 @@ bool FFMCodexCutInsideProductionBranchSurfaceTest::RunTest(
 		TestEqual(TEXT("Shared attack context uses canonical selected Carrier"),Text(TEXT("TheaterAttackName0")),FString(TEXT("萨卡")));
 		TestEqual(TEXT("Context keeps ordinary Carrier role"),Text(TEXT("TheaterAttackRole0")),FString(TEXT("持球")));
 		TestTrue(TEXT("Direct summary keeps attributes and miss range without modifier or GK exposition"),
-			Text(TEXT("TheaterNearDirectHint")).Contains(Skill==ESkillRuleType::LongShot?TEXT("远射"):TEXT("盘带 × 0.5"))
-			&& Text(TEXT("TheaterNearDirectHint")).Contains(TEXT("对抗盯人：抢断\n进攻掷点 1–2：射门偏出"))
+			Text(TEXT("TheaterNearDirectHint")).Contains(Skill==ESkillRuleType::LongShot?TEXT("射门"):TEXT("控球 × 0.5"))
+			&& Text(TEXT("TheaterNearDirectHint")).Contains((Skill==ESkillRuleType::LongShot?TEXT("对抗盯人：防守\n进攻掷点 1–2：射门偏出"):TEXT("对抗盯人：防守 × 0.5 + 速度 × 0.5\n进攻掷点 1–2：射门偏出")))
 			&& !Text(TEXT("TheaterNearDirectHint")).Contains(TEXT("+ 2"))
 			&& !Text(TEXT("TheaterNearDirectHint")).Contains(TEXT("门将")));
 		TestEqual(TEXT("Pair explanation contains only the two-dice concept and success range"),
@@ -764,9 +764,9 @@ bool FFMCodexDirectShotTheaterFormulaTest::RunTest(const FString&)
 	TestEqual(TEXT("Base is the supplied scalar"),Text(TEXT("TheaterAttackNumber")),FText::AsNumber(17.25f).ToString());
 	TestEqual(TEXT("Pending RHS is the supplied current subtotal"),Text(TEXT("TheaterAttackFinalNumber")),Model.LongShotResolution.Formula.AttackRow.DisplayedResultLabel);
 	TestTrue(TEXT("Unresolved grammar has one pending operand and current RHS"),Shown(TEXT("TheaterAttackPending")) && Text(TEXT("TheaterAttackValueLabel"))==TEXT("当前值"));
-	TestTrue(TEXT("Base hover explains projected Shooting and Dribbling coefficients"),
+	TestTrue(TEXT("Base hover explains projected Shooting and Control coefficients"),
 		CastChecked<UBorder>(Screen->GetWidgetFromName(TEXT("TheaterAttackBaseHover")))->GetToolTip()!=nullptr
-		&& Text(TEXT("TheaterAttackBaseExplanation" )).Contains(TEXT("射门")) && Text(TEXT("TheaterAttackBaseExplanation")).Contains(TEXT("盘带"))
+		&& Text(TEXT("TheaterAttackBaseExplanation" )).Contains(TEXT("射门")) && Text(TEXT("TheaterAttackBaseExplanation")).Contains(TEXT("控球"))
 		&& Text(TEXT("TheaterAttackBaseExplanation")).Contains(TEXT("0.5")));
 	TestTrue(TEXT("Only actual Marker and GK appear on defense"),Model.LongShotResolution.Formula.DefenseRow.Participants.Num()==2
 		&& Text(TEXT("TheaterDefenseBaseExplanation")).Contains(TEXT("手控球")));

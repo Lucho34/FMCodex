@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PlayerStaminaTier.h"
 
 #include "MatchPlayBoundActionNormalizedParticipantValues.generated.h"
 
@@ -13,19 +14,13 @@ struct FMCODEX_API FMatchPlayBoundActionNormalizedParticipantValues
 	int32 Shooting = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Bound Action Participant Normalization")
-	int32 Dribbling = 0;
+	int32 Control = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Bound Action Participant Normalization")
 	int32 Passing = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Bound Action Participant Normalization")
-	int32 OffBall = 0;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Bound Action Participant Normalization")
-	int32 Marking = 0;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Bound Action Participant Normalization")
-	int32 Tackling = 0;
+	int32 Defense = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Bound Action Participant Normalization")
 	int32 Speed = 0;
@@ -34,8 +29,5 @@ struct FMCODEX_API FMatchPlayBoundActionNormalizedParticipantValues
 	int32 Strength = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Bound Action Participant Normalization")
-	int32 Stamina = 0;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Match Play|Bound Action Participant Normalization")
-	int32 LongShot = 0;
+	EPlayerStaminaTier StaminaTier = EPlayerStaminaTier::None;
 };

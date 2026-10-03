@@ -20,22 +20,22 @@ namespace CutInsideShotDirectShotCompositionTests
 
 	FPlayerCardRuleSnapshotSet MakePlayerCardSnapshots(
 		const int32 Shooting,
-		const int32 Dribbling,
-		const int32 Tackling)
+		const int32 Control,
+		const int32 Defense)
 	{
 		FPlayerCardRuleSnapshot Attacker;
 		Attacker.CardId = AttackerCardId;
 		Attacker.PositionTypes = { EPlayerPositionType::Attack };
 		Attacker.Attributes.Shooting = Shooting;
-		Attacker.Attributes.Dribbling = Dribbling;
-		Attacker.Attributes.Stamina = 5;
+		Attacker.Attributes.Control = Control;
+		Attacker.Attributes.StaminaTier = EPlayerStaminaTier::S;
 		Attacker.SkillIds = { SkillId };
 
 		FPlayerCardRuleSnapshot Defender;
 		Defender.CardId = DefenderCardId;
 		Defender.PositionTypes = { EPlayerPositionType::Defense };
-		Defender.Attributes.Tackling = Tackling;
-		Defender.Attributes.Stamina = 3;
+		Defender.Attributes.Defense = Defense;
+		Defender.Attributes.StaminaTier = EPlayerStaminaTier::A;
 
 		FPlayerCardRuleSnapshotSet SnapshotSet;
 		SnapshotSet.Cards = { Attacker, Defender };
@@ -77,17 +77,17 @@ namespace CutInsideShotDirectShotCompositionTests
 
 	float ExpectedAverageValue(
 		const int32 Shooting,
-		const int32 Dribbling)
+		const int32 Control)
 	{
-		const int32 AverageTenths = (Shooting + Dribbling) * 5;
+		const int32 AverageTenths = (Shooting + Control) * 5;
 		return static_cast<float>(AverageTenths) / 10.0f;
 	}
 
 	float ExpectedDerivedModifier(
 		const int32 Shooting,
-		const int32 Dribbling)
+		const int32 Control)
 	{
-		const int32 ModifierTenths = (Dribbling - Shooting) * 5;
+		const int32 ModifierTenths = (Control - Shooting) * 5;
 		return static_cast<float>(ModifierTenths) / 10.0f;
 	}
 
@@ -213,15 +213,12 @@ namespace CutInsideShotDirectShotCompositionTests
 		const FPlayerAttributes& Right)
 	{
 		return Left.Shooting == Right.Shooting
-			&& Left.Dribbling == Right.Dribbling
+			&& Left.Control == Right.Control
 			&& Left.Passing == Right.Passing
-			&& Left.OffBall == Right.OffBall
-			&& Left.Marking == Right.Marking
-			&& Left.Tackling == Right.Tackling
+			&& Left.Defense == Right.Defense
 			&& Left.Speed == Right.Speed
 			&& Left.Strength == Right.Strength
-			&& Left.Stamina == Right.Stamina
-			&& Left.LongShot == Right.LongShot;
+			&& Left.StaminaTier == Right.StaminaTier;
 	}
 
 	bool AreGoalkeeperAttributesEqual(
@@ -304,8 +301,8 @@ namespace CutInsideShotDirectShotCompositionTests
 		FAutomationTestBase& Test,
 		const FCompositionResult& Result,
 		const int32 Shooting,
-		const int32 Dribbling,
-		const int32 Tackling,
+		const int32 Control,
+		const int32 Defense,
 		const int32 AttackD6,
 		const int32 DefenseD6)
 	{
@@ -349,17 +346,17 @@ namespace CutInsideShotDirectShotCompositionTests
 			Plan.AttackerQueryInput.Attribute,
 			ESingleCardFormulaAttribute::Shooting);
 		Test.TestEqual(
-			TEXT("Defender selects Tackling"),
+			TEXT("Defender selects Defense"),
 			Plan.DefenderQueryInput.Attribute,
-			ESingleCardFormulaAttribute::Tackling);
+			ESingleCardFormulaAttribute::Defense);
 		Test.TestEqual(
 			TEXT("Attacker derived modifier"),
 			Plan.AttackerQueryInput.ExternalModifier,
-			ExpectedDerivedModifier(Shooting, Dribbling));
+			ExpectedDerivedModifier(Shooting, Control));
 		Test.TestEqual(
-			TEXT("Defender Modifier is plus two"),
+			TEXT("Defender modifier averages Defense and Speed then adds two"),
 			Plan.DefenderQueryInput.ExternalModifier,
-			2.0f);
+			2.0f + (1.0f - Defense) * 0.5f);
 
 		const FFormulaResolverInput& ResolverInput =
 			Result.AssemblyResult.ResolverInput;
@@ -372,9 +369,9 @@ namespace CutInsideShotDirectShotCompositionTests
 			ResolverInput.Attacker.BaseValue,
 			static_cast<float>(Shooting));
 		Test.TestEqual(
-			TEXT("Defender Tackling becomes BaseValue"),
+			TEXT("Defender Defense becomes BaseValue"),
 			ResolverInput.Defender.BaseValue,
-			static_cast<float>(Tackling));
+			static_cast<float>(Defense));
 		Test.TestEqual(
 			TEXT("Attacker D6 is preserved"),
 			ResolverInput.Attacker.ComparePoint,
@@ -392,23 +389,23 @@ namespace CutInsideShotDirectShotCompositionTests
 		Test.TestEqual(
 			TEXT("Attacker Modifier reaches ResolverInput"),
 			ResolverInput.Attacker.Modifier,
-			ExpectedDerivedModifier(Shooting, Dribbling));
+			ExpectedDerivedModifier(Shooting, Control));
 		Test.TestEqual(
 			TEXT("Defender Modifier reaches ResolverInput"),
 			ResolverInput.Defender.Modifier,
-			2.0f);
+			2.0f + (1.0f - Defense) * 0.5f);
 
 		const FFormulaResolutionResult& FormulaResult =
 			Result.ExecutionResult.FormulaResolutionResult;
 		Test.TestEqual(
 			TEXT("Attacker final value uses average plus D6"),
 			FormulaResult.AttackerFinalValue,
-			ExpectedAverageValue(Shooting, Dribbling)
+			ExpectedAverageValue(Shooting, Control)
 				+ static_cast<float>(AttackD6));
 		Test.TestEqual(
-			TEXT("Defender final value uses Tackling plus two plus D6"),
+			TEXT("Defender final value uses Defense/Speed average plus two plus D6"),
 			FormulaResult.DefenderFinalValue,
-			static_cast<float>(Tackling + DefenseD6) + 2.0f);
+			(Defense + 1.0f) * 0.5f + DefenseD6 + 2.0f);
 	}
 }
 
@@ -424,12 +421,12 @@ bool FCutInsideShotCompositionEqualAttributesTest::RunTest(
 	using namespace CutInsideShotDirectShotCompositionTests;
 
 	const int32 Shooting = 5;
-	const int32 Dribbling = 5;
-	const int32 Tackling = 2;
+	const int32 Control = 5;
+	const int32 Defense = 2;
 	const int32 AttackD6 = 3;
 	const int32 DefenseD6 = 2;
 	const FCompositionResult Result = Compose(
-		MakePlayerCardSnapshots(Shooting, Dribbling, Tackling),
+		MakePlayerCardSnapshots(Shooting, Control, Defense),
 		MakeSkillRules(),
 		MakePlanInput(AttackD6, DefenseD6));
 
@@ -437,8 +434,8 @@ bool FCutInsideShotCompositionEqualAttributesTest::RunTest(
 		*this,
 		Result,
 		Shooting,
-		Dribbling,
-		Tackling,
+		Control,
+		Defense,
 		AttackD6,
 		DefenseD6);
 	TestEqual(
@@ -467,12 +464,12 @@ bool FCutInsideShotCompositionPositiveModifierTest::RunTest(
 	using namespace CutInsideShotDirectShotCompositionTests;
 
 	const int32 Shooting = 3;
-	const int32 Dribbling = 5;
-	const int32 Tackling = 3;
+	const int32 Control = 5;
+	const int32 Defense = 3;
 	const int32 AttackD6 = 4;
 	const int32 DefenseD6 = 2;
 	const FCompositionResult Result = Compose(
-		MakePlayerCardSnapshots(Shooting, Dribbling, Tackling),
+		MakePlayerCardSnapshots(Shooting, Control, Defense),
 		MakeSkillRules(),
 		MakePlanInput(AttackD6, DefenseD6));
 
@@ -480,8 +477,8 @@ bool FCutInsideShotCompositionPositiveModifierTest::RunTest(
 		*this,
 		Result,
 		Shooting,
-		Dribbling,
-		Tackling,
+		Control,
+		Defense,
 		AttackD6,
 		DefenseD6);
 	TestEqual(
@@ -503,12 +500,12 @@ bool FCutInsideShotCompositionNegativeModifierTest::RunTest(
 	using namespace CutInsideShotDirectShotCompositionTests;
 
 	const int32 Shooting = 6;
-	const int32 Dribbling = 2;
-	const int32 Tackling = 4;
+	const int32 Control = 2;
+	const int32 Defense = 4;
 	const int32 AttackD6 = 5;
 	const int32 DefenseD6 = 1;
 	const FCompositionResult Result = Compose(
-		MakePlayerCardSnapshots(Shooting, Dribbling, Tackling),
+		MakePlayerCardSnapshots(Shooting, Control, Defense),
 		MakeSkillRules(),
 		MakePlanInput(AttackD6, DefenseD6));
 
@@ -516,8 +513,8 @@ bool FCutInsideShotCompositionNegativeModifierTest::RunTest(
 		*this,
 		Result,
 		Shooting,
-		Dribbling,
-		Tackling,
+		Control,
+		Defense,
 		AttackD6,
 		DefenseD6);
 	TestEqual(
@@ -539,12 +536,12 @@ bool FCutInsideShotCompositionHalfAverageTest::RunTest(
 	using namespace CutInsideShotDirectShotCompositionTests;
 
 	const int32 Shooting = 3;
-	const int32 Dribbling = 6;
-	const int32 Tackling = 4;
+	const int32 Control = 6;
+	const int32 Defense = 4;
 	const int32 AttackD6 = 4;
 	const int32 DefenseD6 = 2;
 	const FCompositionResult Result = Compose(
-		MakePlayerCardSnapshots(Shooting, Dribbling, Tackling),
+		MakePlayerCardSnapshots(Shooting, Control, Defense),
 		MakeSkillRules(),
 		MakePlanInput(AttackD6, DefenseD6));
 
@@ -552,8 +549,8 @@ bool FCutInsideShotCompositionHalfAverageTest::RunTest(
 		*this,
 		Result,
 		Shooting,
-		Dribbling,
-		Tackling,
+		Control,
+		Defense,
 		AttackD6,
 		DefenseD6);
 	TestEqual(

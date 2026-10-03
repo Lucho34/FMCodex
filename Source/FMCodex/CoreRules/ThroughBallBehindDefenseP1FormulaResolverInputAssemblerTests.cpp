@@ -46,7 +46,7 @@ namespace ThroughBallBehindDefenseP1FormulaResolverInputAssemblerTests
 		Plan.AttackExternalModifier = 0.0f;
 		Plan.AttackParticipatingStamina = {4, 5};
 		Plan.MarkerId = MarkerId;
-		Plan.MarkerMarking = 6;
+		Plan.MarkerDefense = 6;
 		Plan.MarkerStamina = 6;
 		Plan.bHasHelper = bHasHelper;
 		if (bHasHelper)

@@ -210,7 +210,7 @@ namespace FMCodexInlineResolutionFormulaSurfaceTests
 		Contest.DefenseRow.Terms.Add(AttributeTerm(
 			TEXT("Marker.PrimaryHalf"), EParticipantRole::Marker,
 			EInitialTurnOrderPlayer::PlayerB, MarkerId,
-			EAttribute::Tackling, 5.0f, 0.5f));
+			EAttribute::Defense, 5.0f, 0.5f));
 		if (bHelper)
 		{
 			Contest.DefenseRow.Terms.Add(AttributeTerm(

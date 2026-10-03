@@ -188,10 +188,10 @@ namespace FMCodexThroughBallProductionPresentationTests
 		Contest.DefenseRow.RowId = TEXT("ThroughBall.Feet.Defense");
 		Contest.DefenseRow.Side = EInitialTurnOrderPlayer::PlayerB;
 		Contest.DefenseRow.Terms.Add(AttributeTerm(
-			TEXT("Marker.Tackling"),
+			TEXT("Marker.Defense"),
 			EMatchPlayResolutionParticipantRole::Marker,
 			EInitialTurnOrderPlayer::PlayerB, MarkerId,
-			EMatchPlayResolutionFormulaAttribute::Tackling, 5.5f));
+			EMatchPlayResolutionFormulaAttribute::Defense, 5.5f));
 		if (!FMath::IsNearlyZero(DefenderTacticalPlayerModifier))
 		{
 			Contest.DefenseRow.Terms.Add(TacticalPlayerTerm(
@@ -412,7 +412,7 @@ namespace FMCodexThroughBallProductionPresentationTests
 			TEXT("Marker.PrimaryHalf"),
 			EMatchPlayResolutionParticipantRole::Marker,
 			EInitialTurnOrderPlayer::PlayerB, MarkerId,
-			EMatchPlayResolutionFormulaAttribute::Marking, 8.0f));
+			EMatchPlayResolutionFormulaAttribute::Defense, 8.0f));
 		if (bHasHelper)
 		{
 			Contest.DefenseRow.Terms.Add(AttributeTerm(
@@ -1598,7 +1598,7 @@ bool FFMCodexThroughBallProductionFeetFormulaFlowTest::RunTest(
 			&& PreviewFormula.DefenseRow.Terms[0].ContributorDisplayName
 				== TEXT("萨利巴")
 			&& PreviewFormula.DefenseRow.Terms[0].DisplayLabel
-				== TEXT("抢断 5.5")
+				== TEXT("防守 5.5")
 			&& PreviewAttackRoll->ContributorDisplayName.IsEmpty()
 			&& PreviewDefenseRoll->ContributorDisplayName.IsEmpty()
 			&& PreviewFormula.bCanContinue

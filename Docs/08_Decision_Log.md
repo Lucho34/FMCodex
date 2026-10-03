@@ -2597,3 +2597,15 @@ Recovery 已是按当前池权重、不放回抽取，未来复用算法并统�
 **本次用户补充决定：迁移时暂时隐藏非门将总评，之后单独设计。** 旧总评依赖十属性（含LS和数值STA）取最高六项，不能自行改成六项求和或引入Trait。保留门将既有总评；本轮只记录，不改实现。当前迁移无剩余产品决定。
 
 验证仅为引用/内容/依赖一致性、只读工作簿与JSON检查、保护文件哈希及Git diff检查；不运行build、UHT、gameplay suites、PIE或Host/Remote。本轮仅新增计划并追加本条，canonical workbook、draft用户值、JSON、importer、C++、UI、A.2/A.3均不修改；预先存在的Excel锁文件删除保持范围外。REGRESSION SCOPE JUSTIFIED: YES。最终staging/commit由用户手动执行。
+
+## 2026-10-03 — Stage 8.20B.1: atomic simplified foundation cutover
+
+在已提交 B 计划节点 `c630946b37ce90af05a7e8c35ab921a5fc3fb7f1` 上实施一次生产 schema 切换：canonical workbook、importer、schema v4 JSON、card / authoritative snapshot / normalized participants、A.2 基础 Formula、Recovery / tie 与基础卡片显示同步迁移。六项 base 为 Shooting / Passing / Control / Speed / Strength / Defense，仍验证整数 1–6；体力保存 S/A/B，由单一 helper 转成 5/3/1。移除旧属性字段，不设双模型；GK 六项能力与原有参与规则保留。40 人身份、队伍、技能、表现数据及 GK 值不变，新属性、体力和 Trait assignment 严格取用户草稿；草稿不回写。
+
+**本次用户批准的非 GK 总评取代 B 计划“暂时隐藏总评”的决定：`Clamp(59 + SHO + PAS + CON + SPD + STR + DEF, 65, 95)`。** 总评由六项基础值集中派生，仅用于显示，不持久化为可编辑名单值；不计稀有度、体力、Trait 或临时修正，不进入任何玩法计算。GK 总评不变。
+
+A.2 基础矩阵现已实施：远射 Direct 防守固定 +3，远任意球仍 +2；内切防守取同一 Marker 的 Defense / Speed 平均；Low Cross Runner / Helper 取 Speed，Low Corner Runner 取 Control / Helper 取 Defense；Feet Helper 取 Defense。Near FK / Penalty 始终保留 `max(Shooting,Passing)`。既有 D6、前置失败、实际角色、GK 优先平局和人数修正边界不变。Recovery 继续对当前合法池按权重不放回抽取，非 GK tie 只计本次实际参与者。
+
+23 Ranked + 1 Binary assignment 以固定非本地化 `Trait.*` ID 被动加载并复制到权威 snapshot，Ranked 保留 S/A/B。B.1 不读取这些数据来修改 Formula，不启用反越位双骰，也不显示 Trait bonus；B.2 / B.3 继续负责这些效果。PassControl 维持暂退，旧三路线 Plan 明确返回 unavailable，保留稳定身份但不发明六属性替代公式。
+
+基础字段、总评与公式说明按当前规则同步；不重做 Theater、Roll v2、卡面美术、RPC、RNG 或 shared lifecycle。验证按 B 计划选内容复现、受改 Formula / tier / snapshot、相关安全投影与共享 UI，以及一条真实 Local PIE。全量 CoreRules / Runtime 集成收尾与独立 Host/Remote Golden Path 留 B.4；自动 PIE 不代替 USER PIE milestone 验收。用户手动 staging / commit。

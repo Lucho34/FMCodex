@@ -2737,15 +2737,18 @@ void UFMCodexPlayerCardWidget::RefreshAttributes()
 						Attributes.AddDefaulted_GetRef();
 					Attribute.CanonicalLabel = Token;
 					Attribute.Value = FCString::Atoi(*Value);
+					if (Token.Equals(TEXT("StaminaTier"), ESearchCase::IgnoreCase))
+					{
+						Attribute.ValueLabel = Value;
+					}
 				}
 			}
 		}
 		const TArray<FString> CanonicalOrder = Presentation.bGoalkeeper
 			? TArray<FString>({ TEXT("HAN"), TEXT("POS"), TEXT("REF"),
 				TEXT("AER"), TEXT("ANT"), TEXT("1V1") })
-			: TArray<FString>({ TEXT("SHO"), TEXT("DRI"), TEXT("PAS"),
-				TEXT("OFF"), TEXT("MRK"), TEXT("TKL"), TEXT("SPD"),
-				TEXT("STR"), TEXT("STA"), TEXT("LS") });
+			: TArray<FString>({ TEXT("SHO"), TEXT("PAS"), TEXT("CON"),
+				TEXT("SPD"), TEXT("STR"), TEXT("DEF"), TEXT("StaminaTier") });
 		TArray<FFMCodexUMGAttributeViewModel> OrderedAttributes;
 		OrderedAttributes.Reserve(CanonicalOrder.Num());
 		for (const FString& CanonicalToken : CanonicalOrder)
@@ -2859,7 +2862,7 @@ void UFMCodexPlayerCardWidget::RefreshAttributes()
             }
 			UTextBlock* ValueText = MakeText(*WidgetTree,
 				FName(*FString::Printf(TEXT("AttributeValue%d"), Index)));
-			ValueText->SetText(FText::AsNumber(Attribute.Value));
+			ValueText->SetText(Attribute.ValueLabel.IsEmpty() ? FText::AsNumber(Attribute.Value) : FText::FromString(Attribute.ValueLabel));
 			ValueText->SetAutoWrapText(false);
 			ValueText->SetJustification(ETextJustify::Center);
 			FFMCodexPlayerUIStyle::Get().ApplyText(

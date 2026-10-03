@@ -21,8 +21,8 @@ namespace MatchPlayCornerAuthoritativeSessionTests
 			: EPlayerPositionType::Attack };
 		Card.Attributes.Strength = 4;
 		Card.Attributes.Shooting = 4;
-		Card.Attributes.Marking = 4;
-		Card.Attributes.Stamina = 5;
+		Card.Attributes.Defense = 4;
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::S;
 		Card.GoalkeeperAttributes.Aerial = 4;
 		Card.GoalkeeperAttributes.Reflex = 4;
 		return Card;

@@ -419,8 +419,8 @@ bool FFMCodexCrossSafeProjection::RunTest(const FString& P)
 				else
 				{
 					const auto& B = State.CurrentAttack.ResolutionSession.Bundle;
-					TestEqual(TEXT("Safe Cross attack aggregate matches authority"), Result.AttackerParticipatingStaminaTotal, B.Carrier.Values.Stamina + B.Runner.Values.Stamina);
-					TestEqual(TEXT("Safe Cross defense aggregate matches authority"), Result.DefenderParticipatingStaminaTotal, B.Marker.Values.Stamina + (B.bHasHelper ? B.Helper.Values.Stamina : 0));
+					TestEqual(TEXT("Safe Cross attack aggregate matches authority"), Result.AttackerParticipatingStaminaTotal, PlayerStaminaGameplayValue(B.Carrier.Values.StaminaTier) + PlayerStaminaGameplayValue(B.Runner.Values.StaminaTier));
+					TestEqual(TEXT("Safe Cross defense aggregate matches authority"), Result.DefenderParticipatingStaminaTotal, PlayerStaminaGameplayValue(B.Marker.Values.StaminaTier) + (B.bHasHelper ? PlayerStaminaGameplayValue(B.Helper.Values.StaminaTier) : 0));
 					TestTrue(TEXT("Projected Cross membership matches resolver"), Contest.AttackRow.ParticipatingStamina == Contest.ResolvedInput.Attacker.ParticipatingStamina && Contest.DefenseRow.ParticipatingStamina == Contest.ResolvedInput.Defender.ParticipatingStamina);
 				}
 			}

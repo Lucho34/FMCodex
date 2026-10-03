@@ -24,7 +24,7 @@ namespace ThroughBallBehindDefenseP2OutcomeQueryTests
 		const EPlayerPositionType Position,
 		const int32 Passing,
 		const int32 Speed,
-		const int32 Marking,
+		const int32 Defense,
 		const int32 Stamina)
 	{
 		FPlayerCardRuleSnapshot Snapshot;
@@ -32,8 +32,8 @@ namespace ThroughBallBehindDefenseP2OutcomeQueryTests
 		Snapshot.PositionTypes = {Position};
 		Snapshot.Attributes.Passing = Passing;
 		Snapshot.Attributes.Speed = Speed;
-		Snapshot.Attributes.Marking = Marking;
-		Snapshot.Attributes.Stamina = Stamina;
+		Snapshot.Attributes.Defense = Defense;
+		Snapshot.Attributes.StaminaTier = (Stamina) >= 5 ? EPlayerStaminaTier::S : (Stamina) >= 3 ? EPlayerStaminaTier::A : (Stamina) >= 1 ? EPlayerStaminaTier::B : EPlayerStaminaTier::None;
 		return Snapshot;
 	}
 

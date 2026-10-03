@@ -62,7 +62,7 @@ struct FMCODEX_API FThroughBallBehindDefenseP1FormulaPlan
 	TArray<int32> AttackParticipatingStamina;
 
 	FName MarkerId = NAME_None;
-	int32 MarkerMarking = 0;
+	int32 MarkerDefense = 0;
 	int32 MarkerStamina = 0;
 
 	bool bHasHelper = false;

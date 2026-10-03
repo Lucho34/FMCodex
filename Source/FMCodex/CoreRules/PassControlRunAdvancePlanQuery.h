@@ -36,7 +36,8 @@ enum class EPassControlRunAdvancePlanQueryErrorCode : uint8
 	MissingDefenseD6,
 	InvalidDefenseD6,
 	InvalidLogContext,
-	UnsupportedGoalkeeperParticipant
+	UnsupportedGoalkeeperParticipant,
+	TacticUnavailable
 };
 
 struct FMCODEX_API FPassControlRunAdvancePlanQueryInput

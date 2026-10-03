@@ -21,25 +21,12 @@ namespace CrossPlanQueryTests
 	const FName GoalkeeperPlayerId(TEXT("Player.Cross.Goalkeeper"));
 	const FGuid LogId(811, 812, 813, 814);
 
-	FPlayerAttributes MakeAttributes(
-		const int32 Passing,
-		const int32 Shooting,
-		const int32 Strength,
-		const int32 Marking,
-		const int32 Tackling)
+	FPlayerAttributes MakeAttributes(const int32 Passing, const int32 Speed,
+		const int32 Strength, const int32 Defense)
 	{
-		FPlayerAttributes Attributes;
-		Attributes.Shooting = Shooting;
-		Attributes.Dribbling = 1;
-		Attributes.Passing = Passing;
-		Attributes.OffBall = 1;
-		Attributes.Marking = Marking;
-		Attributes.Tackling = Tackling;
-		Attributes.Speed = 1;
-		Attributes.Strength = Strength;
-		Attributes.Stamina = 1;
-		Attributes.LongShot = 1;
-		return Attributes;
+		FPlayerAttributes A;
+		A.Passing = Passing; A.Speed = Speed; A.Strength = Strength; A.Defense = Defense;
+		return A;
 	}
 
 	FGoalkeeperAttributes MakeGoalkeeperAttributes(
@@ -76,7 +63,7 @@ namespace CrossPlanQueryTests
 		FPlayerCardRuleSnapshot Card;
 		Card.CardId = CardId;
 		Card.PositionTypes = { EPlayerPositionType::Goalkeeper };
-		Card.Attributes = MakeAttributes(1, 1, 1, 1, 1);
+		Card.Attributes = MakeAttributes(1, 1, 1, 1);
 		Card.bIsGoalkeeper = true;
 		Card.bHasGoalkeeperAttributes = true;
 		Card.GoalkeeperAttributes = MakeGoalkeeperAttributes(6, 5);
@@ -90,20 +77,20 @@ namespace CrossPlanQueryTests
 			MakeOutfieldCard(
 				CarrierCardId,
 				EPlayerPositionType::Midfield,
-				MakeAttributes(3, 1, 1, 1, 1),
+				MakeAttributes(3, 1, 1, 1),
 				true),
 			MakeOutfieldCard(
 				RunnerCardId,
 				EPlayerPositionType::Attack,
-				MakeAttributes(1, 6, 4, 1, 1)),
+				MakeAttributes(1, 6, 4, 1)),
 			MakeOutfieldCard(
 				MarkerCardId,
 				EPlayerPositionType::Defense,
-				MakeAttributes(1, 1, 1, 1, 5)),
+				MakeAttributes(1, 1, 1, 5)),
 			MakeOutfieldCard(
 				HelperCardId,
 				EPlayerPositionType::Midfield,
-				MakeAttributes(1, 1, 6, 4, 1)),
+				MakeAttributes(1, 4, 6, 1)),
 			MakeGoalkeeperCard()
 		};
 		return SnapshotSet;
@@ -258,9 +245,9 @@ namespace CrossPlanQueryTests
 			Result.FormulaPlan.AttackerQueryInput.Attribute,
 			ESingleCardFormulaAttribute::Passing);
 		Test.TestEqual(
-			TEXT("Defender uses Marker Tackling"),
+			TEXT("Defender uses Marker Defense"),
 			Result.FormulaPlan.DefenderQueryInput.Attribute,
-			ESingleCardFormulaAttribute::Tackling);
+			ESingleCardFormulaAttribute::Defense);
 		Test.TestEqual(
 			TEXT("Attack D6 is retained"),
 			Result.FormulaPlan.AttackerQueryInput.ExternalD6ComparePoint,
@@ -701,7 +688,7 @@ bool FCrossPlanRunnerAndSelectedGoalkeeperEligibilityTest::RunTest(
 	GoalkeeperSnapshots.Cards[4] = MakeOutfieldCard(
 		GoalkeeperCardId,
 		EPlayerPositionType::Defense,
-		MakeAttributes(1, 1, 1, 1, 1));
+		MakeAttributes(1, 1, 1, 1));
 	return ExpectFailure(
 		*this, MakeInput(ECrossPlanActualType::High, false, true),
 		GoalkeeperSnapshots, MakeSkillRules(),

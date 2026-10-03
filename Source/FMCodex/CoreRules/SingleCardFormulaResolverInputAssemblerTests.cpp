@@ -23,7 +23,7 @@ namespace SingleCardFormulaResolverInputAssemblerTests
 		Card.CardId = AttackerCardId;
 		Card.PositionTypes = { EPlayerPositionType::Attack };
 		Card.Attributes.Shooting = 6;
-		Card.Attributes.Stamina = 5;
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::S;
 		Card.Rarity = ECardRarity::Continental;
 		return Card;
 	}
@@ -33,8 +33,8 @@ namespace SingleCardFormulaResolverInputAssemblerTests
 		FPlayerCardRuleSnapshot Card;
 		Card.CardId = DefenderCardId;
 		Card.PositionTypes = { EPlayerPositionType::Defense };
-		Card.Attributes.Tackling = 4;
-		Card.Attributes.Stamina = 3;
+		Card.Attributes.Defense = 4;
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::A;
 		Card.Rarity = ECardRarity::National;
 		return Card;
 	}
@@ -44,7 +44,7 @@ namespace SingleCardFormulaResolverInputAssemblerTests
 		FPlayerCardRuleSnapshot Card;
 		Card.CardId = GoalkeeperCardId;
 		Card.PositionTypes = { EPlayerPositionType::Goalkeeper };
-		Card.Attributes.Stamina = 4;
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::A;
 		Card.bIsGoalkeeper = true;
 		Card.bHasGoalkeeperAttributes = true;
 		Card.GoalkeeperAttributes.Reflex = 6;
@@ -107,7 +107,7 @@ namespace SingleCardFormulaResolverInputAssemblerTests
 		Input.DefenderQueryResult = MakeQueryResult(
 			DefenderCardId,
 			ESingleCardFormulaParticipantRole::Defender,
-			ESingleCardFormulaAttribute::Tackling,
+			ESingleCardFormulaAttribute::Defense,
 			FormulaType,
 			SharedLogId,
 			SharedTurnIndex,
@@ -275,9 +275,9 @@ bool FSingleCardFormulaResolverInputAssemblerGoalkeeperTest::RunTest(
 		Result.ResolverInput.Defender.BaseValue,
 		6.0f);
 	TestEqual(
-		TEXT("Goalkeeper stamina is mapped"),
-		Result.ResolverInput.Defender.ParticipatingStamina[0],
-		4);
+		TEXT("Goalkeeper does not contribute outfield stamina"),
+		Result.ResolverInput.Defender.ParticipatingStamina.Num(),
+		0);
 	TestEqual(
 		TEXT("Goalkeeper CardId remains second"),
 		Result.ResolverInput.InvolvedCardIds[1],
@@ -340,7 +340,7 @@ bool FSingleCardFormulaResolverInputAssemblerDefenderFailureTest::RunTest(
 		SingleCardFormulaResolverInputAssemblerTests::MakeQueryResult(
 			SingleCardFormulaResolverInputAssemblerTests::MissingCardId,
 			ESingleCardFormulaParticipantRole::Defender,
-			ESingleCardFormulaAttribute::Tackling,
+			ESingleCardFormulaAttribute::Defense,
 			EFormulaType::Finishing,
 			SingleCardFormulaResolverInputAssemblerTests::SharedLogId,
 			SingleCardFormulaResolverInputAssemblerTests::SharedTurnIndex,
@@ -381,7 +381,7 @@ bool FSingleCardFormulaResolverInputAssemblerFormulaMismatchTest::RunTest(
 		SingleCardFormulaResolverInputAssemblerTests::MakeQueryResult(
 			SingleCardFormulaResolverInputAssemblerTests::DefenderCardId,
 			ESingleCardFormulaParticipantRole::Defender,
-			ESingleCardFormulaAttribute::Tackling,
+			ESingleCardFormulaAttribute::Defense,
 			EFormulaType::Transition,
 			SingleCardFormulaResolverInputAssemblerTests::SharedLogId,
 			SingleCardFormulaResolverInputAssemblerTests::SharedTurnIndex,
@@ -448,7 +448,7 @@ bool FSingleCardFormulaResolverInputAssemblerRoleTest::RunTest(
 		SingleCardFormulaResolverInputAssemblerTests::MakeQueryResult(
 			SingleCardFormulaResolverInputAssemblerTests::AttackerCardId,
 			ESingleCardFormulaParticipantRole::Defender,
-			ESingleCardFormulaAttribute::Tackling,
+			ESingleCardFormulaAttribute::Defense,
 			EFormulaType::Finishing,
 			SingleCardFormulaResolverInputAssemblerTests::SharedLogId,
 			SingleCardFormulaResolverInputAssemblerTests::SharedTurnIndex,

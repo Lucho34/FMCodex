@@ -124,7 +124,7 @@ FMatchPlayRecoveryCandidateQuery::Build(
 				return Result;
 			}
 
-			const int32 Stamina = Snapshot.Snapshot.Attributes.Stamina;
+			const int32 Stamina = PlayerStaminaGameplayValue(Snapshot.Snapshot.Attributes.StaminaTier);
 			if (Stamina < MinimumStamina || Stamina > MaximumStamina)
 			{
 				Result.ErrorCode = EMatchPlayRecoveryCandidateQueryErrorCode
@@ -337,7 +337,7 @@ FMatchPlayRecoveryResolveResult FMatchPlayRecoveryResolver::Resolve(
 				Candidate.OwnerSide,
 				Candidate.CardId);
 		if (!Snapshot.bSuccess || Snapshot.Snapshot.bIsGoalkeeper
-			|| Snapshot.Snapshot.Attributes.Stamina != Candidate.StaminaWeight)
+			|| PlayerStaminaGameplayValue(Snapshot.Snapshot.Attributes.StaminaTier) != Candidate.StaminaWeight)
 		{
 			SetResolveError(Result,
 				EMatchPlayRecoveryResolveErrorCode::MutationFailed,

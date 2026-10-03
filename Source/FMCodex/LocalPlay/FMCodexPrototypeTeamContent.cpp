@@ -14,7 +14,7 @@ namespace FMCodexPrototypeTeamContent
 	const FName ManchesterCityId(TEXT("Prototype.Team.ManchesterCity"));
 	constexpr int32 CanonicalPlayersPerTeam = 20;
 	constexpr int32 CanonicalPlayerCount = CanonicalPlayersPerTeam * 2;
-	constexpr int32 RuntimeSchemaVersion = 3;
+	constexpr int32 RuntimeSchemaVersion = 4;
 
 	struct FCatalog
 	{
@@ -68,18 +68,11 @@ namespace FMCodexPrototypeTeamContent
 		return Value >= 1 && Value <= 6;
 	}
 
-	bool AttributesInRange(const FPlayerAttributes& Attributes)
+	bool AttributesInRange(const FPlayerAttributes& A)
 	{
-		return IsInAttributeRange(Attributes.Shooting)
-			&& IsInAttributeRange(Attributes.Dribbling)
-			&& IsInAttributeRange(Attributes.Passing)
-			&& IsInAttributeRange(Attributes.OffBall)
-			&& IsInAttributeRange(Attributes.Marking)
-			&& IsInAttributeRange(Attributes.Tackling)
-			&& IsInAttributeRange(Attributes.Speed)
-			&& IsInAttributeRange(Attributes.Strength)
-			&& IsInAttributeRange(Attributes.Stamina)
-			&& IsInAttributeRange(Attributes.LongShot);
+		return IsInAttributeRange(A.Shooting) && IsInAttributeRange(A.Passing)
+			&& IsInAttributeRange(A.Control) && IsInAttributeRange(A.Speed)
+			&& IsInAttributeRange(A.Strength) && IsInAttributeRange(A.Defense);
 	}
 
 	bool GoalkeeperAttributesInRange(
@@ -211,34 +204,67 @@ namespace FMCodexPrototypeTeamContent
 			*SkillId, MinTacticalPoint, MaxTacticalPoint));
 	}
 
-	bool TryReadOutfieldAttributes(
-		const TSharedPtr<FJsonObject>& Object,
-		FPlayerAttributes& OutAttributes,
-		TArray<FString>& OutErrors,
-		const FString& Context)
+	bool TryReadOutfieldAttributes(const TSharedPtr<FJsonObject>& Object,
+		FPlayerAttributes& OutAttributes, TArray<FString>& OutErrors, const FString& Context)
 	{
-		if (!Object.IsValid() || Object->Values.Num() != 10)
+		if (!Object.IsValid() || Object->Values.Num() != 6)
 		{
-			OutErrors.Add(Context + TEXT(": exactly 10 outfield attributes are required"));
+			OutErrors.Add(Context + TEXT(": exactly six outfield base attributes are required"));
 			return false;
 		}
 		bool bSuccess = true;
 		bSuccess &= TryReadInt(Object, TEXT("SHO"), OutAttributes.Shooting, OutErrors, Context);
-		bSuccess &= TryReadInt(Object, TEXT("DRI"), OutAttributes.Dribbling, OutErrors, Context);
 		bSuccess &= TryReadInt(Object, TEXT("PAS"), OutAttributes.Passing, OutErrors, Context);
-		bSuccess &= TryReadInt(Object, TEXT("OFF"), OutAttributes.OffBall, OutErrors, Context);
-		bSuccess &= TryReadInt(Object, TEXT("MRK"), OutAttributes.Marking, OutErrors, Context);
-		bSuccess &= TryReadInt(Object, TEXT("TKL"), OutAttributes.Tackling, OutErrors, Context);
+		bSuccess &= TryReadInt(Object, TEXT("CON"), OutAttributes.Control, OutErrors, Context);
 		bSuccess &= TryReadInt(Object, TEXT("SPD"), OutAttributes.Speed, OutErrors, Context);
 		bSuccess &= TryReadInt(Object, TEXT("STR"), OutAttributes.Strength, OutErrors, Context);
-		bSuccess &= TryReadInt(Object, TEXT("STA"), OutAttributes.Stamina, OutErrors, Context);
-		bSuccess &= TryReadInt(Object, TEXT("LS"), OutAttributes.LongShot, OutErrors, Context);
-		if (bSuccess && !AttributesInRange(OutAttributes))
-		{
-			OutErrors.Add(Context + TEXT(": every outfield attribute must be 1-6"));
-			bSuccess = false;
-		}
+		bSuccess &= TryReadInt(Object, TEXT("DEF"), OutAttributes.Defense, OutErrors, Context);
+		if (!AttributesInRange(OutAttributes)) { OutErrors.Add(Context + TEXT(": base attributes must be 1-6")); bSuccess = false; }
 		return bSuccess;
+	}
+
+	void ReadFoundationPayload(const TSharedPtr<FJsonObject>& Object, FPlayerCardData& Card,
+		TArray<FString>& Errors, const FString& Context)
+	{
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::None;
+		FString Tier;
+		if (Card.bIsGoalkeeper)
+		{
+			if (!Object->HasTypedField<EJson::Null>(TEXT("staminaTier"))) Errors.Add(Context + TEXT(": GK staminaTier must be null"));
+		}
+		else
+		{
+			TryReadString(Object, TEXT("staminaTier"), Tier, Errors, Context);
+			if (Tier == TEXT("S")) Card.Attributes.StaminaTier = EPlayerStaminaTier::S;
+			else if (Tier == TEXT("A")) Card.Attributes.StaminaTier = EPlayerStaminaTier::A;
+			else if (Tier == TEXT("B")) Card.Attributes.StaminaTier = EPlayerStaminaTier::B;
+			else Errors.Add(Context + TEXT(": staminaTier must be S/A/B"));
+		}
+		const TArray<TSharedPtr<FJsonValue>>* Ranked = nullptr;
+		const TArray<TSharedPtr<FJsonValue>>* Binary = nullptr;
+		if (!Object->TryGetArrayField(TEXT("rankedTraits"), Ranked) || !Object->TryGetArrayField(TEXT("binaryTraits"), Binary))
+		{ Errors.Add(Context + TEXT(": rankedTraits and binaryTraits arrays are required")); return; }
+		for (const auto& Value : *Ranked)
+		{
+			const TSharedPtr<FJsonObject>* TraitObject = nullptr;
+			if (!Value->TryGetObject(TraitObject) || !TraitObject || (*TraitObject)->Values.Num() != 2)
+			{ Errors.Add(Context + TEXT(": ranked Trait requires traitId and rank")); continue; }
+			FString Id, Rank;
+			TryReadString(*TraitObject, TEXT("traitId"), Id, Errors, Context);
+			TryReadString(*TraitObject, TEXT("rank"), Rank, Errors, Context);
+			FPlayerRankedTrait Trait;
+			Trait.TraitId = FName(*Id);
+			Trait.Rank = Rank == TEXT("S") ? EPlayerTraitRank::S : Rank == TEXT("A") ? EPlayerTraitRank::A : Rank == TEXT("B") ? EPlayerTraitRank::B : EPlayerTraitRank::None;
+			Card.RankedTraits.Add(Trait);
+		}
+		for (const auto& Value : *Binary)
+		{
+			FString Id;
+			if (!Value->TryGetString(Id)) Errors.Add(Context + TEXT(": binary Trait ID must be a string"));
+			Card.BinaryTraits.Add(FName(*Id));
+		}
+		if (!ValidatePassivePlayerTraits(Card.RankedTraits, Card.BinaryTraits, Card.bIsGoalkeeper))
+			Errors.Add(Context + TEXT(": invalid passive Trait identity, rank, duplicate or goalkeeper assignment"));
 	}
 
 	bool TryReadGoalkeeperAttributes(
@@ -639,6 +665,8 @@ namespace FMCodexPrototypeTeamContent
 						+ Rarity + TEXT("'"));
 				}
 			}
+
+			ReadFoundationPayload(PlayerObject, Definition.Card, Result.Errors, Context);
 
 			const TArray<TSharedPtr<FJsonValue>>* Skills = nullptr;
 			if (!PlayerObject->TryGetArrayField(TEXT("skills"), Skills)

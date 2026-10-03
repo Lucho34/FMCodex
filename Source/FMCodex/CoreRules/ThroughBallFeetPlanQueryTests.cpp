@@ -19,19 +19,17 @@ namespace ThroughBallFeetPlanQueryTests
 		const FName CardId,
 		const EPlayerPositionType Position,
 		const int32 Passing,
-		const int32 OffBall,
-		const int32 Marking,
-		const int32 Tackling,
+		const int32 Control,
+		const int32 Defense,
 		const int32 Stamina)
 	{
 		FPlayerCardRuleSnapshot Snapshot;
 		Snapshot.CardId = CardId;
 		Snapshot.PositionTypes = { Position };
 		Snapshot.Attributes.Passing = Passing;
-		Snapshot.Attributes.OffBall = OffBall;
-		Snapshot.Attributes.Marking = Marking;
-		Snapshot.Attributes.Tackling = Tackling;
-		Snapshot.Attributes.Stamina = Stamina;
+		Snapshot.Attributes.Control = Control;
+		Snapshot.Attributes.Defense = Defense;
+		Snapshot.Attributes.StaminaTier = (Stamina) >= 5 ? EPlayerStaminaTier::S : (Stamina) >= 3 ? EPlayerStaminaTier::A : (Stamina) >= 1 ? EPlayerStaminaTier::B : EPlayerStaminaTier::None;
 		return Snapshot;
 	}
 
@@ -43,7 +41,7 @@ namespace ThroughBallFeetPlanQueryTests
 		FPlayerCardRuleSnapshot Snapshot;
 		Snapshot.CardId = CardId;
 		Snapshot.PositionTypes = { EPlayerPositionType::Goalkeeper };
-		Snapshot.Attributes.Stamina = Stamina;
+		Snapshot.Attributes.StaminaTier = (Stamina) >= 5 ? EPlayerStaminaTier::S : (Stamina) >= 3 ? EPlayerStaminaTier::A : (Stamina) >= 1 ? EPlayerStaminaTier::B : EPlayerStaminaTier::None;
 		Snapshot.bIsGoalkeeper = true;
 		Snapshot.bHasGoalkeeperAttributes = true;
 		Snapshot.GoalkeeperAttributes.OneOnOne = OneOnOne;
@@ -57,17 +55,13 @@ namespace ThroughBallFeetPlanQueryTests
 		Result.bSuccess = true;
 		Result.Input.AttackingOwnerId = AttackingOwnerId;
 		Result.Input.DefendingOwnerId = DefendingOwnerId;
-		Result.Input.CarrierSnapshot = MakeOutfield(
-			CarrierId, EPlayerPositionType::Midfield, 4, 2, 1, 1, 5);
-		Result.Input.RunnerSnapshot = MakeOutfield(
-			RunnerId, EPlayerPositionType::Attack, 1, 5, 1, 1, 4);
-		Result.Input.MarkerSnapshot = MakeOutfield(
-			MarkerId, EPlayerPositionType::Defense, 1, 1, 2, 5, 3);
+		Result.Input.CarrierSnapshot = MakeOutfield(CarrierId, EPlayerPositionType::Midfield, 4, 2, 1, 5);
+		Result.Input.RunnerSnapshot = MakeOutfield(RunnerId, EPlayerPositionType::Attack, 1, 5, 1, 4);
+		Result.Input.MarkerSnapshot = MakeOutfield(MarkerId, EPlayerPositionType::Defense, 1, 1, 5, 3);
 		Result.Input.bHasHelper = bHasHelper;
 		if (bHasHelper)
 		{
-			Result.Input.HelperSnapshot = MakeOutfield(
-				HelperId, EPlayerPositionType::Midfield, 1, 1, 4, 1, 2);
+			Result.Input.HelperSnapshot = MakeOutfield(HelperId, EPlayerPositionType::Midfield, 1, 1, 4, 2);
 		}
 		Result.bHasHelper = bHasHelper;
 		Result.SkillRuleQueryResult.bSuccess = true;
@@ -103,15 +97,15 @@ namespace ThroughBallFeetPlanQueryTests
 		return Left.CardId == Right.CardId
 			&& Left.PositionTypes == Right.PositionTypes
 			&& Left.Attributes.Shooting == Right.Attributes.Shooting
-			&& Left.Attributes.Dribbling == Right.Attributes.Dribbling
+			&& Left.Attributes.Control == Right.Attributes.Control
 			&& Left.Attributes.Passing == Right.Attributes.Passing
-			&& Left.Attributes.OffBall == Right.Attributes.OffBall
-			&& Left.Attributes.Marking == Right.Attributes.Marking
-			&& Left.Attributes.Tackling == Right.Attributes.Tackling
+			&& Left.Attributes.Control == Right.Attributes.Control
+			&& Left.Attributes.Defense == Right.Attributes.Defense
+			&& Left.Attributes.Defense == Right.Attributes.Defense
 			&& Left.Attributes.Speed == Right.Attributes.Speed
 			&& Left.Attributes.Strength == Right.Attributes.Strength
-			&& Left.Attributes.Stamina == Right.Attributes.Stamina
-			&& Left.Attributes.LongShot == Right.Attributes.LongShot
+			&& PlayerStaminaGameplayValue(Left.Attributes.StaminaTier) == PlayerStaminaGameplayValue(Right.Attributes.StaminaTier)
+			&& Left.Attributes.Shooting == Right.Attributes.Shooting
 			&& Left.bIsGoalkeeper == Right.bIsGoalkeeper
 			&& Left.bHasGoalkeeperAttributes == Right.bHasGoalkeeperAttributes
 			&& Left.GoalkeeperAttributes.Handling
@@ -194,7 +188,7 @@ namespace ThroughBallFeetPlanQueryTests
 			&& Left.CarrierPassing == Right.CarrierPassing
 			&& Left.CarrierStamina == Right.CarrierStamina
 			&& Left.RunnerId == Right.RunnerId
-			&& Left.RunnerOffBall == Right.RunnerOffBall
+			&& Left.RunnerControl == Right.RunnerControl
 			&& Left.RunnerStamina == Right.RunnerStamina
 			&& Left.AttackD6 == Right.AttackD6
 			&& Left.AttackBaseValue == Right.AttackBaseValue
@@ -202,11 +196,11 @@ namespace ThroughBallFeetPlanQueryTests
 			&& Left.AttackParticipatingStamina
 				== Right.AttackParticipatingStamina
 			&& Left.MarkerId == Right.MarkerId
-			&& Left.MarkerTackling == Right.MarkerTackling
+			&& Left.MarkerDefense == Right.MarkerDefense
 			&& Left.MarkerStamina == Right.MarkerStamina
 			&& Left.bHasHelper == Right.bHasHelper
 			&& Left.HelperId == Right.HelperId
-			&& Left.HelperMarking == Right.HelperMarking
+			&& Left.HelperDefense == Right.HelperDefense
 			&& Left.HelperStamina == Right.HelperStamina
 			&& Left.bHasActiveGoalkeeper == Right.bHasActiveGoalkeeper
 			&& Left.ActiveGoalkeeperId == Right.ActiveGoalkeeperId
@@ -402,11 +396,11 @@ namespace ThroughBallFeetPlanQueryTests
 			EvaluateSuccess(Test, Input);
 			break;
 		case 23:
-			Input = MakeInput(); Input.ActiveGoalkeeperSnapshot = MakeGoalkeeper(); Input.ActiveGoalkeeperSnapshot.Attributes.Stamina = 99;
+			Input = MakeInput(); Input.ActiveGoalkeeperSnapshot = MakeGoalkeeper(); Input.ActiveGoalkeeperSnapshot.GoalkeeperAttributes.OneOnOne = 0;
 			EvaluateSuccess(Test, Input);
 			break;
 		case 24:
-			Input = MakeInput(); Input.ActiveGoalkeeperSnapshot = MakeOutfield(TEXT("Ignored"), EPlayerPositionType::Defense, 1, 1, 1, 1, 1);
+			Input = MakeInput(); Input.ActiveGoalkeeperSnapshot = MakeOutfield(TEXT("Ignored"), EPlayerPositionType::Defense, 1, 1, 1, 1);
 			EvaluateSuccess(Test, Input);
 			break;
 		case 25:
@@ -430,12 +424,12 @@ namespace ThroughBallFeetPlanQueryTests
 			EvaluateFailure(Test, Input, EThroughBallFeetPlanQueryErrorCode::InvalidActiveGoalkeeperIdentity, TEXT("ActiveGoalkeeperSnapshot"));
 			break;
 		case 29:
-			Input = MakeInput(false, true); Input.ActiveGoalkeeperSnapshot.Attributes.Stamina = 0;
+			Input = MakeInput(false, true); Input.ActiveGoalkeeperSnapshot.GoalkeeperAttributes.OneOnOne = 0;
 			Result = EvaluateFailure(Test, Input, EThroughBallFeetPlanQueryErrorCode::InvalidActiveGoalkeeperSnapshot, TEXT("ActiveGoalkeeperSnapshot"));
 			Test.TestFalse(TEXT("Nested GK validation fails"), Result.ActiveGoalkeeperValidationResult.bSuccess);
 			break;
 		case 30:
-			Input = MakeInput(); Input.bHasActiveGoalkeeper = true; Input.ActiveGoalkeeperSnapshot = MakeOutfield(GoalkeeperId, EPlayerPositionType::Defense, 1, 1, 1, 1, 1);
+			Input = MakeInput(); Input.bHasActiveGoalkeeper = true; Input.ActiveGoalkeeperSnapshot = MakeOutfield(GoalkeeperId, EPlayerPositionType::Defense, 1, 1, 1, 1);
 			EvaluateFailure(Test, Input, EThroughBallFeetPlanQueryErrorCode::ActiveGoalkeeperMustBeGoalkeeper, TEXT("ActiveGoalkeeperSnapshot"));
 			break;
 		case 31:
@@ -451,11 +445,11 @@ namespace ThroughBallFeetPlanQueryTests
 			EvaluateSuccess(Test, Input);
 			break;
 		case 34:
-			Input = MakeInput(); Input.bHasActiveGoalkeeper = true; Input.ActiveGoalkeeperSnapshot = MakeOutfield(GoalkeeperId, EPlayerPositionType::Defense, 1, 1, 1, 1, 0);
+			Input = MakeInput(); Input.bHasActiveGoalkeeper = true; Input.ActiveGoalkeeperSnapshot = MakeOutfield(GoalkeeperId, EPlayerPositionType::Defense, 1, 1, 1, 0);
 			EvaluateFailure(Test, Input, EThroughBallFeetPlanQueryErrorCode::InvalidActiveGoalkeeperSnapshot, TEXT("ActiveGoalkeeperSnapshot"));
 			break;
 		case 35:
-			Input = MakeInput(); Input.bHasActiveGoalkeeper = true; Input.ActiveGoalkeeperSnapshot = MakeOutfield(MarkerId, EPlayerPositionType::Defense, 1, 1, 1, 1, 1);
+			Input = MakeInput(); Input.bHasActiveGoalkeeper = true; Input.ActiveGoalkeeperSnapshot = MakeOutfield(MarkerId, EPlayerPositionType::Defense, 1, 1, 1, 1);
 			EvaluateFailure(Test, Input, EThroughBallFeetPlanQueryErrorCode::ActiveGoalkeeperMustBeGoalkeeper, TEXT("ActiveGoalkeeperSnapshot"));
 			break;
 		case 36:
@@ -469,7 +463,7 @@ namespace ThroughBallFeetPlanQueryTests
 			Result = EvaluateSuccess(Test, MakeInput()); Test.TestEqual(TEXT("Carrier identity"), Result.FormulaPlan.CarrierId, CarrierId); Test.TestEqual(TEXT("Carrier Passing"), Result.FormulaPlan.CarrierPassing, 4);
 			break;
 		case 39:
-			Result = EvaluateSuccess(Test, MakeInput()); Test.TestEqual(TEXT("Runner identity"), Result.FormulaPlan.RunnerId, RunnerId); Test.TestEqual(TEXT("Runner OffBall"), Result.FormulaPlan.RunnerOffBall, 5);
+			Result = EvaluateSuccess(Test, MakeInput()); Test.TestEqual(TEXT("Runner identity"), Result.FormulaPlan.RunnerId, RunnerId); Test.TestEqual(TEXT("Runner Control"), Result.FormulaPlan.RunnerControl, 5);
 			break;
 		case 40:
 			Test.TestEqual(TEXT("Attack average preserves half"), EvaluateSuccess(Test, MakeInput()).FormulaPlan.AttackBaseValue, 4.5f);
@@ -481,16 +475,16 @@ namespace ThroughBallFeetPlanQueryTests
 			Test.TestEqual(TEXT("Attack D6 mapped"), EvaluateSuccess(Test, MakeInput()).FormulaPlan.AttackD6, 3);
 			break;
 		case 43:
-			Test.TestEqual(TEXT("Attack stamina ordered"), EvaluateSuccess(Test, MakeInput()).FormulaPlan.AttackParticipatingStamina, TArray<int32>({5, 4}));
+			Test.TestEqual(TEXT("Attack stamina ordered"), EvaluateSuccess(Test, MakeInput()).FormulaPlan.AttackParticipatingStamina, TArray<int32>({5, 3}));
 			break;
 		case 44:
-			Result = EvaluateSuccess(Test, MakeInput()); Test.TestEqual(TEXT("Marker identity"), Result.FormulaPlan.MarkerId, MarkerId); Test.TestEqual(TEXT("Marker Tackling"), Result.FormulaPlan.MarkerTackling, 5);
+			Result = EvaluateSuccess(Test, MakeInput()); Test.TestEqual(TEXT("Marker identity"), Result.FormulaPlan.MarkerId, MarkerId); Test.TestEqual(TEXT("Marker Defense"), Result.FormulaPlan.MarkerDefense, 5);
 			break;
 		case 45:
-			Result = EvaluateSuccess(Test, MakeInput(true)); Test.TestTrue(TEXT("Helper present"), Result.FormulaPlan.bHasHelper); Test.TestEqual(TEXT("Helper identity"), Result.FormulaPlan.HelperId, HelperId); Test.TestEqual(TEXT("Helper Marking"), Result.FormulaPlan.HelperMarking, 4); Test.TestEqual(TEXT("Helper stamina"), Result.FormulaPlan.HelperStamina, 2);
+			Result = EvaluateSuccess(Test, MakeInput(true)); Test.TestTrue(TEXT("Helper present"), Result.FormulaPlan.bHasHelper); Test.TestEqual(TEXT("Helper identity"), Result.FormulaPlan.HelperId, HelperId); Test.TestEqual(TEXT("Helper Defense"), Result.FormulaPlan.HelperDefense, 4); Test.TestEqual(TEXT("Helper stamina"), Result.FormulaPlan.HelperStamina, 1);
 			break;
 		case 46:
-			Result = EvaluateSuccess(Test, MakeInput()); Test.TestFalse(TEXT("Helper absent"), Result.FormulaPlan.bHasHelper); Test.TestTrue(TEXT("Helper identity default"), Result.FormulaPlan.HelperId.IsNone()); Test.TestEqual(TEXT("Helper Marking zero"), Result.FormulaPlan.HelperMarking, 0); Test.TestEqual(TEXT("Helper stamina zero"), Result.FormulaPlan.HelperStamina, 0);
+			Result = EvaluateSuccess(Test, MakeInput()); Test.TestFalse(TEXT("Helper absent"), Result.FormulaPlan.bHasHelper); Test.TestTrue(TEXT("Helper identity default"), Result.FormulaPlan.HelperId.IsNone()); Test.TestEqual(TEXT("Helper Defense zero"), Result.FormulaPlan.HelperDefense, 0); Test.TestEqual(TEXT("Helper stamina zero"), Result.FormulaPlan.HelperStamina, 0);
 			break;
 		case 47:
 			Test.TestEqual(TEXT("Defense average preserves half"), EvaluateSuccess(Test, MakeInput(true)).FormulaPlan.DefenseBaseValue, 4.5f);
@@ -509,7 +503,7 @@ namespace ThroughBallFeetPlanQueryTests
 			Test.TestEqual(TEXT("Defense D6 mapped"), EvaluateSuccess(Test, MakeInput()).FormulaPlan.DefenseD6, 4);
 			break;
 		case 52:
-			Test.TestEqual(TEXT("Outfield defense stamina ordered; GK has no stamina"), EvaluateSuccess(Test, MakeInput(true, true)).FormulaPlan.DefenseParticipatingStamina, TArray<int32>({3, 2}));
+			Test.TestEqual(TEXT("Outfield defense stamina ordered; GK has no stamina"), EvaluateSuccess(Test, MakeInput(true, true)).FormulaPlan.DefenseParticipatingStamina, TArray<int32>({3, 1}));
 			Test.TestEqual(TEXT("Absent optional stamina omitted"), EvaluateSuccess(Test, MakeInput()).FormulaPlan.DefenseParticipatingStamina, TArray<int32>({3}));
 			break;
 		case 53:
@@ -535,15 +529,15 @@ namespace ThroughBallFeetPlanQueryTests
 			EvaluateFailure(Test, Input, EThroughBallFeetPlanQueryErrorCode::InvalidLogContext, TEXT("LogId"));
 			break;
 		case 59:
-			Input = MakeInput(); Input.bHasActiveGoalkeeper = true; Input.ActiveGoalkeeperSnapshot.Attributes.Stamina = 0;
+			Input = MakeInput(); Input.bHasActiveGoalkeeper = true; Input.ActiveGoalkeeperSnapshot.GoalkeeperAttributes.OneOnOne = 0;
 			EvaluateFailure(Test, Input, EThroughBallFeetPlanQueryErrorCode::InvalidActiveGoalkeeperIdentity, TEXT("ActiveGoalkeeperSnapshot"));
 			break;
 		case 60:
-			Input = MakeInput(); Input.bHasActiveGoalkeeper = true; Input.ActiveGoalkeeperSnapshot = MakeOutfield(GoalkeeperId, EPlayerPositionType::Defense, 1, 1, 1, 1, 0);
+			Input = MakeInput(); Input.bHasActiveGoalkeeper = true; Input.ActiveGoalkeeperSnapshot = MakeOutfield(GoalkeeperId, EPlayerPositionType::Defense, 1, 1, 1, 0);
 			EvaluateFailure(Test, Input, EThroughBallFeetPlanQueryErrorCode::InvalidActiveGoalkeeperSnapshot, TEXT("ActiveGoalkeeperSnapshot"));
 			break;
 		case 61:
-			Input = MakeInput(); Input.bHasActiveGoalkeeper = true; Input.ActiveGoalkeeperSnapshot = MakeOutfield(MarkerId, EPlayerPositionType::Defense, 1, 1, 1, 1, 1);
+			Input = MakeInput(); Input.bHasActiveGoalkeeper = true; Input.ActiveGoalkeeperSnapshot = MakeOutfield(MarkerId, EPlayerPositionType::Defense, 1, 1, 1, 1);
 			EvaluateFailure(Test, Input, EThroughBallFeetPlanQueryErrorCode::ActiveGoalkeeperMustBeGoalkeeper, TEXT("ActiveGoalkeeperSnapshot"));
 			break;
 		case 62:

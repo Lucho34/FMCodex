@@ -52,32 +52,20 @@ namespace SingleCardFormulaResolverInputAssembler
 		case ESingleCardFormulaAttribute::Shooting:
 			OutValue = Snapshot.Attributes.Shooting;
 			return true;
-		case ESingleCardFormulaAttribute::Dribbling:
-			OutValue = Snapshot.Attributes.Dribbling;
+		case ESingleCardFormulaAttribute::Control:
+			OutValue = Snapshot.Attributes.Control;
 			return true;
 		case ESingleCardFormulaAttribute::Passing:
 			OutValue = Snapshot.Attributes.Passing;
 			return true;
-		case ESingleCardFormulaAttribute::OffBall:
-			OutValue = Snapshot.Attributes.OffBall;
-			return true;
-		case ESingleCardFormulaAttribute::Marking:
-			OutValue = Snapshot.Attributes.Marking;
-			return true;
-		case ESingleCardFormulaAttribute::Tackling:
-			OutValue = Snapshot.Attributes.Tackling;
+		case ESingleCardFormulaAttribute::Defense:
+			OutValue = Snapshot.Attributes.Defense;
 			return true;
 		case ESingleCardFormulaAttribute::Speed:
 			OutValue = Snapshot.Attributes.Speed;
 			return true;
 		case ESingleCardFormulaAttribute::Strength:
 			OutValue = Snapshot.Attributes.Strength;
-			return true;
-		case ESingleCardFormulaAttribute::Stamina:
-			OutValue = Snapshot.Attributes.Stamina;
-			return true;
-		case ESingleCardFormulaAttribute::LongShot:
-			OutValue = Snapshot.Attributes.LongShot;
 			return true;
 		case ESingleCardFormulaAttribute::GoalkeeperHandling:
 			OutValue = Snapshot.GoalkeeperAttributes.Handling;
@@ -113,8 +101,10 @@ namespace SingleCardFormulaResolverInputAssembler
 		SideInput.ComparePoint = Contract.ExternalD6ComparePoint;
 		SideInput.bComparePointWasRolledOnD6 =
 			Contract.bHasExternalD6ComparePoint;
-		SideInput.ParticipatingStamina.Add(
-			Snapshot.Attributes.Stamina);
+		if (!Snapshot.bIsGoalkeeper)
+		{
+			SideInput.ParticipatingStamina.Add(PlayerStaminaGameplayValue(Snapshot.Attributes.StaminaTier));
+		}
 		return SideInput;
 	}
 }

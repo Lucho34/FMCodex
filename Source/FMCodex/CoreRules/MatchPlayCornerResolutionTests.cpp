@@ -20,8 +20,8 @@ namespace MatchPlayCornerResolutionTests
 			: EPlayerPositionType::Attack };
 		Card.Attributes.Strength = 4;
 		Card.Attributes.Shooting = 4;
-		Card.Attributes.Marking = 4;
-		Card.Attributes.Stamina = 5;
+		Card.Attributes.Defense = 4;
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::S;
 		Card.GoalkeeperAttributes.Aerial = 4;
 		Card.GoalkeeperAttributes.Reflex = 4;
 		return Card;
@@ -709,7 +709,7 @@ bool FMatchPlayCornerIntentFormulaTest::RunTest(const FString& Parameters)
 	FindSnapshot(HighState, HighAttacker, false)->Attributes.Strength = 6;
 	FindSnapshot(HighState, HighAttacker, false)->Attributes.Shooting = 1;
 	FindSnapshot(HighState, HighDefender, false)->Attributes.Strength = 3;
-	FindSnapshot(HighState, HighDefender, false)->Attributes.Marking = 6;
+	FindSnapshot(HighState, HighDefender, false)->Attributes.Defense = 6;
 	FindSnapshot(HighState, HighDefender, true)->GoalkeeperAttributes.Aerial = 4;
 	FindSnapshot(HighState, HighDefender, true)->GoalkeeperAttributes.Reflex = 6;
 	const auto High = MakeTerminal(HighState, 1, 1, 1,
@@ -750,15 +750,15 @@ bool FMatchPlayCornerIntentFormulaTest::RunTest(const FString& Parameters)
 	const EInitialTurnOrderPlayer LowAttacker =
 		LowState.RuntimeState.CurrentAttackingPlayer;
 	const EInitialTurnOrderPlayer LowDefender = Other(LowAttacker);
-	FindSnapshot(LowState, LowAttacker, false)->Attributes.Shooting = 5;
+	FindSnapshot(LowState, LowAttacker, false)->Attributes.Control = 5;
 	FindSnapshot(LowState, LowAttacker, false)->Attributes.Strength = 1;
-	FindSnapshot(LowState, LowDefender, false)->Attributes.Marking = 3;
+	FindSnapshot(LowState, LowDefender, false)->Attributes.Defense = 3;
 	FindSnapshot(LowState, LowDefender, false)->Attributes.Strength = 6;
 	FindSnapshot(LowState, LowDefender, true)->GoalkeeperAttributes.Reflex = 4;
 	FindSnapshot(LowState, LowDefender, true)->GoalkeeperAttributes.Aerial = 6;
 	const auto Low = MakeTerminal(LowState, 1, 1, 1,
 		EMatchPlayCornerRouteIntent::Low, 1, 1, 1);
-	TestTrue(TEXT("Low uses Shooting/Marking/Reflex with half precision and no High leakage"),
+	TestTrue(TEXT("Low uses Control/Defense/Reflex with half precision and no High leakage"),
 		Low.bSuccess
 			&& FMath::IsNearlyEqual(Low.FormulaInput.Defender.BaseValue, 3.5f)
 			&& FMath::IsNearlyEqual(Low.FormulaResolution.AttackerFinalValue, 6.0f)

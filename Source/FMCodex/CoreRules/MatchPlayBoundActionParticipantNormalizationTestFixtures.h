@@ -87,16 +87,13 @@ namespace FMCodex::Tests::MatchPlayBoundActionParticipantNormalization
 		FPlayerAttributes& Attributes,
 		const int32 Offset = 0)
 	{
-		Attributes.Shooting = 1 + (Offset % 6);
-		Attributes.Dribbling = 1 + ((Offset + 1) % 6);
 		Attributes.Passing = 1 + ((Offset + 2) % 6);
-		Attributes.OffBall = 1 + ((Offset + 3) % 6);
-		Attributes.Marking = 1 + ((Offset + 4) % 6);
-		Attributes.Tackling = 1 + ((Offset + 5) % 6);
+		Attributes.Control = 1 + ((Offset + 3) % 6);
+		Attributes.Defense = 1 + ((Offset + 5) % 6);
 		Attributes.Speed = 1 + ((Offset + 1) % 6);
 		Attributes.Strength = 1 + ((Offset + 2) % 6);
-		Attributes.Stamina = 1 + ((Offset + 3) % 6);
-		Attributes.LongShot = 1 + ((Offset + 4) % 6);
+		Attributes.StaminaTier = (1 + ((Offset + 3) % 6)) >= 5 ? EPlayerStaminaTier::S : (1 + ((Offset + 3) % 6)) >= 3 ? EPlayerStaminaTier::A : (1 + ((Offset + 3) % 6)) >= 1 ? EPlayerStaminaTier::B : EPlayerStaminaTier::None;
+		Attributes.Shooting = 1 + ((Offset + 4) % 6);
 	}
 
 	inline bool ValuesMatch(
@@ -104,30 +101,27 @@ namespace FMCodex::Tests::MatchPlayBoundActionParticipantNormalization
 		const FPlayerAttributes& Attributes)
 	{
 		return Values.Shooting == Attributes.Shooting
-			&& Values.Dribbling == Attributes.Dribbling
+			&& Values.Control == Attributes.Control
 			&& Values.Passing == Attributes.Passing
-			&& Values.OffBall == Attributes.OffBall
-			&& Values.Marking == Attributes.Marking
-			&& Values.Tackling == Attributes.Tackling
+			&& Values.Defense == Attributes.Defense
 			&& Values.Speed == Attributes.Speed
 			&& Values.Strength == Attributes.Strength
-			&& Values.Stamina == Attributes.Stamina
-			&& Values.LongShot == Attributes.LongShot;
+			&& Values.StaminaTier == Attributes.StaminaTier;
 	}
 
 	inline bool ValuesAreZero(
 		const FMatchPlayBoundActionNormalizedParticipantValues& Values)
 	{
 		return Values.Shooting == 0
-			&& Values.Dribbling == 0
+			&& Values.Control == 0
 			&& Values.Passing == 0
-			&& Values.OffBall == 0
-			&& Values.Marking == 0
-			&& Values.Tackling == 0
+			&& Values.Control == 0
+			&& Values.Defense == 0
+			&& Values.Defense == 0
 			&& Values.Speed == 0
 			&& Values.Strength == 0
-			&& Values.Stamina == 0
-			&& Values.LongShot == 0;
+			&& PlayerStaminaGameplayValue(Values.StaminaTier) == 0
+			&& Values.Shooting == 0;
 	}
 
 	inline bool AreStatesEqual(

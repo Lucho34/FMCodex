@@ -213,11 +213,11 @@ namespace FMCodexPassControlProductionPresentationTests
 		const EAttribute CarrierAttribute = Branch == EBranch::PassAdvance
 			? EAttribute::Passing
 			: Branch == EBranch::DribbleAdvance
-				? EAttribute::Dribbling : EAttribute::OffBall;
+				? EAttribute::Control : EAttribute::Control;
 		const EAttribute RunnerAttribute = Branch == EBranch::RunAdvance
-			? EAttribute::Dribbling : EAttribute::Passing;
+			? EAttribute::Control : EAttribute::Passing;
 		const EAttribute MarkerAttribute = Branch == EBranch::RunAdvance
-			? EAttribute::Marking : EAttribute::Tackling;
+			? EAttribute::Defense : EAttribute::Defense;
 
 		FMatchPlayResolutionFormulaContestFact Contest;
 		Contest.ContestId = ContestId(Branch);
@@ -246,7 +246,7 @@ namespace FMCodexPassControlProductionPresentationTests
 			Contest.DefenseRow.Terms.Add(Attribute(
 				TEXT("Helper.PrimaryHalf"), EParticipant::Helper,
 				EInitialTurnOrderPlayer::PlayerB, HelperId,
-				EAttribute::Marking, 4.0f));
+				EAttribute::Defense, 4.0f));
 		}
 		Contest.DefenseRow.Terms.Add(RawTerm(2, bDefenseResolved, DefenseD6));
 		Contest.DefenseRow.Terms.Add(Fixed(2.0f));

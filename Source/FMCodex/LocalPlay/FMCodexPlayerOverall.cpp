@@ -44,31 +44,9 @@ FFMCodexPlayerOverallResult FFMCodexPlayerOverall::CalculateOutfield(
 	const FPlayerAttributes& Attributes,
 	const ECardRarity Rarity)
 {
-	EFMCodexOverallRarityTier Tier;
-	if (!TryMapRarity(Rarity, Tier))
-	{
-		return {};
-	}
-
-	TArray<int32, TInlineAllocator<10>> Values = {
-		Attributes.Shooting,
-		Attributes.Dribbling,
-		Attributes.Passing,
-		Attributes.OffBall,
-		Attributes.Marking,
-		Attributes.Tackling,
-		Attributes.Speed,
-		Attributes.Strength,
-		Attributes.Stamina,
-		Attributes.LongShot
-	};
-	Values.Sort(TGreater<int32>());
-	int32 TopSixSum = 0;
-	for (int32 Index = 0; Index < 6; ++Index)
-	{
-		TopSixSum += Values[Index];
-	}
-	return { true, TopSixSum * 3 + RarityValue(Tier) };
+	const int32 Sum = Attributes.Shooting + Attributes.Passing + Attributes.Control
+		+ Attributes.Speed + Attributes.Strength + Attributes.Defense;
+	return { true, FMath::Clamp(59 + Sum, 65, 95) };
 }
 
 FFMCodexPlayerOverallResult FFMCodexPlayerOverall::CalculateGoalkeeper(

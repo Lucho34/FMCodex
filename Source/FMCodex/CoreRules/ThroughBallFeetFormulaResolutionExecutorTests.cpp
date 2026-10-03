@@ -27,7 +27,7 @@ namespace ThroughBallFeetFormulaResolutionExecutorTests
 		Plan.CarrierPassing = 6;
 		Plan.CarrierStamina = 5;
 		Plan.RunnerId = RunnerId;
-		Plan.RunnerOffBall = 6;
+		Plan.RunnerControl = 6;
 		Plan.RunnerStamina = 4;
 		Plan.AttackD6 = 3;
 		Plan.AttackBaseValue = 6.0f;
@@ -35,13 +35,13 @@ namespace ThroughBallFeetFormulaResolutionExecutorTests
 		Plan.AttackParticipatingStamina = {5, 4};
 
 		Plan.MarkerId = MarkerId;
-		Plan.MarkerTackling = 4;
+		Plan.MarkerDefense = 4;
 		Plan.MarkerStamina = 3;
 		Plan.bHasHelper = bHasHelper;
 		if (bHasHelper)
 		{
 			Plan.HelperId = HelperId;
-			Plan.HelperMarking = 4;
+			Plan.HelperDefense = 4;
 			Plan.HelperStamina = 2;
 		}
 
@@ -105,7 +105,7 @@ namespace ThroughBallFeetFormulaResolutionExecutorTests
 			&& Left.CarrierPassing == Right.CarrierPassing
 			&& Left.CarrierStamina == Right.CarrierStamina
 			&& Left.RunnerId == Right.RunnerId
-			&& Left.RunnerOffBall == Right.RunnerOffBall
+			&& Left.RunnerControl == Right.RunnerControl
 			&& Left.RunnerStamina == Right.RunnerStamina
 			&& Left.AttackD6 == Right.AttackD6
 			&& Left.AttackBaseValue == Right.AttackBaseValue
@@ -113,11 +113,11 @@ namespace ThroughBallFeetFormulaResolutionExecutorTests
 			&& Left.AttackParticipatingStamina
 				== Right.AttackParticipatingStamina
 			&& Left.MarkerId == Right.MarkerId
-			&& Left.MarkerTackling == Right.MarkerTackling
+			&& Left.MarkerDefense == Right.MarkerDefense
 			&& Left.MarkerStamina == Right.MarkerStamina
 			&& Left.bHasHelper == Right.bHasHelper
 			&& Left.HelperId == Right.HelperId
-			&& Left.HelperMarking == Right.HelperMarking
+			&& Left.HelperDefense == Right.HelperDefense
 			&& Left.HelperStamina == Right.HelperStamina
 			&& Left.bHasActiveGoalkeeper == Right.bHasActiveGoalkeeper
 			&& Left.ActiveGoalkeeperId == Right.ActiveGoalkeeperId

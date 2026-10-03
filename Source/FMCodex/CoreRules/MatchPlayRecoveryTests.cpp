@@ -26,7 +26,7 @@ namespace MatchPlayRecoveryTests
 			: EPlayerPositionType::Attack };
 		Result.bIsGoalkeeper = bGoalkeeper;
 		Result.bHasGoalkeeperAttributes = bGoalkeeper;
-		Result.Attributes.Stamina = Stamina;
+		Result.Attributes.StaminaTier = (Stamina) >= 5 ? EPlayerStaminaTier::S : (Stamina) >= 3 ? EPlayerStaminaTier::A : (Stamina) >= 1 ? EPlayerStaminaTier::B : EPlayerStaminaTier::None;
 		return Result;
 	}
 
@@ -114,7 +114,7 @@ bool FMatchPlayRecoveryCandidateQueryTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("PlayerB follows PlayerA"),
 			Query.Candidates[2].CardId, B1);
 		TestEqual(TEXT("Stamina is authoritative"),
-			Query.Candidates[2].StaminaWeight, 4);
+			Query.Candidates[2].StaminaWeight, 3);
 	}
 	TestTrue(TEXT("Query is pure"), SameUsage(Usage, Before));
 	return true;
@@ -211,8 +211,8 @@ bool FMatchPlayRecoveryPairTest::RunTest(const FString& Parameters)
 			CrossSideProvider.LastCandidates[0].StaminaWeight, 1);
 		TestEqual(TEXT("Pool3 weight 1 is STA3"),
 			CrossSideProvider.LastCandidates[1].StaminaWeight, 3);
-		TestEqual(TEXT("Pool3 weight 2 is STA6"),
-			CrossSideProvider.LastCandidates[2].StaminaWeight, 6);
+		TestEqual(TEXT("Pool3 weight 2 is tier S"),
+			CrossSideProvider.LastCandidates[2].StaminaWeight, 5);
 	}
 	TestTrue(TEXT("Cross-side PlayerA card returns to PlayerA"),
 		CrossSide.UpdatedCardUsageState.PlayerACardUsageState
@@ -289,7 +289,7 @@ bool FMatchPlayRecoveryInvalidCandidateTest::RunTest(const FString& Parameters)
 		EMatchPlayRecoveryCandidateQueryErrorCode::GoalkeeperInUsedZone);
 
 	auto InvalidAuthority = Authority();
-	InvalidAuthority.PlayerACardSnapshots.Cards[0].Attributes.Stamina = 7;
+	InvalidAuthority.PlayerACardSnapshots.Cards[0].Attributes.StaminaTier = EPlayerStaminaTier::None;
 	FMatchCardUsageState InvalidWeight;
 	InvalidWeight.PlayerACardUsageState.UsedCardIds = { A1 };
 	InvalidWeight.PlayerBCardUsageState.AvailableCardIds = { B1, B2 };

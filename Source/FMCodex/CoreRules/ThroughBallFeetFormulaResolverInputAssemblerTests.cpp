@@ -29,7 +29,7 @@ namespace ThroughBallFeetFormulaResolverInputAssemblerTests
 		Plan.CarrierPassing = 4;
 		Plan.CarrierStamina = 5;
 		Plan.RunnerId = RunnerId;
-		Plan.RunnerOffBall = 5;
+		Plan.RunnerControl = 5;
 		Plan.RunnerStamina = 4;
 		Plan.AttackD6 = 3;
 		Plan.AttackBaseValue = 4.5f;
@@ -37,13 +37,13 @@ namespace ThroughBallFeetFormulaResolverInputAssemblerTests
 		Plan.AttackParticipatingStamina = {5, 4};
 
 		Plan.MarkerId = MarkerId;
-		Plan.MarkerTackling = 5;
+		Plan.MarkerDefense = 5;
 		Plan.MarkerStamina = 3;
 		Plan.bHasHelper = bHasHelper;
 		if (bHasHelper)
 		{
 			Plan.HelperId = HelperId;
-			Plan.HelperMarking = 4;
+			Plan.HelperDefense = 4;
 			Plan.HelperStamina = 2;
 		}
 
@@ -103,7 +103,7 @@ namespace ThroughBallFeetFormulaResolverInputAssemblerTests
 			&& Left.CarrierPassing == Right.CarrierPassing
 			&& Left.CarrierStamina == Right.CarrierStamina
 			&& Left.RunnerId == Right.RunnerId
-			&& Left.RunnerOffBall == Right.RunnerOffBall
+			&& Left.RunnerControl == Right.RunnerControl
 			&& Left.RunnerStamina == Right.RunnerStamina
 			&& Left.AttackD6 == Right.AttackD6
 			&& Left.AttackBaseValue == Right.AttackBaseValue
@@ -111,11 +111,11 @@ namespace ThroughBallFeetFormulaResolverInputAssemblerTests
 			&& Left.AttackParticipatingStamina
 				== Right.AttackParticipatingStamina
 			&& Left.MarkerId == Right.MarkerId
-			&& Left.MarkerTackling == Right.MarkerTackling
+			&& Left.MarkerDefense == Right.MarkerDefense
 			&& Left.MarkerStamina == Right.MarkerStamina
 			&& Left.bHasHelper == Right.bHasHelper
 			&& Left.HelperId == Right.HelperId
-			&& Left.HelperMarking == Right.HelperMarking
+			&& Left.HelperDefense == Right.HelperDefense
 			&& Left.HelperStamina == Right.HelperStamina
 			&& Left.bHasActiveGoalkeeper == Right.bHasActiveGoalkeeper
 			&& Left.ActiveGoalkeeperId == Right.ActiveGoalkeeperId
@@ -316,8 +316,8 @@ namespace ThroughBallFeetFormulaResolverInputAssemblerTests
 			AssembleFailure(Test, Input, EThroughBallFeetFormulaResolverInputAssemblyErrorCode::InvalidOptionalParticipantState, TEXT("HelperId"));
 			break;
 		case 16:
-			Input = MakeInput(); Input.FormulaPlan.HelperMarking = 1;
-			AssembleFailure(Test, Input, EThroughBallFeetFormulaResolverInputAssemblyErrorCode::InvalidOptionalParticipantState, TEXT("HelperMarking"));
+			Input = MakeInput(); Input.FormulaPlan.HelperDefense = 1;
+			AssembleFailure(Test, Input, EThroughBallFeetFormulaResolverInputAssemblyErrorCode::InvalidOptionalParticipantState, TEXT("HelperDefense"));
 			Input = MakeInput(); Input.FormulaPlan.HelperStamina = 1;
 			AssembleFailure(Test, Input, EThroughBallFeetFormulaResolverInputAssemblyErrorCode::InvalidOptionalParticipantState, TEXT("HelperStamina"));
 			break;

@@ -317,25 +317,17 @@ namespace FMCodexLocalMatchInteractionView
 		View.CompactRoleLabel = CompactRoleLabel(Card.Snapshot.PositionTypes);
 		const FPlayerAttributes& A = Card.Snapshot.Attributes;
 		View.AttributeValues = {
-			{ TEXT("SHO"), A.Shooting },
-			{ TEXT("DRI"), A.Dribbling },
-			{ TEXT("PAS"), A.Passing },
-			{ TEXT("OFF"), A.OffBall },
-			{ TEXT("MRK"), A.Marking },
-			{ TEXT("TKL"), A.Tackling },
-			{ TEXT("SPD"), A.Speed },
-			{ TEXT("STR"), A.Strength },
-			{ TEXT("STA"), A.Stamina },
-			{ TEXT("LS"), A.LongShot }
+			{ TEXT("SHO"), A.Shooting }, { TEXT("PAS"), A.Passing },
+			{ TEXT("CON"), A.Control }, { TEXT("SPD"), A.Speed },
+			{ TEXT("STR"), A.Strength }, { TEXT("DEF"), A.Defense },
+			{ TEXT("StaminaTier"), 0, PlayerStaminaTierLabel(A.StaminaTier) }
 		};
 		View.AttributeSummary = FString::Printf(
-			TEXT("SHO %d | DRI %d | PAS %d | OFF %d | MRK %d | TKL %d | SPD %d | STR %d | STA %d | LS %d"),
-			A.Shooting, A.Dribbling, A.Passing, A.OffBall,
-			A.Marking, A.Tackling, A.Speed, A.Strength,
-			A.Stamina, A.LongShot);
+			TEXT("射门 %d | 传球 %d | 控球 %d | 速度 %d | 力量 %d | 防守 %d | 体力 %s"),
+			A.Shooting, A.Passing, A.Control, A.Speed, A.Strength, A.Defense, PlayerStaminaTierLabel(A.StaminaTier));
 		View.CompactAttributeSummary = FString::Printf(
-			TEXT("SHO %d | PAS %d | DRI %d | SPD %d"),
-			A.Shooting, A.Passing, A.Dribbling, A.Speed);
+			TEXT("射门 %d | 传球 %d | 控球 %d | 速度 %d"), A.Shooting, A.Passing, A.Control, A.Speed);
+
 		if (Card.Snapshot.bHasGoalkeeperAttributes)
 		{
 			const FGoalkeeperAttributes& G = Card.Snapshot.GoalkeeperAttributes;
@@ -1336,7 +1328,7 @@ namespace FMCodexLocalMatchInteractionView
 			if (Long.Method == EMatchPlayLongFreeKickMethod::Direct)
 			{
 				ProjectDirectCurrentTotals(
-					Long.Carrier.Snapshot.Attributes.LongShot,
+					Long.Carrier.Snapshot.Attributes.Shooting,
 					[](const FPlayerCardRuleSnapshot& Goalkeeper)
 					{
 						return Goalkeeper.GoalkeeperAttributes.Positioning;

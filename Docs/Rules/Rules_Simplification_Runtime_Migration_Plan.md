@@ -6,11 +6,11 @@
 
 审计日期：2026-10-02。实际基线：`main` / `eb51165d1a85f8d8c05018640f331536e52981c6`，提交标题 `Stage 8.20A.3: lock ranked trait effect contract`。开始时 staged 0、modified tracked 0、deleted tracked 1、untracked 0；唯一删除是预先存在的 `ContentSource/PlayerContent/~$FMCodex_Rules_Simplification_Draft.xlsx`，属于 Excel 临时锁文件，不在本阶段范围，未处理。
 
-未来规则只采用已锁定的 [A.2 Formula Contract](Rules_Simplification_Formula_Contract.md) 与 [A.3 Trait Contract](Trait_System_Design_Contract.md)。当前实现仍为旧属性、schema v3 和无 Trait 的玩法；本文中的“未来”不是对当前行为的描述，也不修改上述两份合同。PassControl / 传控暂时退出目标战术，不能借迁移恢复或重新设计其三个公式。
+未来规则只采用已锁定的 [A.2 Formula Contract](Rules_Simplification_Formula_Contract.md) 与 [A.3 Trait Contract](Trait_System_Design_Contract.md)。下文审计表描述 B 规划节点的旧属性/schema v3 基线；Stage 8.20B.1 已实施 schema 4、六属性基础 Formula、体力与被动 Trait 存储。Ranked/Binary 效果仍待 B.2/B.3；不修改上述锁定合同。PassControl / 传控暂时退出目标战术，不能借迁移恢复或重新设计其三个公式。
 
 建议 **one-shot schema cutover**，不建立双 schema 运行时。将数据、六属性基础 Formula、体力与基础显示合为一个完整切换节点；随后分别完成 Ranked Trait（含权威解释事实与显示）、AntiOffside Binary（含原子双骰与显示），最后进行集成收尾。开发工作可拆分，不能提交只换 JSON 却仍依赖旧属性的不可运行节点。
 
-审计期间用户已明确决定：**迁移时暂时隐藏非门将总评，之后单独设计。** 保留门将既有总评；不推导新的非门将总评，不把 Trait 或体力加入临时替代算法。本阶段仅记录此决定。
+**B.1 用户新决定已替代 B 规划的临时隐藏方案：**启用非 GK 显示总评 `Clamp(59 + Shooting + Passing + Control + Speed + Strength + Defense, 65, 95)`；仅 base 六项，不计 Trait、体力、稀有度或临时修正，不参与玩法。GK 总评保持原样。
 
 ## 2. 生产内容与模型依赖
 
@@ -58,7 +58,7 @@
 | 定位球 | Long FK 使用 LS；Low Corner 使用 Runner SHO / Helper MRK；Near/Penalty 已使用 max(SHO,PAS) | 迁移属性同时保留程序方法、GK 项和 max；Corner 从已选 Runner/Helper 取值，不从候选或 Carrier 取值 |
 | Recovery / tie | `MatchPlayRecovery` candidate 构建与提交前二次校验直接读数值 STA；单人 assembler、Cross orchestrator、Feet/P1 Plan、定位球输入重复读取 STA | 共用映射 helper，但继续由各消费者提供既有实际参与者集合；不改变共用 tie 的顺序 |
 | 展示 / 静态规则 | InteractionView 的十属性卡片、UMG set-piece 字符串、TacticalRuleDescription、PlayerUIPresentationText、Formula attribute enums | 卡片改六属性+等级体力；静态战术信息改新规则。Live Formula 不从静态说明重新计算；检查旧 fallback / legacy consumers |
-| 总评 | [FMCodexPlayerOverall.cpp](../../Source/FMCodex/LocalPlay/FMCodexPlayerOverall.cpp) `CalculateOutfield` 从十项含 STA/LS 取最高六项 | 用户已选暂时隐藏非 GK 总评；沿用 DTO `bHasOverallRating=false` 的既有隐藏能力，覆盖 Hand / Pitch / Full Card；不影响门将总评 |
+| 总评 | [FMCodexPlayerOverall.cpp](../../Source/FMCodex/LocalPlay/FMCodexPlayerOverall.cpp) `CalculateOutfield` 从十项含 STA/LS 取最高六项 | B.1 已改为集中式六属性总评 65–95，覆盖 Hand / Pitch / Full Card；仅显示，门将不变 |
 | 暂退 PassControl | 三个 `PassControl*AdvancePlanQuery`、orchestrator、投影、规则说明及旧测试仍编译并访问 DRI/OFF/TKL/MRK | 不为它设计六属性公式。基础切换中将旧数值路径收口为明确 unsupported / 不可达能力，保留必要稳定 enum / wire 身份和现有生产不可选边界；更新编译依赖和相应不可用测试。不得为了让旧测试通过重新暴露战术或保留第二套玩家属性 |
 | DEV / Network / test 装配 | LocalDemoConfiguration、NetworkMatchRuntime 的测试 / DEV 数据、各 TestFixture、snapshot copying / equality | 为编译和事实一致性做必要 fixture 迁移；DEV 不能成为生产 Trait、RNG 或法则来源 |
 
@@ -144,7 +144,7 @@ Ranked 事实最少包含 stable Trait ID、rank、实际 CardId/role、attribut
 | CompactBox / ThroughBall anti、Chip、route | Binary事件两骰复用既有pair编排；普通route/Chip无Ranked | 外置CompactBox、既有Reel/ResultHold、一个动作与既有叙事门控 |
 | HeroRoll | 入口D12 / TP的非相关消费者不改玩法或数值域 | 保留既有Roll v2；不能把增强属性当作Reel域1–6去截断 |
 | 仍可达的 legacy / fallback、set-piece surfaces | 消费同一个完整safe term，或明确不提供尚缺事实的能力；同步旧属性标签 | 不建立另一套效果计算，不全局删除 InteractionPanel |
-| Card / Tactical Information | 六项base与S/A/B、非GK总评隐藏；静态说明同步A.2，Trait标签由ID映射 | 基础卡面不被临时加成覆盖，显示名和美术稳定 |
+| Card / Tactical Information | 六项base与S/A/B、非GK六属性派生总评；静态说明同步A.2，Trait标签由ID映射 | 基础卡面不被临时加成覆盖，显示名和美术稳定 |
 
 网络当前投影将安全 UMG VM 放入 owner-only snapshot；因此新 term / max group 需贯通 BuildForViewer、presentation adapter、replication DTO和客户端共享widget。合法公开的效果事实可及时复制，仍由现有 result / displayed-score gate 控制可见揭示。不得把 future roll、原始route state或未获权限的 outcome放进客户端，亦不为装饰悬念延迟服务器持久化。
 
@@ -176,11 +176,11 @@ Ranked 事实最少包含 stable Trait ID、rank、实际 CardId/role、attribut
 
 ### 8.20B.1 — 原子基础切换
 
-- **范围 / 文件：**canonical XLSX、importer、JSON、PlayerCardTypes / snapshot / normalized values / validators；§4所有保留战术的基础Plan/resolution/assembler/projection；Recovery输入映射；卡片六属性 / 体力、静态战术说明、基础Formula标签与总评隐藏；必要DEV/fixture及暂退PassControl旧字段编译收口。更新当前 Rules Canonical / Data Schema / Canonical content文档。
+- **范围 / 文件：**canonical XLSX、importer、JSON、PlayerCardTypes / snapshot / normalized values / validators；§4所有保留战术的基础Plan/resolution/assembler/projection；Recovery输入映射；卡片六属性 / 体力、静态战术说明、基础Formula标签与六属性总评；必要DEV/fixture及暂退PassControl旧字段编译收口。更新当前 Rules Canonical / Data Schema / Canonical content文档。
 - **实现合同：**A.2六属性完整映射与固定项、S/A/B→5/3/1、内容逐值保留、schema4严格读取。预留并实际加载冻结23 Ranked+1 Binary assignment数据，但该节点尚不启用效果，也不向玩家把其显示为已生效；明确它是内部迁移节点。
 - **依赖：**本计划、锁定A.2/A.3和用户总评决定；内容提升、字段建模、基础Formula、体力可以分工作包，但完整节点必须一起可编译、可运行、可解释。
 - **排除：**Ranked / Binary玩法生效、新战术、新Roster值、Visual Language重设计、兼容双模型、泛化重构。
-- **最小验证：**V1 importer临时fixture+`--check`+生成差异与40人原值对账；V2–V4只选受改分支算术及关键早退/GK/系数边界；V5权重/体力与failure原子性；V7基础字段/总评隐藏；V8一个相关safe投影 / recovery UI参数化检查。UHT+增量Editor build。用户在基础显示milestone验收，不为每个工作包重复PIE。真实Host/Remote暂不跑，留B.4。
+- **最小验证：**V1 importer临时fixture+`--check`+生成差异与40人原值对账；V2–V4只选受改分支算术及关键早退/GK/系数边界；V5权重/体力与failure原子性；V7基础字段/六属性总评；V8一个相关safe投影 / recovery UI参数化检查。UHT+增量Editor build。用户在基础显示milestone验收，不为每个工作包重复PIE。真实Host/Remote暂不跑，留B.4。
 - **提交关系：**节点N1合并数据/模型/基础Formula/体力/基础显示，不能独立提交“数据已换、旧Formula待改”。若用户不希望保存无Trait效果的内部节点，可与N2/N3合并提交；无须为此引入运行时双版本。
 
 ### 8.20B.2 — Ranked Trait 与权威解释事实、显示
@@ -215,7 +215,7 @@ Ranked 事实最少包含 stable Trait ID、rank、实际 CardId/role、attribut
 
 ```mermaid
 flowchart TD
-    A[锁定A.2 / A.3 + 草稿原值 + 总评隐藏决定] --> B1[8.20B.1 / N1 原子基础切换]
+    A[锁定A.2 / A.3 + 草稿原值 + B.1六属性总评决定] --> B1[8.20B.1 / N1 原子基础切换]
     B1 --> B2F[8.20B.2 权威Trait查询与解释事实]
     B2F --> B2U[8.20B.2 safe投影与共享显示 / N2]
     B1 --> B3Q[8.20B.3 Binary程序query与原子记录]
@@ -243,10 +243,10 @@ N1内部依赖是：草稿提升映射与严格schema → card/snapshot/normaliz
 | 网络披露/事件边界 | High | 新operand不能越过viewer权限或产生重复result | 保持serverRNG+typedRPC+owner-safe DTO；针对性security、ACK/View和一条真Golden Path |
 | 暂退PassControl仍编译 | Medium | 删除通用旧字段也影响不在生产名单中的旧plan | 明确unsupported编译收口，保留必要身份，不发明新Formula或扩大恢复范围 |
 | UE反射 / 缓存 / 旧会话 | Medium | USTRUCT字段和static catalog形状改变，未证明混版本兼容 | 必要UHT/build/loading，新版新会话，同版Host/Remote，不默认旧save兼容 |
-| 中文显示 / 字段宽度 / 非GK总评 | Medium | 旧十属性、max解释和8/9影响布局，总评旧算法失效 | 同步基础显示、复用family，落实隐藏决定并USER PIE |
+| 中文显示 / 字段宽度 / 非GK总评 | Medium | 旧十属性、max解释和8/9影响布局，总评旧算法失效 | 同步基础显示、复用family，落实六属性总评并USER PIE |
 | 新Trait ID与中文标签绑定 | Low | 技术上可用固定registry直接解决 | 稳定字面量ID与FText映射分离，禁止显示名作权威身份 |
 
-**Remaining product decisions: None.** 总评问题已由用户选择“迁移时暂时隐藏非门将总评，之后单独设计”解决当前切换需求；新的总评算法是未来独立产品工作，不阻塞本路线图。字段名、schema版本、registry固定ID和DTO形状是按本计划收敛的技术实现工作；不重开A.2/A.3。
+**Remaining product decisions: None.** 总评由 B.1 新决定启用六属性 base sum 的 65–95 映射，原暂时隐藏计划被明确替代。字段名、schema版本、registry固定ID和DTO形状是按本计划收敛的技术实现工作；不重开A.2/A.3。
 
 ## 12. 本阶段验证预算与非实现确认
 

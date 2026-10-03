@@ -17,7 +17,7 @@ namespace MatchPlayShortFreeKickResolutionTests
 		Card.PositionTypes = { bGoalkeeper
 			? EPlayerPositionType::Goalkeeper
 			: EPlayerPositionType::Attack };
-		Card.Attributes.Stamina = 5;
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::S;
 		Card.Attributes.Shooting = 5;
 		Card.Attributes.Passing = 4;
 		Card.GoalkeeperAttributes.Handling = 4;

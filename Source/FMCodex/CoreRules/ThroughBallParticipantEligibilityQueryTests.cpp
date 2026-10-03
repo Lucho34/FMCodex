@@ -79,15 +79,12 @@ namespace ThroughBallParticipantEligibilityQueryTests
 		const FPlayerAttributes& Right)
 	{
 		return Left.Shooting == Right.Shooting
-			&& Left.Dribbling == Right.Dribbling
+			&& Left.Control == Right.Control
 			&& Left.Passing == Right.Passing
-			&& Left.OffBall == Right.OffBall
-			&& Left.Marking == Right.Marking
-			&& Left.Tackling == Right.Tackling
+			&& Left.Defense == Right.Defense
 			&& Left.Speed == Right.Speed
 			&& Left.Strength == Right.Strength
-			&& Left.Stamina == Right.Stamina
-			&& Left.LongShot == Right.LongShot;
+			&& Left.StaminaTier == Right.StaminaTier;
 	}
 
 	bool AreGoalkeeperAttributesEqual(
@@ -613,7 +610,7 @@ THROUGH_BALL_ELIGIBILITY_TEST(FThroughBallEligibility30, "30RejectsInvalidMarker
 bool FThroughBallEligibility30::RunTest(const FString& Parameters)
 {
 	auto Input = ThroughBallParticipantEligibilityQueryTests::MakeValidInput();
-	Input.MarkerSnapshot.Attributes.Marking = 7;
+	Input.MarkerSnapshot.Attributes.Defense = 7;
 	const auto Result = FThroughBallParticipantEligibilityQuery::Evaluate(
 		ThroughBallParticipantEligibilityQueryTests::MakeSkillRules(), Input);
 	TestEqual(TEXT("Marker Snapshot error is returned"), Result.ErrorCode,

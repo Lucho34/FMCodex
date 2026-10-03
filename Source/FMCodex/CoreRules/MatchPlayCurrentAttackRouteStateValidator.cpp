@@ -355,7 +355,7 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 						Input.Attacker.ComparePoint = Short.AttackD6;
 						Input.Attacker.bComparePointWasRolledOnD6 = true;
 						Input.Attacker.ParticipatingStamina.Add(
-							Short.Carrier.Snapshot.Attributes.Stamina);
+							PlayerStaminaGameplayValue(Short.Carrier.Snapshot.Attributes.StaminaTier));
 						Input.Defender.BaseValue =
 							Gk.Snapshot.GoalkeeperAttributes.Handling;
 						Input.Defender.Modifier = 1.0f;
@@ -609,11 +609,11 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 						FFormulaResolverInput Input;
 						Input.FormulaType = EFormulaType::Finishing;
 						Input.Attacker.BaseValue =
-							Long.Carrier.Snapshot.Attributes.LongShot;
+							Long.Carrier.Snapshot.Attributes.Shooting;
 						Input.Attacker.ComparePoint = Long.AttackD6;
 						Input.Attacker.bComparePointWasRolledOnD6 = true;
 						Input.Attacker.ParticipatingStamina.Add(
-							Long.Carrier.Snapshot.Attributes.Stamina);
+							PlayerStaminaGameplayValue(Long.Carrier.Snapshot.Attributes.StaminaTier));
 						Input.Defender.BaseValue =
 							Gk.Snapshot.GoalkeeperAttributes.Positioning;
 						Input.Defender.Modifier = 2.0f;
@@ -854,7 +854,7 @@ namespace MatchPlayCurrentAttackRouteStateValidator
 					Input.Attacker.ComparePoint = Penalty.AttackD6;
 					Input.Attacker.bComparePointWasRolledOnD6 = true;
 					Input.Attacker.ParticipatingStamina.Add(
-						Penalty.Carrier.Snapshot.Attributes.Stamina);
+						PlayerStaminaGameplayValue(Penalty.Carrier.Snapshot.Attributes.StaminaTier));
 					Input.Defender.BaseValue =
 						Gk.Snapshot.GoalkeeperAttributes.Anticipation;
 					Input.Defender.Modifier = -3.0f;

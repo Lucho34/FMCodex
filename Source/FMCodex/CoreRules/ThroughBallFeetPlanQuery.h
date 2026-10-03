@@ -50,7 +50,7 @@ struct FMCODEX_API FThroughBallFeetFormulaPlan
 	int32 CarrierStamina = 0;
 
 	FName RunnerId = NAME_None;
-	int32 RunnerOffBall = 0;
+	int32 RunnerControl = 0;
 	int32 RunnerStamina = 0;
 
 	int32 AttackD6 = 0;
@@ -59,12 +59,12 @@ struct FMCODEX_API FThroughBallFeetFormulaPlan
 	TArray<int32> AttackParticipatingStamina;
 
 	FName MarkerId = NAME_None;
-	int32 MarkerTackling = 0;
+	int32 MarkerDefense = 0;
 	int32 MarkerStamina = 0;
 
 	bool bHasHelper = false;
 	FName HelperId = NAME_None;
-	int32 HelperMarking = 0;
+	int32 HelperDefense = 0;
 	int32 HelperStamina = 0;
 
 	bool bHasActiveGoalkeeper = false;

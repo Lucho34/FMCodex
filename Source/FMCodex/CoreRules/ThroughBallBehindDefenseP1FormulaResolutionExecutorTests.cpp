@@ -34,7 +34,7 @@ namespace ThroughBallBehindDefenseP1FormulaResolutionExecutorTests
 		Plan.AttackParticipatingStamina = {5, 4};
 
 		Plan.MarkerId = MarkerId;
-		Plan.MarkerMarking = 5;
+		Plan.MarkerDefense = 5;
 		Plan.MarkerStamina = 3;
 		Plan.bHasHelper = bHasHelper;
 		if (bHasHelper)
@@ -120,7 +120,7 @@ namespace ThroughBallBehindDefenseP1FormulaResolutionExecutorTests
 			&& Left.AttackParticipatingStamina
 				== Right.AttackParticipatingStamina
 			&& Left.MarkerId == Right.MarkerId
-			&& Left.MarkerMarking == Right.MarkerMarking
+			&& Left.MarkerDefense == Right.MarkerDefense
 			&& Left.MarkerStamina == Right.MarkerStamina
 			&& Left.bHasHelper == Right.bHasHelper
 			&& Left.HelperId == Right.HelperId

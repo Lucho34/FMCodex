@@ -337,6 +337,9 @@ struct FMCODEX_API FFMCodexUMGAttributeViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	int32 Value = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	FString ValueLabel;
 };
 
 USTRUCT(BlueprintType)

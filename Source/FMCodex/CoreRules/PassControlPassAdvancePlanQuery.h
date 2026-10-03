@@ -35,7 +35,8 @@ enum class EPassControlPassAdvancePlanQueryErrorCode : uint8
 	InvalidAttackD6,
 	MissingExternalDefenseD6,
 	InvalidDefenseD6,
-	InvalidLogContext
+	InvalidLogContext,
+	TacticUnavailable
 };
 
 struct FMCODEX_API FPassControlPassAdvancePlanQueryInput

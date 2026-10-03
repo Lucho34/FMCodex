@@ -171,7 +171,7 @@ bool FMatchPlayCardSnapshotAuthorityProjectionTest::RunTest(
 	};
 	Source.Attributes.Shooting = 6;
 	Source.Attributes.Passing = 5;
-	Source.Attributes.LongShot = 4;
+	Source.Attributes.Control = 4;
 	Source.Rarity = ECardRarity::Continental;
 	Source.AttackSkillIds = { TEXT("SkillA"), TEXT("SkillB") };
 
@@ -195,9 +195,9 @@ bool FMatchPlayCardSnapshotAuthorityProjectionTest::RunTest(
 		Snapshot.Attributes.Passing,
 		Source.Attributes.Passing);
 	TestEqual(
-		TEXT("LongShot copied"),
-		Snapshot.Attributes.LongShot,
-		Source.Attributes.LongShot);
+		TEXT("Control copied"),
+		Snapshot.Attributes.Control,
+		Source.Attributes.Control);
 	TestEqual(TEXT("Rarity copied"), Snapshot.Rarity, Source.Rarity);
 	TestTrue(
 		TEXT("SkillIds copied"),
@@ -396,9 +396,9 @@ bool FMatchPlayCardSnapshotAuthoritySameCardIdTest::RunTest(
 	TArray<FPlayerCardData> PlayerADeck = MakeValidDeck(TEXT("A"));
 	TArray<FPlayerCardData> PlayerBDeck = MakeValidDeck(TEXT("B"));
 	PlayerADeck[0].CardId = SharedCardId;
-	PlayerADeck[0].Attributes.LongShot = 6;
+	PlayerADeck[0].Attributes.Shooting = 6;
 	PlayerBDeck[0].CardId = SharedCardId;
-	PlayerBDeck[0].Attributes.LongShot = 3;
+	PlayerBDeck[0].Attributes.Shooting = 3;
 	const FMatchPlayCardSnapshotAuthorityBuildResult BuildResult =
 		FMatchPlayCardSnapshotAuthorityBuilder::Build(
 			PlayerADeck,
@@ -415,9 +415,9 @@ bool FMatchPlayCardSnapshotAuthoritySameCardIdTest::RunTest(
 			SharedCardId);
 	TestTrue(TEXT("Same CardId across sides builds"), BuildResult.bSuccess);
 	TestEqual(TEXT("PlayerA returns its value"),
-		PlayerAResult.Snapshot.Attributes.LongShot, 6);
+		PlayerAResult.Snapshot.Attributes.Shooting, 6);
 	TestEqual(TEXT("PlayerB returns its value"),
-		PlayerBResult.Snapshot.Attributes.LongShot, 3);
+		PlayerBResult.Snapshot.Attributes.Shooting, 3);
 	return true;
 }
 

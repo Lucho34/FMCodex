@@ -327,11 +327,11 @@ FMatchPlayLongFreeKickResolution::ResolveDirectDefenseRoll(
 
 	FFormulaResolverInput FormulaInput;
 	FormulaInput.FormulaType = EFormulaType::Finishing;
-	FormulaInput.Attacker.BaseValue = Long.Carrier.Snapshot.Attributes.LongShot;
+	FormulaInput.Attacker.BaseValue = Long.Carrier.Snapshot.Attributes.Shooting;
 	FormulaInput.Attacker.ComparePoint = Long.AttackD6;
 	FormulaInput.Attacker.bComparePointWasRolledOnD6 = true;
 	FormulaInput.Attacker.ParticipatingStamina.Add(
-		Long.Carrier.Snapshot.Attributes.Stamina);
+		PlayerStaminaGameplayValue(Long.Carrier.Snapshot.Attributes.StaminaTier));
 	FormulaInput.Defender.BaseValue = Result.GoalkeeperQueryResult
 		.Snapshot.GoalkeeperAttributes.Positioning;
 	FormulaInput.Defender.Modifier = 2.0f;

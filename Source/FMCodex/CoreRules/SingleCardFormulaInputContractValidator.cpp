@@ -40,15 +40,11 @@ namespace SingleCardFormulaInputContractValidator
 		switch (Attribute)
 		{
 		case ESingleCardFormulaAttribute::Shooting:
-		case ESingleCardFormulaAttribute::Dribbling:
+		case ESingleCardFormulaAttribute::Control:
 		case ESingleCardFormulaAttribute::Passing:
-		case ESingleCardFormulaAttribute::OffBall:
-		case ESingleCardFormulaAttribute::Marking:
-		case ESingleCardFormulaAttribute::Tackling:
+		case ESingleCardFormulaAttribute::Defense:
 		case ESingleCardFormulaAttribute::Speed:
 		case ESingleCardFormulaAttribute::Strength:
-		case ESingleCardFormulaAttribute::Stamina:
-		case ESingleCardFormulaAttribute::LongShot:
 		case ESingleCardFormulaAttribute::GoalkeeperHandling:
 		case ESingleCardFormulaAttribute::GoalkeeperPositioning:
 		case ESingleCardFormulaAttribute::GoalkeeperReflex:

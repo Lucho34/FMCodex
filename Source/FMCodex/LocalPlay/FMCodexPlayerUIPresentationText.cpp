@@ -36,15 +36,12 @@ namespace FMCodexPlayerUIPresentationText
 	FText MapAttributeToken(const FString& Token)
 	{
 		if (Token == TEXT("SHO")) return LOCTEXT("AttributeShooting", "射门");
-		if (Token == TEXT("DRI")) return LOCTEXT("AttributeDribbling", "盘带");
+		if (Token == TEXT("CON")) return LOCTEXT("AttributeControl", "控球");
 		if (Token == TEXT("PAS")) return LOCTEXT("AttributePassing", "传球");
-		if (Token == TEXT("OFF")) return LOCTEXT("AttributeOffBall", "跑位");
-		if (Token == TEXT("MRK")) return LOCTEXT("AttributeMarking", "盯防");
-		if (Token == TEXT("TKL")) return LOCTEXT("AttributeTackling", "抢断");
+		if (Token == TEXT("DEF")) return LOCTEXT("AttributeDefense", "防守");
 		if (Token == TEXT("SPD")) return LOCTEXT("AttributeSpeed", "速度");
 		if (Token == TEXT("STR")) return LOCTEXT("AttributeStrength", "力量");
-		if (Token == TEXT("STA")) return LOCTEXT("AttributeStamina", "体力");
-		if (Token == TEXT("LS")) return LOCTEXT("AttributeLongShot", "远射");
+		if (Token == TEXT("StaminaTier")) return LOCTEXT("AttributeStamina", "体力");
 		if (Token == TEXT("HAN")) return LOCTEXT("AttributeHandling", "手控球");
 		if (Token == TEXT("POS")) return LOCTEXT("AttributePositioning", "站位");
 		if (Token == TEXT("REF")) return LOCTEXT("AttributeReflexes", "反应");
@@ -691,6 +688,10 @@ FText FFMCodexPlayerUIPresentationText::Attribute(const FString& CanonicalEntry)
 FText FFMCodexPlayerUIPresentationText::AttributeLabel(
 	const FString& CanonicalToken)
 {
+	if (CanonicalToken == TEXT("CON")) return LOCTEXT("AttributeControl", "控球");
+	if (CanonicalToken == TEXT("DEF")) return LOCTEXT("AttributeDefense", "防守");
+	if (CanonicalToken == TEXT("StaminaTier")) return LOCTEXT("AttributeStaminaTier", "体力");
+
 	FString Token = CanonicalToken;
 	Token.TrimStartAndEndInline();
 	return Token.IsEmpty()
@@ -970,14 +971,11 @@ FText FFMCodexPlayerUIPresentationText::ResolutionAttribute(
 	switch (Attribute)
 	{
 	case EAttribute::Shooting: return AttributeLabel(TEXT("SHO"));
-	case EAttribute::Dribbling: return AttributeLabel(TEXT("DRI"));
+	case EAttribute::Control: return AttributeLabel(TEXT("CON"));
 	case EAttribute::Passing: return AttributeLabel(TEXT("PAS"));
-	case EAttribute::OffBall: return AttributeLabel(TEXT("OFF"));
-	case EAttribute::Marking: return AttributeLabel(TEXT("MRK"));
-	case EAttribute::Tackling: return AttributeLabel(TEXT("TKL"));
+	case EAttribute::Defense: return AttributeLabel(TEXT("DEF"));
 	case EAttribute::Speed: return AttributeLabel(TEXT("SPD"));
 	case EAttribute::Strength: return AttributeLabel(TEXT("STR"));
-	case EAttribute::LongShot: return AttributeLabel(TEXT("LS"));
 	case EAttribute::GoalkeeperHandling: return AttributeLabel(TEXT("HAN"));
 	case EAttribute::GoalkeeperPositioning: return AttributeLabel(TEXT("POS"));
 	case EAttribute::GoalkeeperReflex: return AttributeLabel(TEXT("REF"));

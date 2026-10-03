@@ -24,7 +24,7 @@ struct FMCODEX_API FFMCodexPlayerOverallResult
 	int32 Value = 0;
 };
 
-/** Presentation-only, deterministic Overall v1 calculation. */
+/** Presentation-only six-base outfield OVR; goalkeeper keeps the existing rarity formula. */
 class FMCODEX_API FFMCodexPlayerOverall final
 {
 public:

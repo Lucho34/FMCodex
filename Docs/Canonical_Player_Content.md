@@ -34,11 +34,15 @@ ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx
 
 Each player contains `PlayerKey`, team, roster slot, display serial, Chinese and English names, position, exactly one attribute family, zero-to-three skills, notes, and presentation metadata.
 
-Outfield positions use the workbook values `A`, `M`, `D`, `A/M`, and `M/D`. Goalkeepers use only `GK`. Outfield attributes are `SHO`, `DRI`, `PAS`, `OFF`, `MRK`, `TKL`, `SPD`, `STR`, `STA`, and `LS`. Goalkeeper attributes are `HAN`, `POS_GK`, `REF`, `AER`, `ANT`, and `1V1`.
+Outfield positions use the workbook values `A`, `M`, `D`, `A/M`, and `M/D`. Goalkeepers use only `GK`. Outfield base attributes are `SHO`, `PAS`, `CON`, `SPD`, `STR`, and `DEF` (integers 1–6), with separate semantic `StaminaTier` S/A/B. Removed attributes have no hidden aliases. Goalkeeper attributes are `HAN`, `POS_GK`, `REF`, `AER`, `ANT`, and `1V1`.
 
 A skill assignment consists of the canonical skill identity plus `MinTP` and `MaxTP`. Runtime rule identity is derived deterministically as `Canonical.Skill.<SkillId>.<MinTP>.<MaxTP>`, allowing the existing rule lookup and TP filter to represent different approved ranges for the same skill family without duplicating player-facing skill names.
 
-`balanceContentVersion` is currently `Prototype40_v2` (Stage 8.15B). The current config and runtime `schemaVersion` is `3`, including the explicit required `displayName` introduced in schema 2 and `presentation.defaultShirtNumber` introduced in schema 3. Advance the balance version when an approved balance payload changes, and advance the schema version only when that shape changes. Stage 8.15S changed provenance only; Stage 8.15B advances the balance version for the approved six-player migration without changing schema.
+`balanceContentVersion` is `Prototype40_v3`; generated/runtime `schemaVersion` is `4`. The identity/presentation sidecar remains schema `3`. Stage 8.20B.1 copies the approved draft's Shooting/Control/Defense/tier and Trait assignments by stable identity, retaining Passing/Speed/Strength, names, teams, skill/TP assignments, notes, presentation and all GK values exactly. The draft remains unchanged; only the two production workbook sheets are retained.
+
+The source has 53 columns: identity A:F; outfield G:L; tier M; GK N:S; skills/TP T:AB; 24 passive Trait columns AC:AZ; Notes BA. Ranked cells are S/A/B or empty; `Trait.ThroughBallAntiRunner` is binary `有` or empty. JSON stores `{traitId,rank}` in `rankedTraits` and IDs in `binaryTraits`, including empty arrays. GK tier is null and Trait arrays empty. Runtime snapshots retain the payload without activating any effects. Stable technical IDs are fixed in importer `TRAIT_KEYS` and CoreRules `PlayerTraitData.h`, never derived from localized names.
+
+Non-GK OVR is derived display-only: `Clamp(59 + sum of six base attributes, 65, 95)`; tier/Traits/rarity never contribute. GK OVR is unchanged.
 
 ## Validation contract
 
@@ -48,6 +52,7 @@ The importer validates before writing:
 - roster slots 1–20 per team and unique display serials;
 - exact headers and supported position/skill identities;
 - correct outfield-versus-goalkeeper attribute schema and 1–6 attribute values;
+- required S/A/B tier for outfield, no GK tier; fixed Trait IDs, semantic ranks, binary shape, no GK Traits;
 - zero-to-three complete skill assignments per player;
 - skill ranges within TP 2–8 with `MinTP <= MaxTP`;
 - no more than two active skills for any player at each TP from 2 through 8;
@@ -86,6 +91,8 @@ It requires no C++ change or build. The complete 40-player mapping and UI
 consumer contract are recorded in `Docs/UI/Player_Display_Name_Contract_v1.md`.
 
 ## PassControl experiment boundary
+
+Stage 8.20B.1 keeps the withdrawal: importer rejects new PassControl assignments, the product rule-description catalog has four families, and its legacy arithmetic Plan builders return explicit unavailability. Historical transport/enum identities remain; the old arithmetic is not migrated to invented six-attribute formulas.
 
 Stage 8.15B implements the approved temporary experiment after source recovery was committed. **USER PIE PASS — functionally accepted.** The user reported no blocking issue with the four-tactic implementation. This accepts the experiment's implementation, not permanent deletion of PassControl. Match duration, comprehension cost, TP7 no-option frequency, ThroughBall concentration, directness/repetition and player identity remain questions for future play; they do not block committing the accepted experiment.
 

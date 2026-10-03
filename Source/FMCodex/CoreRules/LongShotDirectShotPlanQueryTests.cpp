@@ -113,15 +113,12 @@ namespace LongShotDirectShotPlanQueryTests
 		const FPlayerAttributes& Right)
 	{
 		return Left.Shooting == Right.Shooting
-			&& Left.Dribbling == Right.Dribbling
+			&& Left.Control == Right.Control
 			&& Left.Passing == Right.Passing
-			&& Left.OffBall == Right.OffBall
-			&& Left.Marking == Right.Marking
-			&& Left.Tackling == Right.Tackling
+			&& Left.Defense == Right.Defense
 			&& Left.Speed == Right.Speed
 			&& Left.Strength == Right.Strength
-			&& Left.Stamina == Right.Stamina
-			&& Left.LongShot == Right.LongShot;
+			&& Left.StaminaTier == Right.StaminaTier;
 	}
 
 	bool AreGoalkeeperAttributesEqual(
@@ -694,7 +691,7 @@ bool FLongShotPlanAttackD6ThreeToSixTest::RunTest(
 
 LONG_SHOT_PLAN_TEST(
 	FLongShotPlanFormulaMappingTest,
-	"FormulaPlanUsesFinishingLongShotTacklingZeroAndPlusTwo")
+	"FormulaPlanUsesFinishingShootingDefenseZeroAndPlusThree")
 
 bool FLongShotPlanFormulaMappingTest::RunTest(
 	const FString& Parameters)
@@ -712,10 +709,10 @@ bool FLongShotPlanFormulaMappingTest::RunTest(
 	TestEqual(TEXT("Defender finishing"), Defender.FormulaType, EFormulaType::Finishing);
 	TestEqual(TEXT("Attacker role"), Attacker.ParticipantRole, ESingleCardFormulaParticipantRole::Attacker);
 	TestEqual(TEXT("Defender role"), Defender.ParticipantRole, ESingleCardFormulaParticipantRole::Defender);
-	TestEqual(TEXT("Attacker LongShot"), Attacker.Attribute, ESingleCardFormulaAttribute::LongShot);
-	TestEqual(TEXT("Defender Tackling"), Defender.Attribute, ESingleCardFormulaAttribute::Tackling);
+	TestEqual(TEXT("Attacker LongShot"), Attacker.Attribute, ESingleCardFormulaAttribute::Shooting);
+	TestEqual(TEXT("Defender Defense"), Defender.Attribute, ESingleCardFormulaAttribute::Defense);
 	TestEqual(TEXT("Attacker modifier"), Attacker.ExternalModifier, 0.0f);
-	TestEqual(TEXT("Defender modifier"), Defender.ExternalModifier, 2.0f);
+	TestEqual(TEXT("Defender modifier"), Defender.ExternalModifier, 3.0f);
 	return true;
 }
 

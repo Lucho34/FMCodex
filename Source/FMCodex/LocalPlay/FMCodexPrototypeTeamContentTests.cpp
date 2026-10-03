@@ -126,15 +126,15 @@ namespace FMCodexPrototypeTeamContentTests
 	bool AttributesInRange(const FPlayerAttributes& A)
 	{
 		return A.Shooting >= 1 && A.Shooting <= 6
-			&& A.Dribbling >= 1 && A.Dribbling <= 6
+			&& A.Control >= 1 && A.Control <= 6
 			&& A.Passing >= 1 && A.Passing <= 6
-			&& A.OffBall >= 1 && A.OffBall <= 6
-			&& A.Marking >= 1 && A.Marking <= 6
-			&& A.Tackling >= 1 && A.Tackling <= 6
+			&& A.Control >= 1 && A.Control <= 6
+			&& A.Defense >= 1 && A.Defense <= 6
+			&& A.Defense >= 1 && A.Defense <= 6
 			&& A.Speed >= 1 && A.Speed <= 6
 			&& A.Strength >= 1 && A.Strength <= 6
-			&& A.Stamina >= 1 && A.Stamina <= 6
-			&& A.LongShot >= 1 && A.LongShot <= 6;
+			&& PlayerStaminaGameplayValue(A.StaminaTier) >= 1 && PlayerStaminaGameplayValue(A.StaminaTier) <= 6
+			&& A.Shooting >= 1 && A.Shooting <= 6;
 	}
 
 	bool GoalkeeperAttributesInRange(const FGoalkeeperAttributes& A)
@@ -249,7 +249,7 @@ bool FFMCodexPrototypeTeamCatalogTest::RunTest(const FString& Parameters)
 		ValidationErrors.Num(), 0);
 	TestEqual(TEXT("Balance content version is explicit"),
 		FFMCodexPrototypeTeamContent::GetBalanceContentVersion(),
-		FString(TEXT("Prototype40_v2")));
+		FString(TEXT("Prototype40_v3")));
 	TestTrue(TEXT("Generated runtime JSON exists outside gameplay C++"),
 		IFileManager::Get().FileExists(
 			*FFMCodexPrototypeTeamContent::GetRuntimeContentPath()));
@@ -426,9 +426,9 @@ bool FFMCodexCanonicalPlayerSkillRulesTest::RunTest(const FString& Parameters)
 			&& Saka->RosterSlot == 15
 			&& Saka->Card.PositionTypes
 				== TArray<EPlayerPositionType>{ EPlayerPositionType::Attack }
-			&& Saka->Card.Attributes.Shooting == 5
-			&& Saka->Card.Attributes.Dribbling == 6
-			&& Saka->Card.Attributes.OffBall == 6
+			&& Saka->Card.Attributes.Shooting == 4
+			&& Saka->Card.Attributes.Control == 6
+			&& Saka->Card.Attributes.Defense == 3
 			&& Saka->SkillAssignments.Num() == 2
 			&& Saka->SkillAssignments[0].SkillId == TEXT("Cross")
 			&& Saka->SkillAssignments[0].MinTacticalPoint == 4
@@ -578,28 +578,20 @@ bool FFMCodexPrototypeOverallV1Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Overall compatibility covers all forty players"),
 		SuccessfulOverallCount, 40);
 
-	FPlayerAttributes TopSixProbe;
-	TopSixProbe.Shooting = 6;
-	TopSixProbe.Dribbling = 5;
-	TopSixProbe.Passing = 4;
-	TopSixProbe.OffBall = 3;
-	TopSixProbe.Marking = 2;
-	TopSixProbe.Tackling = 1;
-	TopSixProbe.Speed = 6;
-	TopSixProbe.Strength = 5;
-	TopSixProbe.Stamina = 4;
-	TopSixProbe.LongShot = 3;
-	const int32 Before = FFMCodexPlayerOverall::CalculateOutfield(
-		TopSixProbe, ECardRarity::Common).Value;
-	TopSixProbe.Tackling = 2;
-	const int32 LowerAttributeChanged =
-		FFMCodexPlayerOverall::CalculateOutfield(
-			TopSixProbe, ECardRarity::Common).Value;
-	TopSixProbe.Tackling = 6;
-	const int32 EnteredTopSix = FFMCodexPlayerOverall::CalculateOutfield(
-		TopSixProbe, ECardRarity::Common).Value;
-	TestTrue(TEXT("Overall v1 calculation semantics remain unchanged"),
-		Before == LowerAttributeChanged && EnteredTopSix > Before);
+	for (const int32 Base : { 1, 2, 3, 4, 5, 6 })
+	{
+		FPlayerCardData Card;
+		Card.Attributes.Shooting = Card.Attributes.Passing = Card.Attributes.Control = Base;
+		Card.Attributes.Speed = Card.Attributes.Strength = Card.Attributes.Defense = Base;
+		TestEqual(TEXT("Six-base exact display scale"), FFMCodexPlayerOverall::Calculate(Card).Value, 59 + 6 * Base);
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::S;
+		Card.Rarity = ECardRarity::WorldClass;
+		FPlayerRankedTrait Trait; Trait.TraitId = TEXT("Trait.LongShotCarrier"); Trait.Rank = EPlayerTraitRank::S;
+		Card.RankedTraits.Add(Trait);
+		Card.BinaryTraits.Add(TEXT("Trait.ThroughBallAntiRunner"));
+		TestEqual(TEXT("Tier, rarity and passive Traits never affect OVR"), FFMCodexPlayerOverall::Calculate(Card).Value, 59 + 6 * Base);
+	}
+
 	return true;
 }
 
@@ -873,7 +865,7 @@ bool FFMCodexPrototypePresentationMetadataTest::RunTest(
 			&& Card.bHasOverallRating && Card.OverallRating > 0
 			&& Card.PlayerFacingSerialLabel.Len() == 3
 			&& Card.PlayerFacingSerialLabel.IsNumeric()
-			&& (Card.AttributeValues.Num() == 10
+			&& (Card.AttributeValues.Num() == 7
 				|| Card.AttributeValues.Num() == 6)
 			&& !Card.IdentityLabel.Contains(TEXT("Prototype."))
 			&& !Card.IdentityLabel.Contains(TEXT("Demo."));

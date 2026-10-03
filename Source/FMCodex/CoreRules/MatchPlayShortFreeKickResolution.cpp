@@ -343,7 +343,7 @@ FMatchPlayShortFreeKickResolution::ResolveDirectDefenseRoll(
 	FormulaInput.Attacker.ComparePoint = Short.AttackD6;
 	FormulaInput.Attacker.bComparePointWasRolledOnD6 = true;
 	FormulaInput.Attacker.ParticipatingStamina.Add(
-		Short.Carrier.Snapshot.Attributes.Stamina);
+		PlayerStaminaGameplayValue(Short.Carrier.Snapshot.Attributes.StaminaTier));
 	FormulaInput.Defender.BaseValue =
 		Result.GoalkeeperQueryResult.Snapshot.GoalkeeperAttributes.Handling;
 	FormulaInput.Defender.Modifier = 1.0f;

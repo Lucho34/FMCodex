@@ -24,10 +24,10 @@ namespace CutInsideShotDirectShotPlanQuery
 
 	float MakeDerivedAverageModifier(
 		const int32 Shooting,
-		const int32 Dribbling)
+		const int32 Control)
 	{
 		const int32 DerivedModifierTenths =
-			(Dribbling - Shooting) * 5;
+			(Control - Shooting) * 5;
 		return static_cast<float>(DerivedModifierTenths) / 10.0f;
 	}
 
@@ -294,7 +294,7 @@ FCutInsideShotDirectShotPlanQuery::BuildPlan(
 	const float AttackerModifier =
 		CutInsideShotDirectShotPlanQuery::MakeDerivedAverageModifier(
 			AttackerSnapshot.Attributes.Shooting,
-			AttackerSnapshot.Attributes.Dribbling);
+			AttackerSnapshot.Attributes.Control);
 
 	Result.FormulaPlan.AttackerQueryInput =
 		CutInsideShotDirectShotPlanQuery::MakeFormulaQueryInput(
@@ -308,9 +308,10 @@ FCutInsideShotDirectShotPlanQuery::BuildPlan(
 		CutInsideShotDirectShotPlanQuery::MakeFormulaQueryInput(
 			Input.DefenderCardId,
 			ESingleCardFormulaParticipantRole::Defender,
-			ESingleCardFormulaAttribute::Tackling,
+			ESingleCardFormulaAttribute::Defense,
 			Input.ExternalDefenseD6,
-			2.0f,
+			2.0f + CutInsideShotDirectShotPlanQuery::MakeDerivedAverageModifier(
+				DefenderSnapshot.Attributes.Defense, DefenderSnapshot.Attributes.Speed),
 			Input);
 	Result.FormulaPlan.AttackerPlayerId =
 		Input.AttackerPlayerId;

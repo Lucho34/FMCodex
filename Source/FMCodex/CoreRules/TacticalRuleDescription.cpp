@@ -102,8 +102,8 @@ namespace TacticalRuleDescription
 		Result.RequiredRoles = { ERole::Carrier, ERole::Marker };
 		Result.AutomaticRoles = { ERole::Goalkeeper };
 		Result.Branches.Add(Arithmetic(TEXT("LongShot.Direct"),
-			{ Attribute(ERole::Carrier, EAttribute::LongShot), Roll() },
-			{ Attribute(ERole::Marker, EAttribute::Tackling), Roll(), Fixed(2),
+			{ Attribute(ERole::Carrier, EAttribute::Shooting), Roll() },
+			{ Attribute(ERole::Marker, EAttribute::Defense), Roll(), Fixed(3),
 				Attribute(ERole::Goalkeeper, EAttribute::GoalkeeperPositioning,
 					0.5f, true, EKind::GoalkeeperContribution) },
 			true, TEXT("AttackRollOneTwoImmediateMiss")));
@@ -122,55 +122,15 @@ namespace TacticalRuleDescription
 		Result.AutomaticRoles = { ERole::Goalkeeper };
 		Result.Branches.Add(Arithmetic(TEXT("CutInside.Direct"),
 			{ Attribute(ERole::Carrier, EAttribute::Shooting, 0.5f),
-				Attribute(ERole::Carrier, EAttribute::Dribbling, 0.5f), Roll() },
-			{ Attribute(ERole::Marker, EAttribute::Tackling), Roll(), Fixed(2),
+				Attribute(ERole::Carrier, EAttribute::Control, 0.5f), Roll() },
+			{ Attribute(ERole::Marker, EAttribute::Defense, 0.5f),
+				Attribute(ERole::Marker, EAttribute::Speed, 0.5f), Roll(), Fixed(2),
 				Attribute(ERole::Goalkeeper, EAttribute::GoalkeeperHandling,
 					0.5f, true, EKind::GoalkeeperContribution) },
 			true, TEXT("AttackRollOneTwoImmediateMiss")));
 		Result.Branches.Add(Decision(TEXT("CutInside.DeadCorner"),
 			{ Outcome(2, 10, TEXT("Miss")), Outcome(11, 12, TEXT("Goal")) },
 			2, true, TEXT("AttackerRollsTwice")));
-		return Result;
-	}
-
-	TArray<FTacticalRuleDescriptionTerm> SharedControlDefense(
-		const EAttribute MarkerAttribute)
-	{
-		return {
-			Attribute(ERole::Marker, MarkerAttribute, 0.5f),
-			Attribute(ERole::Helper, EAttribute::Marking, 0.5f, true),
-			Roll(), Fixed(2),
-			Attribute(ERole::Goalkeeper, EAttribute::GoalkeeperHandling,
-				0.5f, true, EKind::GoalkeeperContribution)
-		};
-	}
-
-	FTacticalRuleDescription MakePassControl()
-	{
-		FTacticalRuleDescription Result;
-		Result.SkillType = ESkillRuleType::PassControl;
-		Result.SummaryId = TEXT("Tactical.PassControl");
-		Result.RequiredRoles = { ERole::Carrier, ERole::Runner, ERole::Marker };
-		Result.OptionalRoles = { ERole::Helper };
-		Result.AutomaticRoles = { ERole::Goalkeeper };
-		Result.InitialRouteRuleId = TEXT("PassControl.Route");
-		Result.InitialRouteOutcomes = {
-			Outcome(1, 2, TEXT("PassControl.Pass")),
-			Outcome(3, 4, TEXT("PassControl.Dribble")),
-			Outcome(5, 6, TEXT("PassControl.Run"))
-		};
-		Result.Branches.Add(Arithmetic(TEXT("PassControl.Pass"),
-			{ Attribute(ERole::Carrier, EAttribute::Passing, 0.5f),
-				Attribute(ERole::Runner, EAttribute::Passing, 0.5f), Roll() },
-			SharedControlDefense(EAttribute::Tackling), true));
-		Result.Branches.Add(Arithmetic(TEXT("PassControl.Dribble"),
-			{ Attribute(ERole::Carrier, EAttribute::Dribbling, 0.5f),
-				Attribute(ERole::Runner, EAttribute::Passing, 0.5f), Roll() },
-			SharedControlDefense(EAttribute::Tackling), true));
-		Result.Branches.Add(Arithmetic(TEXT("PassControl.Run"),
-			{ Attribute(ERole::Carrier, EAttribute::OffBall, 0.5f),
-				Attribute(ERole::Runner, EAttribute::Dribbling, 0.5f), Roll() },
-			SharedControlDefense(EAttribute::Marking), true));
 		return Result;
 	}
 
@@ -190,16 +150,16 @@ namespace TacticalRuleDescription
 		Result.Branches.Add(Arithmetic(TEXT("Cross.High"),
 			{ Attribute(ERole::Carrier, EAttribute::Passing, 0.5f),
 				Attribute(ERole::Runner, EAttribute::Strength, 0.5f), Roll() },
-			{ Attribute(ERole::Marker, EAttribute::Tackling, 0.5f),
+			{ Attribute(ERole::Marker, EAttribute::Defense, 0.5f),
 				Attribute(ERole::Helper, EAttribute::Strength, 0.5f, true),
 				Roll(), Fixed(2),
 				Attribute(ERole::Goalkeeper, EAttribute::GoalkeeperAerial,
 					0.5f, true, EKind::GoalkeeperContribution) }, true));
 		Result.Branches.Add(Arithmetic(TEXT("Cross.Low"),
 			{ Attribute(ERole::Carrier, EAttribute::Passing, 0.5f),
-				Attribute(ERole::Runner, EAttribute::Shooting, 0.5f), Roll() },
-			{ Attribute(ERole::Marker, EAttribute::Tackling, 0.5f),
-				Attribute(ERole::Helper, EAttribute::Marking, 0.5f, true),
+				Attribute(ERole::Runner, EAttribute::Speed, 0.5f), Roll() },
+			{ Attribute(ERole::Marker, EAttribute::Defense, 0.5f),
+				Attribute(ERole::Helper, EAttribute::Speed, 0.5f, true),
 				Roll(), Fixed(2),
 				Attribute(ERole::Goalkeeper, EAttribute::GoalkeeperReflex,
 					0.5f, true, EKind::GoalkeeperContribution) }, true));
@@ -222,16 +182,16 @@ namespace TacticalRuleDescription
 		};
 		Result.Branches.Add(Arithmetic(TEXT("ThroughBall.Feet"),
 			{ Attribute(ERole::Carrier, EAttribute::Passing, 0.5f),
-				Attribute(ERole::Runner, EAttribute::OffBall, 0.5f), Roll() },
-			{ Attribute(ERole::Marker, EAttribute::Tackling, 0.5f),
-				Attribute(ERole::Helper, EAttribute::Marking, 0.5f, true),
+				Attribute(ERole::Runner, EAttribute::Control, 0.5f), Roll() },
+			{ Attribute(ERole::Marker, EAttribute::Defense, 0.5f),
+				Attribute(ERole::Helper, EAttribute::Defense, 0.5f, true),
 				Roll(), Fixed(2),
 				Attribute(ERole::Goalkeeper, EAttribute::GoalkeeperOneOnOne,
 					0.5f, true, EKind::GoalkeeperContribution) }, true));
 		Result.Branches.Add(Arithmetic(TEXT("ThroughBall.BehindDefenseP1"),
 			{ Attribute(ERole::Carrier, EAttribute::Passing, 0.5f),
 				Attribute(ERole::Runner, EAttribute::Speed, 0.5f), Roll() },
-			{ Attribute(ERole::Marker, EAttribute::Marking, 0.5f),
+			{ Attribute(ERole::Marker, EAttribute::Defense, 0.5f),
 				Attribute(ERole::Helper, EAttribute::Speed, 0.5f, true),
 				Roll(), Fixed(1) }, false,
 			TEXT("BehindDefenseP1Conditional"), true));
@@ -255,7 +215,7 @@ namespace TacticalRuleDescription
 	TArray<FTacticalRuleDescription> BuildCatalog()
 	{
 		return {
-			MakeLongShot(), MakeCutInside(), MakePassControl(), MakeCross(),
+			MakeLongShot(), MakeCutInside(), MakeCross(),
 			MakeThroughBall()
 		};
 	}
@@ -280,8 +240,8 @@ const FTacticalRuleDescriptionBranch* FTacticalRuleDescriptionCatalog::FindCorne
 			Attribute(ERole::Goalkeeper, EAttribute::GoalkeeperAerial, 0.5f), Fixed(2), Roll() },
 		false, TEXT("CornerCandidateCountAdvantage"));
 	static const auto Low = Arithmetic(TEXT("Corner.Low"),
-		{ Attribute(ERole::Runner, EAttribute::Shooting), Roll() },
-		{ Attribute(ERole::Helper, EAttribute::Marking, 0.5f),
+		{ Attribute(ERole::Runner, EAttribute::Control), Roll() },
+		{ Attribute(ERole::Helper, EAttribute::Defense, 0.5f),
 			Attribute(ERole::Goalkeeper, EAttribute::GoalkeeperReflex, 0.5f), Fixed(2), Roll() },
 		false, TEXT("CornerCandidateCountAdvantage"));
 	return Route == EMatchPlayCornerRouteIntent::High ? &High

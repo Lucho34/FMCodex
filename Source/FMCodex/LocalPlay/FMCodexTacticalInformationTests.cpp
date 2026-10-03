@@ -62,7 +62,7 @@ namespace FMCodexTacticalInformationTests
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FFMCodexTacticalInformationPresentationTest,
-	"FMCodex.LocalPlay.TacticalInformation.01.FiveTacticLocalizationAndStructure",
+	"FMCodex.LocalPlay.TacticalInformation.01.AvailableTacticLocalizationAndStructure",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FFMCodexTacticalInformationPresentationTest::RunTest(
@@ -80,7 +80,6 @@ bool FFMCodexTacticalInformationPresentationTest::RunTest(
 	const TArray<FExpectation> Expectations = {
 		{ ESkillRuleType::LongShot, TEXT("远射"), 2 },
 		{ ESkillRuleType::CutInsideShot, TEXT("内切"), 2 },
-		{ ESkillRuleType::PassControl, TEXT("控球推进"), 3 },
 		{ ESkillRuleType::Cross, TEXT("传中"), 2 },
 		{ ESkillRuleType::ThroughBall, TEXT("直塞"), 7 }
 	};
@@ -104,8 +103,8 @@ bool FFMCodexTacticalInformationPresentationTest::RunTest(
 	const auto* LongDirect = FindBranch(LongShot, TEXT("直接射门"));
 	const auto* LongDead = FindBranch(LongShot, TEXT("射向死角"));
 	TestTrue(TEXT("Long Shot direct compact attributes and roll-only dead corner"),
-		HasRoleAttribute(LongDirect, ERole::Carrier, EAttribute::LongShot)
-			&& HasRoleAttribute(LongDirect, ERole::Marker, EAttribute::Tackling)
+		HasRoleAttribute(LongDirect, ERole::Carrier, EAttribute::Shooting)
+			&& HasRoleAttribute(LongDirect, ERole::Marker, EAttribute::Defense)
 			&& HasRoleAttribute(LongDirect, ERole::Goalkeeper,
 				EAttribute::GoalkeeperPositioning)
 			&& LongDead != nullptr && LongDead->bRollOnly
@@ -117,31 +116,15 @@ bool FFMCodexTacticalInformationPresentationTest::RunTest(
 	const auto* CutDead = FindBranch(CutInside, TEXT("射向死角"));
 	TestTrue(TEXT("Cut Inside direct compact attributes and roll-only dead corner"),
 		HasRoleAttribute(CutDirect, ERole::Carrier, EAttribute::Shooting)
-			&& HasRoleAttribute(CutDirect, ERole::Carrier, EAttribute::Dribbling)
-			&& HasRoleAttribute(CutDirect, ERole::Marker, EAttribute::Tackling)
+			&& HasRoleAttribute(CutDirect, ERole::Carrier, EAttribute::Control)
+			&& HasRoleAttribute(CutDirect, ERole::Marker, EAttribute::Defense)
 			&& HasRoleAttribute(CutDirect, ERole::Goalkeeper,
 				EAttribute::GoalkeeperHandling)
 			&& CutDead != nullptr && CutDead->bRollOnly
 			&& CutDead->RoleAttributes.IsEmpty());
 
-	const auto PassControl = FFMCodexTacticalDetailPresentationBuilder::Build(
-		ESkillRuleType::PassControl);
-	const auto* Pass = FindBranch(PassControl, TEXT("传球推进"));
-	const auto* Dribble = FindBranch(PassControl, TEXT("盘带推进"));
-	const auto* Run = FindBranch(PassControl, TEXT("跑动推进"));
-	TestTrue(TEXT("Pass Control branches retain distinct canonical attributes"),
-		HasRoleAttribute(Pass, ERole::Carrier, EAttribute::Passing)
-			&& HasRoleAttribute(Pass, ERole::Runner, EAttribute::Passing)
-			&& HasRoleAttribute(Pass, ERole::Marker, EAttribute::Tackling)
-			&& HasRoleAttribute(Pass, ERole::Helper, EAttribute::Marking, true)
-			&& HasRoleAttribute(Pass, ERole::Goalkeeper,
-				EAttribute::GoalkeeperHandling)
-			&& HasRoleAttribute(Dribble, ERole::Carrier, EAttribute::Dribbling)
-			&& HasRoleAttribute(Dribble, ERole::Runner, EAttribute::Passing)
-			&& HasRoleAttribute(Dribble, ERole::Marker, EAttribute::Tackling)
-			&& HasRoleAttribute(Run, ERole::Carrier, EAttribute::OffBall)
-			&& HasRoleAttribute(Run, ERole::Runner, EAttribute::Dribbling)
-			&& HasRoleAttribute(Run, ERole::Marker, EAttribute::Marking));
+	TestFalse(TEXT("Withdrawn tactic has no educational product surface"),
+        FFMCodexTacticalDetailPresentationBuilder::Build(ESkillRuleType::PassControl).bValid);
 
 	const auto Cross = FFMCodexTacticalDetailPresentationBuilder::Build(
 		ESkillRuleType::Cross);
@@ -150,15 +133,15 @@ bool FFMCodexTacticalInformationPresentationTest::RunTest(
 	TestTrue(TEXT("Cross High compact role attributes are canonical"),
 		HasRoleAttribute(High, ERole::Carrier, EAttribute::Passing)
 			&& HasRoleAttribute(High, ERole::Runner, EAttribute::Strength)
-			&& HasRoleAttribute(High, ERole::Marker, EAttribute::Tackling)
+			&& HasRoleAttribute(High, ERole::Marker, EAttribute::Defense)
 			&& HasRoleAttribute(High, ERole::Helper, EAttribute::Strength, true)
 			&& HasRoleAttribute(High, ERole::Goalkeeper,
 				EAttribute::GoalkeeperAerial));
 	TestTrue(TEXT("Cross Low compact role attributes are canonical"),
 		HasRoleAttribute(Low, ERole::Carrier, EAttribute::Passing)
-			&& HasRoleAttribute(Low, ERole::Runner, EAttribute::Shooting)
-			&& HasRoleAttribute(Low, ERole::Marker, EAttribute::Tackling)
-			&& HasRoleAttribute(Low, ERole::Helper, EAttribute::Marking, true)
+			&& HasRoleAttribute(Low, ERole::Runner, EAttribute::Speed)
+			&& HasRoleAttribute(Low, ERole::Marker, EAttribute::Defense)
+			&& HasRoleAttribute(Low, ERole::Helper, EAttribute::Speed, true)
 			&& HasRoleAttribute(Low, ERole::Goalkeeper,
 				EAttribute::GoalkeeperReflex));
 
@@ -180,13 +163,13 @@ bool FFMCodexTacticalInformationPresentationTest::RunTest(
 		ThroughBall, TEXT("挑射"), TEXT("反越位"));
 	TestTrue(TEXT("Through Ball attribute branches stay compact and distinct"),
 		HasRoleAttribute(Feet, ERole::Carrier, EAttribute::Passing)
-			&& HasRoleAttribute(Feet, ERole::Runner, EAttribute::OffBall)
-			&& HasRoleAttribute(Feet, ERole::Marker, EAttribute::Tackling)
-			&& HasRoleAttribute(Feet, ERole::Helper, EAttribute::Marking, true)
+			&& HasRoleAttribute(Feet, ERole::Runner, EAttribute::Control)
+			&& HasRoleAttribute(Feet, ERole::Marker, EAttribute::Defense)
+			&& HasRoleAttribute(Feet, ERole::Helper, EAttribute::Defense, true)
 			&& HasRoleAttribute(Feet, ERole::Goalkeeper,
 				EAttribute::GoalkeeperOneOnOne)
 			&& HasRoleAttribute(Behind, ERole::Runner, EAttribute::Speed)
-			&& HasRoleAttribute(Behind, ERole::Marker, EAttribute::Marking)
+			&& HasRoleAttribute(Behind, ERole::Marker, EAttribute::Defense)
 			&& HasRoleAttribute(Behind, ERole::Helper, EAttribute::Speed, true)
 			&& HasRoleAttribute(BehindDirect, ERole::Runner, EAttribute::Shooting)
 			&& HasRoleAttribute(BehindDirect, ERole::Goalkeeper,
@@ -293,7 +276,7 @@ bool FFMCodexTacticalInformationHoverLifecycleTest::RunTest(
 			&& CrossPlayerText.Contains(TEXT("门将：制空")));
 	TestTrue(TEXT("Compact player surface excludes formula/manual density"),
 		!CrossPlayerText.Contains(TEXT("进攻"))
-			&& !CrossPlayerText.Contains(TEXT("防守"))
+			&& CrossPlayerText.Contains(TEXT("盯人：防守"))
 			&& !CrossPlayerText.Contains(TEXT("战术球员"))
 			&& !CrossPlayerText.Contains(TEXT("×"))
 			&& !CrossPlayerText.Contains(TEXT("固定"))
@@ -348,14 +331,7 @@ bool FFMCodexTacticalInformationHoverLifecycleTest::RunTest(
 	USizeBox* WideFinalBranch = Cast<USizeBox>(
 		ThreeBranchPanel->GetWidgetFromName(
 			TEXT("TacticalDetailBranchBounds2")));
-	TestTrue(TEXT("Three-branch layout uses 2+1 without a narrow orphan card"),
-		WideFinalBranch != nullptr
-			&& CrossFirstBranchBounds != nullptr
-			&& FMath::IsNearlyEqual(WideFinalBranch->GetWidthOverride(),
-				(CrossFirstBranchBounds->GetWidthOverride() * 2.0f)
-					+ DetailBranches->GetInnerSlotPadding().X)
-			&& ThreeBranchPanel->GetWidgetFromName(
-				TEXT("TacticalDetailBranchScroll")) == nullptr);
+	TestNull(TEXT("Withdrawn PassControl cannot expose old formula branches"), WideFinalBranch);
 
 	UFMCodexTacticalDetailPanelWidget* SixBranchPanel =
 		NewObject<UFMCodexTacticalDetailPanelWidget>();
@@ -592,7 +568,7 @@ bool FFMCodexDeploymentTacticalReferenceEntryTest::RunTest(
 	const FString PlayerText = Detail->CollectPlayerFacingText();
 	TestTrue(TEXT("Deployment reference retains compact player contract"),
 		!PlayerText.Contains(TEXT("进攻"))
-			&& !PlayerText.Contains(TEXT("防守"))
+			&& !PlayerText.Contains(TEXT("防守公式"))
 			&& !PlayerText.Contains(TEXT("战术球员"))
 			&& !PlayerText.Contains(TEXT("×"))
 			&& !PlayerText.Contains(TEXT("+2"))

@@ -7,7 +7,7 @@ namespace ThroughBallFeetFormulaResolverInputAssembler
 	const FName RunnerIdField(TEXT("RunnerId"));
 	const FName MarkerIdField(TEXT("MarkerId"));
 	const FName HelperIdField(TEXT("HelperId"));
-	const FName HelperMarkingField(TEXT("HelperMarking"));
+	const FName HelperDefenseField(TEXT("HelperDefense"));
 	const FName HelperStaminaField(TEXT("HelperStamina"));
 	const FName ActiveGoalkeeperIdField(TEXT("ActiveGoalkeeperId"));
 	const FName GoalkeeperOneOnOneField(TEXT("GoalkeeperOneOnOne"));
@@ -168,14 +168,14 @@ FThroughBallFeetFormulaResolverInputAssembler::Assemble(
 				HelperIdField);
 			return Result;
 		}
-		if (Plan.HelperMarking != 0)
+		if (Plan.HelperDefense != 0)
 		{
 			SetFailure(
 				Result,
 				EThroughBallFeetFormulaResolverInputAssemblyErrorCode
 					::InvalidOptionalParticipantState,
-				TEXT("Absent Helper must keep HelperMarking at zero."),
-				HelperMarkingField);
+				TEXT("Absent Helper must keep HelperDefense at zero."),
+				HelperDefenseField);
 			return Result;
 		}
 		if (Plan.HelperStamina != 0)

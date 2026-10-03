@@ -29,20 +29,20 @@ namespace CutInsideShotDirectShotPlanQueryTests
 
 	FPlayerCardRuleSnapshotSet MakePlayerCardSnapshots(
 		const int32 Shooting = 4,
-		const int32 Dribbling = 6,
-		const int32 Tackling = 5)
+		const int32 Control = 6,
+		const int32 Defense = 5)
 	{
 		FPlayerCardRuleSnapshot Attacker = MakeOutfieldCard(
 			AttackerCardId,
 			EPlayerPositionType::Attack,
 			{ SkillId });
 		Attacker.Attributes.Shooting = Shooting;
-		Attacker.Attributes.Dribbling = Dribbling;
+		Attacker.Attributes.Control = Control;
 
 		FPlayerCardRuleSnapshot Defender = MakeOutfieldCard(
 			DefenderCardId,
 			EPlayerPositionType::Defense);
-		Defender.Attributes.Tackling = Tackling;
+		Defender.Attributes.Defense = Defense;
 
 		FPlayerCardRuleSnapshotSet SnapshotSet;
 		SnapshotSet.Cards = { Attacker, Defender };
@@ -106,15 +106,12 @@ namespace CutInsideShotDirectShotPlanQueryTests
 		const FPlayerAttributes& Right)
 	{
 		return Left.Shooting == Right.Shooting
-			&& Left.Dribbling == Right.Dribbling
+			&& Left.Control == Right.Control
 			&& Left.Passing == Right.Passing
-			&& Left.OffBall == Right.OffBall
-			&& Left.Marking == Right.Marking
-			&& Left.Tackling == Right.Tackling
+			&& Left.Defense == Right.Defense
 			&& Left.Speed == Right.Speed
 			&& Left.Strength == Right.Strength
-			&& Left.Stamina == Right.Stamina
-			&& Left.LongShot == Right.LongShot;
+			&& Left.StaminaTier == Right.StaminaTier;
 	}
 
 	bool ArePlayerCardSnapshotsEqual(
@@ -412,14 +409,14 @@ bool FCutInsideShotPlanOddSumHalfAverageTest::RunTest(
 	const FString& Parameters)
 {
 	const int32 Shooting = 3;
-	const int32 Dribbling = 6;
+	const int32 Control = 6;
 	const FCutInsideShotDirectShotPlanQueryResult Result =
 		FCutInsideShotDirectShotPlanQuery::BuildPlan(
 			CutInsideShotDirectShotPlanQueryTests
-				::MakePlayerCardSnapshots(Shooting, Dribbling),
+				::MakePlayerCardSnapshots(Shooting, Control),
 			CutInsideShotDirectShotPlanQueryTests::MakeSkillRules(),
 			CutInsideShotDirectShotPlanQueryTests::MakeValidInput());
-	const int32 AverageTenths = (Shooting + Dribbling) * 5;
+	const int32 AverageTenths = (Shooting + Control) * 5;
 	const int32 ActualTenths =
 		Shooting * 10
 		+ FMath::RoundToInt(
@@ -435,7 +432,7 @@ bool FCutInsideShotPlanOddSumHalfAverageTest::RunTest(
 
 CUT_INSIDE_DIRECT_SHOT_PLAN_TEST(
 	FCutInsideShotPlanFormulaMappingTest,
-	"FormulaPlanUsesShootingTacklingAndPlusTwo")
+	"FormulaPlanUsesControlShootingDefenseSpeedAndPlusTwo")
 
 bool FCutInsideShotPlanFormulaMappingTest::RunTest(
 	const FString& Parameters)
@@ -453,8 +450,8 @@ bool FCutInsideShotPlanFormulaMappingTest::RunTest(
 	TestEqual(TEXT("Attacker role"), Attacker.ParticipantRole, ESingleCardFormulaParticipantRole::Attacker);
 	TestEqual(TEXT("Defender role"), Defender.ParticipantRole, ESingleCardFormulaParticipantRole::Defender);
 	TestEqual(TEXT("Attacker Shooting"), Attacker.Attribute, ESingleCardFormulaAttribute::Shooting);
-	TestEqual(TEXT("Defender Tackling"), Defender.Attribute, ESingleCardFormulaAttribute::Tackling);
-	TestEqual(TEXT("Defender modifier"), Defender.ExternalModifier, 2.0f);
+	TestEqual(TEXT("Defender Defense"), Defender.Attribute, ESingleCardFormulaAttribute::Defense);
+	TestEqual(TEXT("Defender modifier"), Defender.ExternalModifier, 0.0f);
 	return true;
 }
 

@@ -130,15 +130,12 @@ namespace PassControlAdvanceSelectionQueryTests
 		const FPlayerAttributes& Right)
 	{
 		return Left.Shooting == Right.Shooting
-			&& Left.Dribbling == Right.Dribbling
+			&& Left.Control == Right.Control
 			&& Left.Passing == Right.Passing
-			&& Left.OffBall == Right.OffBall
-			&& Left.Marking == Right.Marking
-			&& Left.Tackling == Right.Tackling
+			&& Left.Defense == Right.Defense
 			&& Left.Speed == Right.Speed
 			&& Left.Strength == Right.Strength
-			&& Left.Stamina == Right.Stamina
-			&& Left.LongShot == Right.LongShot;
+			&& Left.StaminaTier == Right.StaminaTier;
 	}
 
 	bool AreGoalkeeperAttributesEqual(
@@ -773,17 +770,17 @@ bool FPassControlAdvanceNoPlayerAttributeReadsTest::RunTest(
 		TEXT("Query does not read Passing"),
 		Source.Contains(TEXT("Passing")));
 	TestFalse(
-		TEXT("Query does not read Dribbling"),
-		Source.Contains(TEXT("Dribbling")));
+		TEXT("Query does not read Control"),
+		Source.Contains(TEXT("Control")));
 	TestFalse(
-		TEXT("Query does not read OffBall"),
-		Source.Contains(TEXT("OffBall")));
+		TEXT("Query does not read Control"),
+		Source.Contains(TEXT("Control")));
 	TestFalse(
-		TEXT("Query does not read Tackling"),
-		Source.Contains(TEXT("Tackling")));
+		TEXT("Query does not read Defense"),
+		Source.Contains(TEXT("Defense")));
 	TestFalse(
-		TEXT("Query does not read Marking"),
-		Source.Contains(TEXT("Marking")));
+		TEXT("Query does not read Defense"),
+		Source.Contains(TEXT("Defense")));
 	return true;
 }
 

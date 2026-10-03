@@ -917,9 +917,9 @@ bool FMatchPlayOpeningInitializerSameCardIdAcrossSidesTest::RunTest(
 	FMatchPlayOpeningInitializeInput Input =
 		MatchPlayOpeningInitializerTests::MakeInput();
 	Input.OpeningInput.PlayerADeck[0].CardId = SharedCardId;
-	Input.OpeningInput.PlayerADeck[0].Attributes.LongShot = 6;
+	Input.OpeningInput.PlayerADeck[0].Attributes.Shooting = 6;
 	Input.OpeningInput.PlayerBDeck[0].CardId = SharedCardId;
-	Input.OpeningInput.PlayerBDeck[0].Attributes.LongShot = 3;
+	Input.OpeningInput.PlayerBDeck[0].Attributes.Shooting = 3;
 
 	const FMatchPlayOpeningInitializeResult Result =
 		FMatchPlayOpeningInitializer::InitializeMatchPlayOpening(Input);
@@ -936,9 +936,9 @@ bool FMatchPlayOpeningInitializerSameCardIdAcrossSidesTest::RunTest(
 
 	TestTrue(TEXT("Cross-side same CardId opening succeeds"), Result.bSuccess);
 	TestEqual(TEXT("PlayerA query returns PlayerA rules"),
-		PlayerAQuery.Snapshot.Attributes.LongShot, 6);
+		PlayerAQuery.Snapshot.Attributes.Shooting, 6);
 	TestEqual(TEXT("PlayerB query returns PlayerB rules"),
-		PlayerBQuery.Snapshot.Attributes.LongShot, 3);
+		PlayerBQuery.Snapshot.Attributes.Shooting, 3);
 	TestTrue(TEXT("PlayerA CardUsage includes shared CardId"),
 		Result.MatchPlayState.CardUsageState.PlayerACardUsageState
 			.AvailableCardIds.Contains(SharedCardId));

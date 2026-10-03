@@ -23,7 +23,7 @@ namespace SingleCardFormulaEndToEndCompositionTests
 		Card.CardId = AttackerCardId;
 		Card.PositionTypes = { EPlayerPositionType::Attack };
 		Card.Attributes.Shooting = 6;
-		Card.Attributes.Stamina = 5;
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::S;
 		Card.Rarity = ECardRarity::Continental;
 		return Card;
 	}
@@ -33,8 +33,8 @@ namespace SingleCardFormulaEndToEndCompositionTests
 		FPlayerCardRuleSnapshot Card;
 		Card.CardId = DefenderCardId;
 		Card.PositionTypes = { EPlayerPositionType::Defense };
-		Card.Attributes.Tackling = 4;
-		Card.Attributes.Stamina = 3;
+		Card.Attributes.Defense = 4;
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::A;
 		Card.Rarity = ECardRarity::National;
 		return Card;
 	}
@@ -44,7 +44,7 @@ namespace SingleCardFormulaEndToEndCompositionTests
 		FPlayerCardRuleSnapshot Card;
 		Card.CardId = GoalkeeperCardId;
 		Card.PositionTypes = { EPlayerPositionType::Goalkeeper };
-		Card.Attributes.Stamina = 4;
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::A;
 		Card.bIsGoalkeeper = true;
 		Card.bHasGoalkeeperAttributes = true;
 		Card.GoalkeeperAttributes.Reflex = 5;
@@ -94,15 +94,12 @@ namespace SingleCardFormulaEndToEndCompositionTests
 		const FPlayerAttributes& Right)
 	{
 		return Left.Shooting == Right.Shooting
-			&& Left.Dribbling == Right.Dribbling
+			&& Left.Control == Right.Control
 			&& Left.Passing == Right.Passing
-			&& Left.OffBall == Right.OffBall
-			&& Left.Marking == Right.Marking
-			&& Left.Tackling == Right.Tackling
+			&& Left.Defense == Right.Defense
 			&& Left.Speed == Right.Speed
 			&& Left.Strength == Right.Strength
-			&& Left.Stamina == Right.Stamina
-			&& Left.LongShot == Right.LongShot;
+			&& Left.StaminaTier == Right.StaminaTier;
 	}
 
 	bool AreGoalkeeperAttributesEqual(
@@ -319,7 +316,7 @@ bool FSingleCardFormulaE2ETransitionTest::RunTest(
 				DefenderCardId,
 				EFormulaType::Transition,
 				ESingleCardFormulaParticipantRole::Defender,
-				ESingleCardFormulaAttribute::Tackling,
+				ESingleCardFormulaAttribute::Defense,
 				2,
 				0.0f));
 
@@ -564,7 +561,7 @@ bool FSingleCardFormulaE2EDefenderQueryFailureTest::RunTest(
 				MissingCardId,
 				EFormulaType::Finishing,
 				ESingleCardFormulaParticipantRole::Defender,
-				ESingleCardFormulaAttribute::Tackling,
+				ESingleCardFormulaAttribute::Defense,
 				3,
 				0.0f));
 
@@ -649,7 +646,7 @@ bool FSingleCardFormulaE2EAssemblerFailureTest::RunTest(
 				DefenderCardId,
 				EFormulaType::Transition,
 				ESingleCardFormulaParticipantRole::Defender,
-				ESingleCardFormulaAttribute::Tackling,
+				ESingleCardFormulaAttribute::Defense,
 				3,
 				0.0f,
 				FGuid(909, 808, 707, 606)));
@@ -715,7 +712,7 @@ bool FSingleCardFormulaE2EExternalInputsTest::RunTest(
 				DefenderCardId,
 				EFormulaType::Finishing,
 				ESingleCardFormulaParticipantRole::Defender,
-				ESingleCardFormulaAttribute::Tackling,
+				ESingleCardFormulaAttribute::Defense,
 				3,
 				-0.5f));
 
@@ -832,7 +829,7 @@ bool FSingleCardFormulaE2EInputImmutabilityTest::RunTest(
 			DefenderCardId,
 			EFormulaType::Transition,
 			ESingleCardFormulaParticipantRole::Defender,
-			ESingleCardFormulaAttribute::Tackling,
+			ESingleCardFormulaAttribute::Defense,
 			3,
 			0.5f);
 	const FSingleCardFormulaInputAssemblyQueryInput DefenderQueryInputBefore =

@@ -36,7 +36,8 @@ enum class EPassControlDribbleAdvancePlanQueryErrorCode : uint8
 	MissingExternalDefenseD6,
 	InvalidDefenseD6,
 	InvalidLogContext,
-	UnsupportedGoalkeeperParticipant
+	UnsupportedGoalkeeperParticipant,
+	TacticUnavailable
 };
 
 struct FMCODEX_API FPassControlDribbleAdvancePlanQueryInput

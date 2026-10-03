@@ -17,8 +17,8 @@ namespace MatchPlayLongFreeKickResolutionTests
 		Card.PositionTypes = { bGoalkeeper
 			? EPlayerPositionType::Goalkeeper
 			: EPlayerPositionType::Attack };
-		Card.Attributes.LongShot = 6;
-		Card.Attributes.Stamina = 5;
+		Card.Attributes.Shooting = 6;
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::S;
 		Card.GoalkeeperAttributes.Positioning = 4;
 		return Card;
 	}
@@ -422,7 +422,7 @@ bool FMatchPlayLongFreeKickDirectConditionalTest::RunTest(
 	FMatchPlayState TieState = MakeLongAwaitingCarrier(TEXT("LFK_Tie"));
 	const EInitialTurnOrderPlayer TieAttacker =
 		TieState.RuntimeState.CurrentAttackingPlayer;
-	FindSnapshot(TieState, TieAttacker, false)->Attributes.LongShot = 3;
+	FindSnapshot(TieState, TieAttacker, false)->Attributes.Shooting = 3;
 	FindSnapshot(TieState, Other(TieAttacker), true)
 		->GoalkeeperAttributes.Positioning = 3;
 	TieState = BindCarrier(MoveTemp(TieState));
@@ -455,7 +455,7 @@ bool FMatchPlayLongFreeKickDirectConditionalTest::RunTest(
 	const EInitialTurnOrderPlayer DefenderWinAttacker =
 		DefenderWinState.RuntimeState.CurrentAttackingPlayer;
 	FindSnapshot(DefenderWinState, DefenderWinAttacker, false)
-		->Attributes.LongShot = 1;
+		->Attributes.Shooting = 1;
 	FindSnapshot(DefenderWinState, Other(DefenderWinAttacker), true)
 		->GoalkeeperAttributes.Positioning = 6;
 	DefenderWinState = BindCarrier(MoveTemp(DefenderWinState));

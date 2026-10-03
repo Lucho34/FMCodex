@@ -70,19 +70,17 @@ namespace
 		const FName CardId,
 		const EPlayerPositionType Position,
 		const int32 Passing,
-		const int32 OffBall,
-		const int32 Marking,
-		const int32 Tackling,
+		const int32 Control,
+		const int32 Defense,
 		const int32 Stamina)
 	{
 		FPlayerCardRuleSnapshot Snapshot;
 		Snapshot.CardId = CardId;
 		Snapshot.PositionTypes = {Position};
 		Snapshot.Attributes.Passing = Passing;
-		Snapshot.Attributes.OffBall = OffBall;
-		Snapshot.Attributes.Marking = Marking;
-		Snapshot.Attributes.Tackling = Tackling;
-		Snapshot.Attributes.Stamina = Stamina;
+		Snapshot.Attributes.Control = Control;
+		Snapshot.Attributes.Defense = Defense;
+		Snapshot.Attributes.StaminaTier = (Stamina) >= 5 ? EPlayerStaminaTier::S : (Stamina) >= 3 ? EPlayerStaminaTier::A : (Stamina) >= 1 ? EPlayerStaminaTier::B : EPlayerStaminaTier::None;
 		return Snapshot;
 	}
 
@@ -93,7 +91,7 @@ namespace
 		FPlayerCardRuleSnapshot Snapshot;
 		Snapshot.CardId = GoalkeeperId;
 		Snapshot.PositionTypes = {EPlayerPositionType::Goalkeeper};
-		Snapshot.Attributes.Stamina = Stamina;
+		Snapshot.Attributes.StaminaTier = (Stamina) >= 5 ? EPlayerStaminaTier::S : (Stamina) >= 3 ? EPlayerStaminaTier::A : (Stamina) >= 1 ? EPlayerStaminaTier::B : EPlayerStaminaTier::None;
 		Snapshot.bIsGoalkeeper = true;
 		Snapshot.bHasGoalkeeperAttributes = true;
 		Snapshot.GoalkeeperAttributes.OneOnOne = OneOnOne;
@@ -120,18 +118,14 @@ namespace
 		Input.CurrentActionPoint = 4;
 		Input.AttackingOwnerId = FeetCompositionTestAttackingOwnerId;
 		Input.DefendingOwnerId = FeetCompositionTestDefendingOwnerId;
-		Input.CarrierSnapshot = MakeOutfield(
-			CarrierId, EPlayerPositionType::Midfield, 4, 2, 1, 1, 5);
+		Input.CarrierSnapshot = MakeOutfield(CarrierId, EPlayerPositionType::Midfield, 4, 2, 1, 5);
 		Input.CarrierSnapshot.SkillIds = {SelectedSkillId};
-		Input.RunnerSnapshot = MakeOutfield(
-			RunnerId, EPlayerPositionType::Attack, 1, 5, 1, 1, 4);
-		Input.MarkerSnapshot = MakeOutfield(
-			MarkerId, EPlayerPositionType::Defense, 1, 1, 2, 5, 3);
+		Input.RunnerSnapshot = MakeOutfield(RunnerId, EPlayerPositionType::Attack, 1, 5, 1, 4);
+		Input.MarkerSnapshot = MakeOutfield(MarkerId, EPlayerPositionType::Defense, 1, 1, 5, 3);
 		Input.bHasHelper = bHasHelper;
 		if (bHasHelper)
 		{
-			Input.HelperSnapshot = MakeOutfield(
-				HelperId, EPlayerPositionType::Midfield, 1, 1, 4, 1, 2);
+			Input.HelperSnapshot = MakeOutfield(HelperId, EPlayerPositionType::Midfield, 1, 1, 4, 2);
 		}
 		Input.bIsRunnerInAttackingForwardArea = true;
 		return Input;
@@ -318,12 +312,12 @@ namespace
 
 	void MakeAttackerStrong(FThroughBallFeetPlanQueryInput& Input)
 	{
-		Input.ParticipantEligibilityResult.Input.CarrierSnapshot.Attributes.Passing = 9;
-		Input.ParticipantEligibilityResult.Input.RunnerSnapshot.Attributes.OffBall = 9;
-		Input.ParticipantEligibilityResult.Input.MarkerSnapshot.Attributes.Tackling = 1;
+		Input.ParticipantEligibilityResult.Input.CarrierSnapshot.Attributes.Passing = 6;
+		Input.ParticipantEligibilityResult.Input.RunnerSnapshot.Attributes.Control = 6;
+		Input.ParticipantEligibilityResult.Input.MarkerSnapshot.Attributes.Defense = 1;
 		if (Input.ParticipantEligibilityResult.bHasHelper)
 		{
-			Input.ParticipantEligibilityResult.Input.HelperSnapshot.Attributes.Marking = 1;
+			Input.ParticipantEligibilityResult.Input.HelperSnapshot.Attributes.Defense = 1;
 		}
 		Input.AttackD6 = 5;
 		Input.DefenseD6 = 3;
@@ -332,11 +326,11 @@ namespace
 	void MakeNumericTie(FThroughBallFeetPlanQueryInput& Input)
 	{
 		Input.ParticipantEligibilityResult.Input.CarrierSnapshot.Attributes.Passing = 4;
-		Input.ParticipantEligibilityResult.Input.RunnerSnapshot.Attributes.OffBall = 4;
-		Input.ParticipantEligibilityResult.Input.MarkerSnapshot.Attributes.Tackling = 2;
+		Input.ParticipantEligibilityResult.Input.RunnerSnapshot.Attributes.Control = 4;
+		Input.ParticipantEligibilityResult.Input.MarkerSnapshot.Attributes.Defense = 2;
 		if (Input.ParticipantEligibilityResult.bHasHelper)
 		{
-			Input.ParticipantEligibilityResult.Input.HelperSnapshot.Attributes.Marking = 2;
+			Input.ParticipantEligibilityResult.Input.HelperSnapshot.Attributes.Defense = 2;
 		}
 		Input.AttackD6 = 4;
 		Input.DefenseD6 = 5;
@@ -419,7 +413,7 @@ namespace
 				TArray<FName>({CarrierId, RunnerId, MarkerId, HelperId}));
 			Test.TestEqual(TEXT("Helper contributes stamina"),
 				Result.PlanResult.FormulaPlan.DefenseParticipatingStamina,
-				TArray<int32>({3, 2}));
+				TArray<int32>({3, 1}));
 			break;
 		case 5:
 			Input = MakePlanInput(false, true);
@@ -429,9 +423,9 @@ namespace
 			Test.TestEqual(TEXT("GK is involved"),
 				Result.ResolvedView.InvolvedCardIds,
 				TArray<FName>({CarrierId, RunnerId, MarkerId, GoalkeeperId}));
-			Test.TestEqual(TEXT("GK contributes stamina"),
+			Test.TestEqual(TEXT("GK never contributes stamina"),
 				Result.PlanResult.FormulaPlan.DefenseParticipatingStamina,
-				TArray<int32>({3, 6}));
+				TArray<int32>({3}));
 			break;
 		case 6:
 			Input = MakePlanInput(false, true);
@@ -450,9 +444,9 @@ namespace
 		case 7:
 			Input = MakePlanInput(false, false);
 			MakeNumericTie(Input);
-			Input.ParticipantEligibilityResult.Input.CarrierSnapshot.Attributes.Stamina = 8;
-			Input.ParticipantEligibilityResult.Input.RunnerSnapshot.Attributes.Stamina = 7;
-			Input.ParticipantEligibilityResult.Input.MarkerSnapshot.Attributes.Stamina = 2;
+			Input.ParticipantEligibilityResult.Input.CarrierSnapshot.Attributes.StaminaTier = EPlayerStaminaTier::S;
+			Input.ParticipantEligibilityResult.Input.RunnerSnapshot.Attributes.StaminaTier = EPlayerStaminaTier::S;
+			Input.ParticipantEligibilityResult.Input.MarkerSnapshot.Attributes.StaminaTier = EPlayerStaminaTier::B;
 			Result = Compose(Input);
 			ExpectSuccess(Test, Result);
 			Test.TestEqual(TEXT("Attacker stamina wins"),
@@ -462,9 +456,9 @@ namespace
 		case 8:
 			Input = MakePlanInput(false, false);
 			MakeNumericTie(Input);
-			Input.ParticipantEligibilityResult.Input.CarrierSnapshot.Attributes.Stamina = 1;
-			Input.ParticipantEligibilityResult.Input.RunnerSnapshot.Attributes.Stamina = 1;
-			Input.ParticipantEligibilityResult.Input.MarkerSnapshot.Attributes.Stamina = 9;
+			Input.ParticipantEligibilityResult.Input.CarrierSnapshot.Attributes.StaminaTier = EPlayerStaminaTier::B;
+			Input.ParticipantEligibilityResult.Input.RunnerSnapshot.Attributes.StaminaTier = EPlayerStaminaTier::B;
+			Input.ParticipantEligibilityResult.Input.MarkerSnapshot.Attributes.StaminaTier = EPlayerStaminaTier::S;
 			Result = Compose(Input);
 			ExpectSuccess(Test, Result);
 			Test.TestEqual(TEXT("Defender stamina wins"),
@@ -475,11 +469,13 @@ namespace
 				EFormulaWinReason::StaminaTieBreaker);
 			break;
 		case 9:
-			Input = MakePlanInput(false, false);
+			Input = MakePlanInput(true, false);
 			MakeNumericTie(Input);
-			Input.ParticipantEligibilityResult.Input.CarrierSnapshot.Attributes.Stamina = 5;
-			Input.ParticipantEligibilityResult.Input.RunnerSnapshot.Attributes.Stamina = 4;
-			Input.ParticipantEligibilityResult.Input.MarkerSnapshot.Attributes.Stamina = 9;
+			Input.DefenseD6 = 4;
+			Input.ParticipantEligibilityResult.Input.HelperSnapshot.Attributes.StaminaTier = EPlayerStaminaTier::B;
+			Input.ParticipantEligibilityResult.Input.CarrierSnapshot.Attributes.StaminaTier = EPlayerStaminaTier::A;
+			Input.ParticipantEligibilityResult.Input.RunnerSnapshot.Attributes.StaminaTier = EPlayerStaminaTier::B;
+			Input.ParticipantEligibilityResult.Input.MarkerSnapshot.Attributes.StaminaTier = EPlayerStaminaTier::A;
 			Result = Compose(Input);
 			ExpectSuccess(Test, Result);
 			Test.TestEqual(TEXT("Equal stamina favors Defender"),

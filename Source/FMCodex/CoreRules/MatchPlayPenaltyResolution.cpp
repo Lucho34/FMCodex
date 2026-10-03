@@ -323,7 +323,7 @@ FMatchPlayPenaltyResolution::ResolveDirectDefenseRoll(
 	FormulaInput.Attacker.ComparePoint = Penalty.AttackD6;
 	FormulaInput.Attacker.bComparePointWasRolledOnD6 = true;
 	FormulaInput.Attacker.ParticipatingStamina.Add(
-		Penalty.Carrier.Snapshot.Attributes.Stamina);
+		PlayerStaminaGameplayValue(Penalty.Carrier.Snapshot.Attributes.StaminaTier));
 	FormulaInput.Defender.BaseValue = Result.GoalkeeperQueryResult.Snapshot
 		.GoalkeeperAttributes.Anticipation;
 	FormulaInput.Defender.Modifier = -3.0f;

@@ -20,6 +20,12 @@ struct FMCODEX_API FPlayerCardRuleSnapshot
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Player Card Rule Snapshot")
 	FPlayerAttributes Attributes;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Traits")
+	TArray<FPlayerRankedTrait> RankedTraits;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Core Rules|Traits")
+	TArray<FName> BinaryTraits;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Core Rules|Player Card Rule Snapshot")
 	bool bIsGoalkeeper = false;
 

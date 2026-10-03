@@ -23,15 +23,15 @@ namespace LongShotDirectShotCompositionTests
 		FPlayerCardRuleSnapshot Attacker;
 		Attacker.CardId = AttackerCardId;
 		Attacker.PositionTypes = { EPlayerPositionType::Attack };
-		Attacker.Attributes.LongShot = 5;
-		Attacker.Attributes.Stamina = 5;
+		Attacker.Attributes.Shooting = 5;
+		Attacker.Attributes.StaminaTier = EPlayerStaminaTier::S;
 		Attacker.SkillIds = { SkillId };
 
 		FPlayerCardRuleSnapshot Defender;
 		Defender.CardId = DefenderCardId;
 		Defender.PositionTypes = { EPlayerPositionType::Defense };
-		Defender.Attributes.Tackling = 4;
-		Defender.Attributes.Stamina = 3;
+		Defender.Attributes.Defense = 4;
+		Defender.Attributes.StaminaTier = EPlayerStaminaTier::A;
 
 		FPlayerCardRuleSnapshotSet SnapshotSet;
 		SnapshotSet.Cards = { Attacker, Defender };
@@ -193,15 +193,12 @@ namespace LongShotDirectShotCompositionTests
 		const FPlayerAttributes& Right)
 	{
 		return Left.Shooting == Right.Shooting
-			&& Left.Dribbling == Right.Dribbling
+			&& Left.Control == Right.Control
 			&& Left.Passing == Right.Passing
-			&& Left.OffBall == Right.OffBall
-			&& Left.Marking == Right.Marking
-			&& Left.Tackling == Right.Tackling
+			&& Left.Defense == Right.Defense
 			&& Left.Speed == Right.Speed
 			&& Left.Strength == Right.Strength
-			&& Left.Stamina == Right.Stamina
-			&& Left.LongShot == Right.LongShot;
+			&& Left.StaminaTier == Right.StaminaTier;
 	}
 
 	bool AreGoalkeeperAttributesEqual(
@@ -295,7 +292,7 @@ bool FLongShotCompositionAttackD6ThreeTest::RunTest(
 	const FCompositionResult Result = Compose(
 		MakePlayerCardSnapshots(),
 		MakeSkillRules(),
-		MakePlanInput(3, 2));
+		MakePlanInput(3, 1));
 
 	TestTrue(TEXT("Plan Query succeeds"), Result.PlanResult.bSuccess);
 	TestEqual(
@@ -332,21 +329,21 @@ bool FLongShotCompositionAttackD6ThreeTest::RunTest(
 		Plan.DefenderQueryInput.FormulaType,
 		EFormulaType::Finishing);
 	TestEqual(
-		TEXT("Attacker selects LongShot"),
+		TEXT("Attacker selects Shooting"),
 		Plan.AttackerQueryInput.Attribute,
-		ESingleCardFormulaAttribute::LongShot);
+		ESingleCardFormulaAttribute::Shooting);
 	TestEqual(
-		TEXT("Defender selects Tackling"),
+		TEXT("Defender selects Defense"),
 		Plan.DefenderQueryInput.Attribute,
-		ESingleCardFormulaAttribute::Tackling);
+		ESingleCardFormulaAttribute::Defense);
 	TestEqual(
 		TEXT("Attacker Modifier is zero"),
 		Plan.AttackerQueryInput.ExternalModifier,
 		0.0f);
 	TestEqual(
-		TEXT("Defender Modifier is plus two"),
+		TEXT("Defender Modifier is plus three"),
 		Plan.DefenderQueryInput.ExternalModifier,
-		2.0f);
+		3.0f);
 
 	const FFormulaResolverInput& ResolverInput =
 		Result.AssemblyResult.ResolverInput;
@@ -355,11 +352,11 @@ bool FLongShotCompositionAttackD6ThreeTest::RunTest(
 		ResolverInput.FormulaType,
 		EFormulaType::Finishing);
 	TestEqual(
-		TEXT("Attacker LongShot becomes BaseValue"),
+		TEXT("Attacker Shooting becomes BaseValue"),
 		ResolverInput.Attacker.BaseValue,
 		5.0f);
 	TestEqual(
-		TEXT("Defender Tackling becomes BaseValue"),
+		TEXT("Defender Defense becomes BaseValue"),
 		ResolverInput.Defender.BaseValue,
 		4.0f);
 	TestEqual(
@@ -369,7 +366,7 @@ bool FLongShotCompositionAttackD6ThreeTest::RunTest(
 	TestEqual(
 		TEXT("Defender D6 is preserved"),
 		ResolverInput.Defender.ComparePoint,
-		2);
+		1);
 	TestTrue(
 		TEXT("Attacker D6 source flag is preserved"),
 		ResolverInput.Attacker.bComparePointWasRolledOnD6);
@@ -383,7 +380,7 @@ bool FLongShotCompositionAttackD6ThreeTest::RunTest(
 	TestEqual(
 		TEXT("Defender Modifier reaches ResolverInput"),
 		ResolverInput.Defender.Modifier,
-		2.0f);
+		3.0f);
 	TestEqual(TEXT("LogId is preserved"), ResolverInput.LogId, LogId);
 	TestEqual(
 		TEXT("TurnIndex is preserved"),
@@ -479,7 +476,7 @@ bool FLongShotCompositionAttackD6SixTest::RunTest(
 	TestEqual(
 		TEXT("Defender final value follows existing rule"),
 		FormulaResult.DefenderFinalValue,
-		8.0f);
+		9.0f);
 	TestEqual(
 		TEXT("Existing resolver selects attacker"),
 		FormulaResult.Winner,

@@ -58,16 +58,13 @@ namespace MatchPlayBoundActionParticipantNormalizationImplementation
 		const FPlayerAttributes& Source)
 	{
 		FMatchPlayBoundActionNormalizedParticipantValues Values;
-		Values.Shooting = Source.Shooting;
-		Values.Dribbling = Source.Dribbling;
 		Values.Passing = Source.Passing;
-		Values.OffBall = Source.OffBall;
-		Values.Marking = Source.Marking;
-		Values.Tackling = Source.Tackling;
+		Values.Control = Source.Control;
+		Values.Defense = Source.Defense;
 		Values.Speed = Source.Speed;
 		Values.Strength = Source.Strength;
-		Values.Stamina = Source.Stamina;
-		Values.LongShot = Source.LongShot;
+		Values.StaminaTier = Source.StaminaTier;
+		Values.Shooting = Source.Shooting;
 		return Values;
 	}
 

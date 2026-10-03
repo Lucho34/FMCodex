@@ -51,7 +51,7 @@ namespace
 		const EPlayerPositionType Position,
 		const int32 Passing,
 		const int32 Speed,
-		const int32 Marking,
+		const int32 Defense,
 		const int32 Stamina)
 	{
 		FPlayerCardRuleSnapshot Snapshot;
@@ -59,8 +59,8 @@ namespace
 		Snapshot.PositionTypes = {Position};
 		Snapshot.Attributes.Passing = Passing;
 		Snapshot.Attributes.Speed = Speed;
-		Snapshot.Attributes.Marking = Marking;
-		Snapshot.Attributes.Stamina = Stamina;
+		Snapshot.Attributes.Defense = Defense;
+		Snapshot.Attributes.StaminaTier = (Stamina) >= 5 ? EPlayerStaminaTier::S : (Stamina) >= 3 ? EPlayerStaminaTier::A : (Stamina) >= 1 ? EPlayerStaminaTier::B : EPlayerStaminaTier::None;
 		return Snapshot;
 	}
 
@@ -333,8 +333,8 @@ namespace
 			Test.TestEqual(FString::Printf(TEXT("%s identity unchanged"), Labels[Index]), L.CardId, R.CardId);
 			Test.TestEqual(FString::Printf(TEXT("%s Passing unchanged"), Labels[Index]), L.Attributes.Passing, R.Attributes.Passing);
 			Test.TestEqual(FString::Printf(TEXT("%s Speed unchanged"), Labels[Index]), L.Attributes.Speed, R.Attributes.Speed);
-			Test.TestEqual(FString::Printf(TEXT("%s Marking unchanged"), Labels[Index]), L.Attributes.Marking, R.Attributes.Marking);
-			Test.TestEqual(FString::Printf(TEXT("%s Stamina unchanged"), Labels[Index]), L.Attributes.Stamina, R.Attributes.Stamina);
+			Test.TestEqual(FString::Printf(TEXT("%s Defense unchanged"), Labels[Index]), L.Attributes.Defense, R.Attributes.Defense);
+			Test.TestEqual(FString::Printf(TEXT("%s Stamina unchanged"), Labels[Index]), PlayerStaminaGameplayValue(L.Attributes.StaminaTier), PlayerStaminaGameplayValue(R.Attributes.StaminaTier));
 		}
 	}
 
@@ -474,8 +474,8 @@ namespace
 		{
 			const auto Observation = Compose(MakePlanInput(false));
 			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::OneOnOneRequired);
-			const TArray<int32> ExpectedAttackStamina{6, 5};
-			const TArray<int32> ExpectedDefenseStamina{4};
+			const TArray<int32> ExpectedAttackStamina{5, 5};
+			const TArray<int32> ExpectedDefenseStamina{3};
 			const TArray<FName> ExpectedCards{CarrierId, RunnerId, MarkerId};
 			Test.TestTrue(TEXT("No-helper attack stamina order"), Observation.AssemblyResult.ResolverInput.Attacker.ParticipatingStamina == ExpectedAttackStamina);
 			Test.TestTrue(TEXT("No-helper defense stamina order"), Observation.AssemblyResult.ResolverInput.Defender.ParticipatingStamina == ExpectedDefenseStamina);
@@ -489,8 +489,8 @@ namespace
 			Input.DefenseD6 = 1;
 			const auto Observation = Compose(Input);
 			ExpectFormulaSuccess(Test, Observation, EComposedP1Outcome::OneOnOneRequired);
-			const TArray<int32> ExpectedAttackStamina{6, 5};
-			const TArray<int32> ExpectedDefenseStamina{4, 3};
+			const TArray<int32> ExpectedAttackStamina{5, 5};
+			const TArray<int32> ExpectedDefenseStamina{3, 3};
 			const TArray<FName> ExpectedCards{CarrierId, RunnerId, MarkerId, HelperId};
 			Test.TestTrue(TEXT("Helper attack stamina order"), Observation.AssemblyResult.ResolverInput.Attacker.ParticipatingStamina == ExpectedAttackStamina);
 			Test.TestTrue(TEXT("Helper defense stamina order"), Observation.AssemblyResult.ResolverInput.Defender.ParticipatingStamina == ExpectedDefenseStamina);

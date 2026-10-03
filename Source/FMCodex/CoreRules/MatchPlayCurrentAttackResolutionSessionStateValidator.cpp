@@ -84,15 +84,12 @@ namespace MatchPlayCurrentAttackResolutionSessionStateValidatorImplementation
 			FPlayerCardRuleSnapshotValidator::MaxAttributeValue;
 		const int32 AllValues[] = {
 			Values.Shooting,
-			Values.Dribbling,
+			Values.Control,
 			Values.Passing,
-			Values.OffBall,
-			Values.Marking,
-			Values.Tackling,
+			Values.Defense,
 			Values.Speed,
 			Values.Strength,
-			Values.Stamina,
-			Values.LongShot
+			PlayerStaminaGameplayValue(Values.StaminaTier)
 		};
 		for (const int32 Value : AllValues)
 		{

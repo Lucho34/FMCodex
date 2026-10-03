@@ -20,7 +20,7 @@ namespace ThroughBallBehindDefenseP1PlanQueryTests
 		const EPlayerPositionType Position,
 		const int32 Passing,
 		const int32 Speed,
-		const int32 Marking,
+		const int32 Defense,
 		const int32 Stamina)
 	{
 		FPlayerCardRuleSnapshot Snapshot;
@@ -28,8 +28,8 @@ namespace ThroughBallBehindDefenseP1PlanQueryTests
 		Snapshot.PositionTypes = { Position };
 		Snapshot.Attributes.Passing = Passing;
 		Snapshot.Attributes.Speed = Speed;
-		Snapshot.Attributes.Marking = Marking;
-		Snapshot.Attributes.Stamina = Stamina;
+		Snapshot.Attributes.Defense = Defense;
+		Snapshot.Attributes.StaminaTier = (Stamina) >= 5 ? EPlayerStaminaTier::S : (Stamina) >= 3 ? EPlayerStaminaTier::A : (Stamina) >= 1 ? EPlayerStaminaTier::B : EPlayerStaminaTier::None;
 		return Snapshot;
 	}
 
@@ -114,7 +114,7 @@ namespace ThroughBallBehindDefenseP1PlanQueryTests
 			&& Left.AttackParticipatingStamina
 				== Right.AttackParticipatingStamina
 			&& Left.MarkerId == Right.MarkerId
-			&& Left.MarkerMarking == Right.MarkerMarking
+			&& Left.MarkerDefense == Right.MarkerDefense
 			&& Left.MarkerStamina == Right.MarkerStamina
 			&& Left.bHasHelper == Right.bHasHelper
 			&& Left.HelperId == Right.HelperId
@@ -429,13 +429,13 @@ namespace ThroughBallBehindDefenseP1PlanQueryTests
 			Test.TestEqual(TEXT("Runner Speed"), Result.FormulaPlan.RunnerSpeed, 4);
 			Test.TestEqual(TEXT("Attack average preserves half"), Result.FormulaPlan.AttackBaseValue, 4.5f);
 			Test.TestEqual(TEXT("Attack modifier is zero"), Result.FormulaPlan.AttackExternalModifier, 0.0f);
-			Test.TestEqual(TEXT("Attack stamina ordered"), Result.FormulaPlan.AttackParticipatingStamina, TArray<int32>({6, 5}));
+			Test.TestEqual(TEXT("Attack stamina ordered"), Result.FormulaPlan.AttackParticipatingStamina, TArray<int32>({5, 5}));
 			break;
 		case 39:
 			Result = EvaluateFormulaPlan(Test, MakeInput());
 			Test.TestEqual(TEXT("Absent Helper contributes zero to average"), Result.FormulaPlan.DefenseBaseValue, 2.5f);
 			Test.TestEqual(TEXT("Defense modifier is one"), Result.FormulaPlan.DefenseExternalModifier, 1.0f);
-			Test.TestEqual(TEXT("Marker-only stamina"), Result.FormulaPlan.DefenseParticipatingStamina, TArray<int32>({4}));
+			Test.TestEqual(TEXT("Marker-only stamina"), Result.FormulaPlan.DefenseParticipatingStamina, TArray<int32>({3}));
 			break;
 		case 40:
 			Result = EvaluateFormulaPlan(Test, MakeInput(true));
@@ -447,7 +447,7 @@ namespace ThroughBallBehindDefenseP1PlanQueryTests
 			Test.TestEqual(TEXT("Helper identity"), Result.FormulaPlan.HelperId, HelperId);
 			Test.TestEqual(TEXT("Helper Speed"), Result.FormulaPlan.HelperSpeed, 4);
 			Test.TestEqual(TEXT("Helper stamina"), Result.FormulaPlan.HelperStamina, 3);
-			Test.TestEqual(TEXT("Defense stamina ordered"), Result.FormulaPlan.DefenseParticipatingStamina, TArray<int32>({4, 3}));
+			Test.TestEqual(TEXT("Defense stamina ordered"), Result.FormulaPlan.DefenseParticipatingStamina, TArray<int32>({3, 3}));
 			break;
 		case 42:
 			Input = MakeInput();

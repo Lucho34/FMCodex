@@ -22,15 +22,12 @@ namespace PlayerCardRuleSnapshotQueryTests
 			EPlayerPositionType::Midfield
 		};
 		Card.Attributes.Shooting = 6;
-		Card.Attributes.Dribbling = 5;
 		Card.Attributes.Passing = 4;
-		Card.Attributes.OffBall = 3;
-		Card.Attributes.Marking = 2;
-		Card.Attributes.Tackling = 2;
+		Card.Attributes.Control = 3;
+		Card.Attributes.Defense = 2;
 		Card.Attributes.Speed = 5;
 		Card.Attributes.Strength = 4;
-		Card.Attributes.Stamina = 3;
-		Card.Attributes.LongShot = 6;
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::A;
 		Card.Rarity = ECardRarity::Continental;
 		Card.SkillIds =
 		{
@@ -74,15 +71,12 @@ namespace PlayerCardRuleSnapshotQueryTests
 		const FPlayerAttributes& Right)
 	{
 		return Left.Shooting == Right.Shooting
-			&& Left.Dribbling == Right.Dribbling
+			&& Left.Control == Right.Control
 			&& Left.Passing == Right.Passing
-			&& Left.OffBall == Right.OffBall
-			&& Left.Marking == Right.Marking
-			&& Left.Tackling == Right.Tackling
+			&& Left.Defense == Right.Defense
 			&& Left.Speed == Right.Speed
 			&& Left.Strength == Right.Strength
-			&& Left.Stamina == Right.Stamina
-			&& Left.LongShot == Right.LongShot;
+			&& Left.StaminaTier == Right.StaminaTier;
 	}
 
 	bool AreGoalkeeperAttributesEqual(

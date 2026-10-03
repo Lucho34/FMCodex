@@ -9,6 +9,8 @@ namespace MatchPlayCardSnapshotAuthority
 		Snapshot.CardId = CardData.CardId;
 		Snapshot.PositionTypes = CardData.PositionTypes;
 		Snapshot.Attributes = CardData.Attributes;
+		Snapshot.RankedTraits = CardData.RankedTraits;
+		Snapshot.BinaryTraits = CardData.BinaryTraits;
 		Snapshot.bIsGoalkeeper = CardData.bIsGoalkeeper;
 		Snapshot.bHasGoalkeeperAttributes = CardData.bIsGoalkeeper;
 		Snapshot.GoalkeeperAttributes = CardData.GoalkeeperAttributes;

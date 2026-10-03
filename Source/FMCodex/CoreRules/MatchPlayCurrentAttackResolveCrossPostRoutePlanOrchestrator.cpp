@@ -28,15 +28,12 @@ namespace MatchPlayCurrentAttackResolveCrossPostRoutePlan
 	{
 		FPlayerAttributes Result;
 		Result.Shooting = Values.Shooting;
-		Result.Dribbling = Values.Dribbling;
 		Result.Passing = Values.Passing;
-		Result.OffBall = Values.OffBall;
-		Result.Marking = Values.Marking;
-		Result.Tackling = Values.Tackling;
+		Result.Control = Values.Control;
 		Result.Speed = Values.Speed;
 		Result.Strength = Values.Strength;
-		Result.Stamina = Values.Stamina;
-		Result.LongShot = Values.LongShot;
+		Result.Defense = Values.Defense;
+		Result.StaminaTier = Values.StaminaTier;
 		return Result;
 	}
 

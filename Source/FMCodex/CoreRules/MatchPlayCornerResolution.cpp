@@ -283,18 +283,18 @@ FFormulaResolverInput FMatchPlayCornerResolution::BuildFormulaInput(
 	Input.Attacker.BaseValue = Corner.ActualRoute
 		== EMatchPlayCornerRouteIntent::High
 			? Corner.Runner.Snapshot.Attributes.Strength
-			: Corner.Runner.Snapshot.Attributes.Shooting;
+			: Corner.Runner.Snapshot.Attributes.Control;
 	Input.Attacker.Modifier = Corner.CandidateBonusSide == Attacker
 		? static_cast<float>(Corner.CandidateBonus) : 0.0f;
 	Input.Attacker.ComparePoint = Corner.AttackD6;
 	Input.Attacker.bComparePointWasRolledOnD6 = Corner.bHasAttackD6;
 	Input.Attacker.ParticipatingStamina.Add(
-		Corner.Runner.Snapshot.Attributes.Stamina);
+		PlayerStaminaGameplayValue(Corner.Runner.Snapshot.Attributes.StaminaTier));
 
 	const float HelperAttribute = Corner.ActualRoute
 		== EMatchPlayCornerRouteIntent::High
 			? Corner.Helper.Snapshot.Attributes.Strength
-			: Corner.Helper.Snapshot.Attributes.Marking;
+			: Corner.Helper.Snapshot.Attributes.Defense;
 	const float GoalkeeperAttribute = Corner.ActualRoute
 		== EMatchPlayCornerRouteIntent::High
 			? Goalkeeper.Snapshot.GoalkeeperAttributes.Aerial
@@ -307,7 +307,7 @@ FFormulaResolverInput FMatchPlayCornerResolution::BuildFormulaInput(
 	Input.Defender.ComparePoint = Corner.DefenseD6;
 	Input.Defender.bComparePointWasRolledOnD6 = Corner.bHasDefenseD6;
 	Input.Defender.ParticipatingStamina = {
-		Corner.Helper.Snapshot.Attributes.Stamina };
+		PlayerStaminaGameplayValue(Corner.Helper.Snapshot.Attributes.StaminaTier) };
 	Input.bGoalkeeperParticipated = true;
 	Input.TurnIndex = static_cast<int32>(AttackSequence);
 	Input.AttackerPlayerId = GetSideId(Attacker);

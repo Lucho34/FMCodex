@@ -37,7 +37,7 @@ bool FFMCodexLongMatrix::RunTest(const FString& P)
   const auto& Carrier=Before.State.CurrentAttack.SetPieceRoute.LongFreeKick.Carrier.Snapshot;
   const auto& Cards=Actor==Side::PlayerA?Before.State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards:Before.State.CardSnapshotAuthority.PlayerACardSnapshots.Cards;
   const auto* GK=Cards.FindByPredicate([](const auto& C){return C.bIsGoalkeeper;});if(!TestNotNull(TEXT("Canonical unique GK"),GK))return false;
-  const float AttackTotal=Carrier.Attributes.LongShot+A;
+  const float AttackTotal=Carrier.Attributes.Shooting+A;
   const float DefenseTotal=GK->GoalkeeperAttributes.Positioning+2+B;
   Goal=A==6&&B<=2?true:B==6&&A<=2?false:AttackTotal>DefenseTotal;
   const auto Final=Access::Session(*F.Mode).GetStateSnapshot();const auto& Formula=Final.CurrentAttack.SetPieceRoute.LongFreeKick.FormulaResolution;

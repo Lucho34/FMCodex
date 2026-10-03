@@ -286,7 +286,7 @@ FLongShotDirectShotPlanQuery::BuildPlan(
 		LongShotDirectShotPlanQuery::MakeFormulaQueryInput(
 			Input.AttackerCardId,
 			ESingleCardFormulaParticipantRole::Attacker,
-			ESingleCardFormulaAttribute::LongShot,
+			ESingleCardFormulaAttribute::Shooting,
 			Input.ExternalAttackD6,
 			0.0f,
 			Input);
@@ -294,9 +294,9 @@ FLongShotDirectShotPlanQuery::BuildPlan(
 		LongShotDirectShotPlanQuery::MakeFormulaQueryInput(
 			Input.DefenderCardId,
 			ESingleCardFormulaParticipantRole::Defender,
-			ESingleCardFormulaAttribute::Tackling,
+			ESingleCardFormulaAttribute::Defense,
 			Input.ExternalDefenseD6,
-			2.0f,
+			3.0f,
 			Input);
 	Result.FormulaPlan.AttackerPlayerId =
 		Input.AttackerPlayerId;

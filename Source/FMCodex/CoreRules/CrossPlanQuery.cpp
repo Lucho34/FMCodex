@@ -515,11 +515,11 @@ FCrossPlanQueryResult FCrossPlanQuery::BuildPlan(
 	const int32 RunnerAttackAttribute = Input.ActualCrossType
 		== ECrossPlanActualType::High
 		? RunnerSnapshot.Attributes.Strength
-		: RunnerSnapshot.Attributes.Shooting;
+		: RunnerSnapshot.Attributes.Speed;
 	const int32 HelperDefenseAttribute = Input.bHasHelper
 		? (Input.ActualCrossType == ECrossPlanActualType::High
 			? Result.HelperSnapshotQueryResult.Snapshot.Attributes.Strength
-			: Result.HelperSnapshotQueryResult.Snapshot.Attributes.Marking)
+			: Result.HelperSnapshotQueryResult.Snapshot.Attributes.Speed)
 		: 0;
 	const float GoalkeeperModifier = Input.bUseGoalkeeper
 		? static_cast<float>(Input.ActualCrossType == ECrossPlanActualType::High
@@ -531,7 +531,7 @@ FCrossPlanQueryResult FCrossPlanQuery::BuildPlan(
 		CarrierSnapshot.Attributes.Passing,
 		RunnerAttackAttribute);
 	const float DefenderModifier = CrossPlanQuery::MakeAverageModifier(
-		MarkerSnapshot.Attributes.Tackling,
+		MarkerSnapshot.Attributes.Defense,
 		HelperDefenseAttribute)
 		+ GoalkeeperModifier + CrossPlanQuery::DefenseBonus;
 
@@ -548,7 +548,7 @@ FCrossPlanQueryResult FCrossPlanQuery::BuildPlan(
 		CrossPlanQuery::MakeFormulaQueryInput(
 			Input.MarkerCardId,
 			ESingleCardFormulaParticipantRole::Defender,
-			ESingleCardFormulaAttribute::Tackling,
+			ESingleCardFormulaAttribute::Defense,
 			Input.DefenseD6,
 			DefenderModifier,
 			Input);

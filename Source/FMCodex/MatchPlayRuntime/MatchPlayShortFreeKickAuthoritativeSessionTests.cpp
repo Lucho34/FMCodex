@@ -17,7 +17,7 @@ namespace MatchPlayShortFreeKickAuthoritativeSessionTests
 			: EPlayerPositionType::Attack };
 		Card.Attributes.Shooting = 5;
 		Card.Attributes.Passing = 4;
-		Card.Attributes.Stamina = 5;
+		Card.Attributes.StaminaTier = EPlayerStaminaTier::S;
 		Card.GoalkeeperAttributes.Handling = 4;
 		return Card;
 	}

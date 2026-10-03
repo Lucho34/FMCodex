@@ -123,6 +123,7 @@ struct FMCODEX_API FFMCodexLocalMatchCardView
 	{
 		FString CanonicalLabel;
 		int32 Value = 0;
+		FString ValueLabel;
 	};
 	struct FSkill
 	{

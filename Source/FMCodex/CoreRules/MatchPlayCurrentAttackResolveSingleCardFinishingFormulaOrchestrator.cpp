@@ -478,12 +478,12 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 		// The validated plan owns participant membership and rejects duplicate
 		// player/card identities. Both Cross routes use the shared Formula tie-break.
 		const TArray<int32> AttackStamina = {
-			PlanResult.CarrierSnapshotQueryResult.Snapshot.Attributes.Stamina,
-			PlanResult.RunnerSnapshotQueryResult.Snapshot.Attributes.Stamina };
+			PlayerStaminaGameplayValue(PlanResult.CarrierSnapshotQueryResult.Snapshot.Attributes.StaminaTier),
+			PlayerStaminaGameplayValue(PlanResult.RunnerSnapshotQueryResult.Snapshot.Attributes.StaminaTier) };
 		TArray<int32> DefenseStamina;
-		DefenseStamina.Add(PlanResult.MarkerSnapshotQueryResult.Snapshot.Attributes.Stamina);
+		DefenseStamina.Add(PlayerStaminaGameplayValue(PlanResult.MarkerSnapshotQueryResult.Snapshot.Attributes.StaminaTier));
 		if (Plan.bHasHelper)
-			DefenseStamina.Add(PlanResult.HelperSnapshotQueryResult.Snapshot.Attributes.Stamina);
+			DefenseStamina.Add(PlayerStaminaGameplayValue(PlanResult.HelperSnapshotQueryResult.Snapshot.Attributes.StaminaTier));
 		// Goalkeepers have no stamina attribute; their participation is the
 		// separate, higher-priority final-value tie condition below.
 		if (!ExecutePlan(
@@ -528,13 +528,13 @@ FMatchPlayCurrentAttackResolveSingleCardFinishingFormulaOrchestrator::Resolve(
 		const FMatchPlayCurrentAttackResolutionSessionBundle& Bundle =
 			BeforeState.CurrentAttack.ResolutionSession.Bundle;
 		const TArray<int32> AttackerParticipatingStamina = {
-			Bundle.Carrier.Values.Stamina,
-			Bundle.Runner.Values.Stamina };
+			PlayerStaminaGameplayValue(Bundle.Carrier.Values.StaminaTier),
+			PlayerStaminaGameplayValue(Bundle.Runner.Values.StaminaTier) };
 		TArray<int32> DefenderParticipatingStamina = {
-			Bundle.Marker.Values.Stamina };
+			PlayerStaminaGameplayValue(Bundle.Marker.Values.StaminaTier) };
 		if (Bundle.bHasHelper)
 		{
-			DefenderParticipatingStamina.Add(Bundle.Helper.Values.Stamina);
+			DefenderParticipatingStamina.Add(PlayerStaminaGameplayValue(Bundle.Helper.Values.StaminaTier));
 		}
 		if (Result.Family == EFamily::PassAdvance)
 		{

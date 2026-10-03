@@ -122,7 +122,7 @@ namespace FMCodexLongShotProductionPresentationTests
 		Contest.Application = EMatchPlayResolutionFormulaApplication::Pending;
 		Contest.AttackRow.Side = EInitialTurnOrderPlayer::PlayerA;
 		Contest.AttackRow.Terms = {
-			AttributeTerm(EMatchPlayResolutionFormulaAttribute::LongShot, 4.0f),
+			AttributeTerm(EMatchPlayResolutionFormulaAttribute::Shooting, 4.0f),
 			RawTerm(0, bAttackResolved, AttackD6)
 		};
 		Contest.AttackRow.bKnownNonRollSubtotalResolved = true;
@@ -131,7 +131,7 @@ namespace FMCodexLongShotProductionPresentationTests
 		Contest.AttackRow.FinalValue = bAttackResolved ? 4.0f + AttackD6 : 0.0f;
 		Contest.DefenseRow.Side = EInitialTurnOrderPlayer::PlayerB;
 		Contest.DefenseRow.Terms = {
-			AttributeTerm(EMatchPlayResolutionFormulaAttribute::Tackling, 3.0f),
+			AttributeTerm(EMatchPlayResolutionFormulaAttribute::Defense, 3.0f),
 			RawTerm(1, bDefenseResolved, DefenseD6)
 		};
 		Contest.DefenseRow.bKnownNonRollSubtotalResolved = true;

@@ -83,10 +83,10 @@ namespace ThroughBallBehindDefenseP1PlanQuery
 
 		Plan.CarrierId = Carrier.CardId;
 		Plan.CarrierPassing = Carrier.Attributes.Passing;
-		Plan.CarrierStamina = Carrier.Attributes.Stamina;
+		Plan.CarrierStamina = PlayerStaminaGameplayValue(Carrier.Attributes.StaminaTier);
 		Plan.RunnerId = Runner.CardId;
 		Plan.RunnerSpeed = Runner.Attributes.Speed;
-		Plan.RunnerStamina = Runner.Attributes.Stamina;
+		Plan.RunnerStamina = PlayerStaminaGameplayValue(Runner.Attributes.StaminaTier);
 		Plan.AttackD6 = Input.AttackD6;
 		Plan.AttackBaseValue = AverageOneDecimal(
 			Plan.CarrierPassing,
@@ -98,20 +98,20 @@ namespace ThroughBallBehindDefenseP1PlanQuery
 		};
 
 		Plan.MarkerId = Marker.CardId;
-		Plan.MarkerMarking = Marker.Attributes.Marking;
-		Plan.MarkerStamina = Marker.Attributes.Stamina;
+		Plan.MarkerDefense = Marker.Attributes.Defense;
+		Plan.MarkerStamina = PlayerStaminaGameplayValue(Marker.Attributes.StaminaTier);
 		Plan.bHasHelper = Eligibility.bHasHelper;
 		if (Plan.bHasHelper)
 		{
 			const FPlayerCardRuleSnapshot& Helper = Participants.HelperSnapshot;
 			Plan.HelperId = Helper.CardId;
 			Plan.HelperSpeed = Helper.Attributes.Speed;
-			Plan.HelperStamina = Helper.Attributes.Stamina;
+			Plan.HelperStamina = PlayerStaminaGameplayValue(Helper.Attributes.StaminaTier);
 		}
 
 		Plan.DefenseD6 = Input.DefenseD6;
 		Plan.DefenseBaseValue = AverageOneDecimal(
-			Plan.MarkerMarking,
+			Plan.MarkerDefense,
 			Plan.bHasHelper ? Plan.HelperSpeed : 0);
 		Plan.DefenseExternalModifier = DefenseModifier;
 		Plan.DefenseParticipatingStamina.Add(Plan.MarkerStamina);

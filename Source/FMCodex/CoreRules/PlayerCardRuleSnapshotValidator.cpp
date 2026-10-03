@@ -75,57 +75,15 @@ namespace PlayerCardRuleSnapshotValidator
 		FPlayerCardRuleSnapshotValidationResult& Result,
 		const FPlayerCardRuleSnapshot& Card)
 	{
-		const FPlayerAttributes& Attributes = Card.Attributes;
-		return ValidateAttribute(
-				Result,
-				Card,
-				TEXT("Shooting"),
-				Attributes.Shooting)
-			&& ValidateAttribute(
-				Result,
-				Card,
-				TEXT("Dribbling"),
-				Attributes.Dribbling)
-			&& ValidateAttribute(
-				Result,
-				Card,
-				TEXT("Passing"),
-				Attributes.Passing)
-			&& ValidateAttribute(
-				Result,
-				Card,
-				TEXT("OffBall"),
-				Attributes.OffBall)
-			&& ValidateAttribute(
-				Result,
-				Card,
-				TEXT("Marking"),
-				Attributes.Marking)
-			&& ValidateAttribute(
-				Result,
-				Card,
-				TEXT("Tackling"),
-				Attributes.Tackling)
-			&& ValidateAttribute(
-				Result,
-				Card,
-				TEXT("Speed"),
-				Attributes.Speed)
-			&& ValidateAttribute(
-				Result,
-				Card,
-				TEXT("Strength"),
-				Attributes.Strength)
-			&& ValidateAttribute(
-				Result,
-				Card,
-				TEXT("Stamina"),
-				Attributes.Stamina)
-			&& ValidateAttribute(
-				Result,
-				Card,
-				TEXT("LongShot"),
-				Attributes.LongShot);
+		if (Card.bIsGoalkeeper) return true;
+		const FPlayerAttributes& A = Card.Attributes;
+		return ValidateAttribute(Result, Card, TEXT("Shooting"), A.Shooting)
+			&& ValidateAttribute(Result, Card, TEXT("Passing"), A.Passing)
+			&& ValidateAttribute(Result, Card, TEXT("Control"), A.Control)
+			&& ValidateAttribute(Result, Card, TEXT("Speed"), A.Speed)
+			&& ValidateAttribute(Result, Card, TEXT("Strength"), A.Strength)
+			&& ValidateAttribute(Result, Card, TEXT("Defense"), A.Defense)
+			&& ValidateAttribute(Result, Card, TEXT("StaminaTier"), PlayerStaminaGameplayValue(A.StaminaTier));
 	}
 
 	bool ValidateGoalkeeperAttributes(
@@ -406,6 +364,14 @@ FPlayerCardRuleSnapshotValidator::Validate(
 			&& !PlayerCardRuleSnapshotValidator
 				::ValidateGoalkeeperAttributes(Result, Card))
 		{
+			return Result;
+		}
+
+		if (!ValidatePassivePlayerTraits(Card.RankedTraits, Card.BinaryTraits, Card.bIsGoalkeeper))
+		{
+			Result.ErrorCode = EPlayerCardRuleSnapshotValidationErrorCode::AttributeOutOfRange;
+			Result.InvalidCardId = Card.CardId;
+			Result.ErrorMessage = TEXT("Invalid passive player Trait payload.");
 			return Result;
 		}
 
