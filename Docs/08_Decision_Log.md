@@ -2585,3 +2585,15 @@ Trait taxonomy v1 为 **24 项：14 Offensive / 10 Defensive，23 Ranked / 1 Bin
 UI 合同要求基础值与加成分别可见、加成归属具体角色／属性／Trait，例如“射门 5 +1 / 远射专家 B”；近任意球与点球两项都显示原值与 Bonus，再展示取较高值。未来 UI 消费权威安全事实，不计算效果。本阶段只改设计文档与非运行时草稿的 TraitCatalog / README 元数据；保留全部名单属性、体力、等级、分配和审查记录。无新增 Trait，不要求 S 或覆盖率，不处理名单平衡。
 
 **Remaining product decisions: None.** Gameplay / Formula / Trait / UI runtime、canonical workbook、JSON、importer、Tactical Scene / Spatial Presentation 不变，不启动 Stage 8.20B。验证仅覆盖 24 项完整性、效果与特殊边界、文档／目录一致性、工作簿内容保留、生产文件哈希与 Git diff；不运行 build、gameplay suites、Host/Remote 或 PIE。REGRESSION SCOPE JUSTIFIED: YES。最终 staging / commit 由用户手动执行。
+
+## 2026-10-02 — Stage 8.20B: rules simplification migration readiness plan
+
+**AUDIT / MIGRATION PLANNING ONLY — NOT IMPLEMENTED。** 以实际已提交 A.3 节点 `eb51165d1a85f8d8c05018640f331536e52981c6` 为基线，完成 [Runtime Migration Plan](Rules/Rules_Simplification_Runtime_Migration_Plan.md)。A.2 / A.3 保持锁定；当前 runtime / canonical 数据仍为旧十属性与 schema v3，无 Trait 效果。生产名单 PassControl 为0，暂退决定不代表旧代码已删除，也不授权恢复其公式。
+
+建议一次 schema 切换，不建立新旧属性双模型。严格 importer / loader、反射 card / snapshot、Formula、体力与基础卡面存在直接耦合，故实施拆成四个完整节点：8.20B.1 数据+六属性基础Formula+StaminaTier+基础显示；8.20B.2 Ranked Trait+权威解释facts+safe投影+透明显示；8.20B.3 AntiOffside Binary单事件原子双骰及复用表现；8.20B.4 集成验证与用户验收。内部工作包可分开开发，不能交付只迁移数据的破损节点。
+
+Recovery 已是按当前池权重、不放回抽取，未来复用算法并统一 S/A/B→5/3/1；tie保留现有优先级与实际参与者集合。现有base范围为1–6；Trait有效值8/9不能写回base或被截断。Near FK / Penalty保留两项各增强后max；Corner / ThroughBall只按本次实际角色生效。定位球当前独立拼接公式说明，必须先补权威结构化效果事实再接UI；AntiOffside现有单骰数量/索引/后续单刀校验必须一起迁移。
+
+**本次用户补充决定：迁移时暂时隐藏非门将总评，之后单独设计。** 旧总评依赖十属性（含LS和数值STA）取最高六项，不能自行改成六项求和或引入Trait。保留门将既有总评；本轮只记录，不改实现。当前迁移无剩余产品决定。
+
+验证仅为引用/内容/依赖一致性、只读工作簿与JSON检查、保护文件哈希及Git diff检查；不运行build、UHT、gameplay suites、PIE或Host/Remote。本轮仅新增计划并追加本条，canonical workbook、draft用户值、JSON、importer、C++、UI、A.2/A.3均不修改；预先存在的Excel锁文件删除保持范围外。REGRESSION SCOPE JUSTIFIED: YES。最终staging/commit由用户手动执行。
