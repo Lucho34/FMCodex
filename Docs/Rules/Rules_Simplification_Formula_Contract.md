@@ -2,9 +2,9 @@
 
 ## 1. 状态与适用范围
 
-**Stage 8.20A.2 — DESIGN / CONTRACT ONLY；APPROVED DESIGN — NOT IMPLEMENTED。**
+**Stage 8.20A.2 锁定设计；基础 Formula 已在 B.1 实施，Ranked / Binary 分别在 B.2 / B.3 实施。B.4 集成收尾状态见 [Runtime Migration Plan](Rules_Simplification_Runtime_Migration_Plan.md)。**
 
-本次审计基线为 `main` / `4c96c37cd5ccec7f94ce00089ac9e36e147c2d74`（2026-10-02）。本文记录当前权威实现与已批准的未来属性映射，二者不可混用。当前运行时仍使用旧属性、旧公式及生产 canonical 数据；本文不宣称已经迁移，也不启动 Stage 8.20B。
+原 A.2 审计基线为 `main` / `4c96c37cd5ccec7f94ce00089ac9e36e147c2d74`（2026-10-02）。下文“当前／未来”及旧属性表均保留该审计时间点的历史语境；§4 的批准映射现已投入生产，不应把历史旧公式当作当前运行时输入。锁定规则与系数不变。
 
 本文是 Stage 8.20 的 Formula 设计合同，不替代描述当前玩法的 [Rules Canonical](../01_Rules_Canonical.md)。来源顺序为当前 CoreRules / AuthoritativeSession 实现、当前规则文档、较新决策、当前设计要求、历史材料。截图只说明表现，不能决定公式。本次没有修改 C++、UI、RNG、Recovery、tie-break、权威状态或数据导入链。
 

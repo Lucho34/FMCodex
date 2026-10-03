@@ -2,7 +2,9 @@
 
 ## 1. 状态、基线与结论
 
-**当前实施状态：B.1、B.2、B.2.1 已提交；B.3 Binary 单事件双骰已实现，等待 USER PIE 视觉验收；B.4 集成收尾尚未实施。** 下列原始审计基线保留供追溯。
+**当前实施状态：Stage 8.20 Rules Simplification runtime migration is COMPLETE。** B.1、B.2、B.2.1、B.3 及其视觉微调已由用户接受并提交；B.4 集成工程验证通过，未发现迁移阻断项，已达到稳定生产收尾节点。B.4 最终 **USER PIE REQUIRED** 与用户手动 staging / commit 仍待完成；工程通过不代表用户验收。最终证据与范围见 §13。
+
+§2–12 保留原 B 规划时点的审计、风险与建议预算，用于追溯；其中旧 schema、旧字段、“当前／未来”与“本阶段未实施”的表述不代表最终生产状态。以下 HEAD 与锁文件状态也仅属于原规划基线。
 
 审计日期：2026-10-02。实际基线：`main` / `eb51165d1a85f8d8c05018640f331536e52981c6`，提交标题 `Stage 8.20A.3: lock ranked trait effect contract`。开始时 staged 0、modified tracked 0、deleted tracked 1、untracked 0；唯一删除是预先存在的 `ContentSource/PlayerContent/~$FMCodex_Rules_Simplification_Draft.xlsx`，属于 Excel 临时锁文件，不在本阶段范围，未处理。
 
@@ -259,3 +261,23 @@ N1内部依赖是：草稿提升映射与严格schema → card/snapshot/normaliz
 未改runtime gameplay、Formula实现、canonical workbook、生成JSON、importer、Trait runtime、Recovery、tie-break、UI、用户draft值、阵容、技能分配或A.2/A.3合同。未运行build、UHT、PIE、gameplay suites或Host/Remote Golden Path；文档审计不触发这些验证。**REGRESSION SCOPE JUSTIFIED: YES。**
 
 本阶段只新增本计划并在Decision Log追加规划和用户总评决定；Excel锁文件既有删除保持原样。未staging或commit。推荐用户手动提交信息：`Stage 8.20B: plan rules simplification runtime migration`。
+
+## 13. B.4 集成收尾 — 2026-10-03
+
+干净基线为 `main` / `6d2f43c0bf77ef1d99ab683bc6c5af8467aa4a9c`（`Stage 8.20B.3: activate AntiOffside expert binary trait`）。本次只修正文档实施状态并记录收尾；无 runtime、UI、测试代码、名单、workbook、importer 或生成 JSON 改动，未重新设计 A.2/A.3。
+
+最终生产链为 canonical workbook → importer → schema 4 / `Prototype40_v3` JSON → 严格 loader → 六属性及语义体力 snapshot。Importer `--check` 精确复现；40 人、38 名外场和 2 名 GK、身份／球队／技能／Trait 分配与 rank 均保留。Canonical、draft 与 JSON 和 B.1 提交逐字节一致，importer 与 sidecar 无提交差异；GK 数值另与 B.1 前生产数据核对。所有受保护内容文件在 B.4 前后 SHA-256 一致。非 GK OVR 仍为六项 base sum 的 65–95 映射，当前 79–86，仅作显示。
+
+13 个战术／路线合同及 23 Ranked 映射均与锁定合同一致。体力统一 S/A/B → 5/3/1，Recovery 按剩余 eligible pool 无放回加权抽取；tie 只使用实际参与者，保留防守 GK 优先。Trait S/A/B → +3/+2/+1，先形成独立 effective operand 再应用系数，不改 base、不截断到 6；不同实际角色可同时激活，同一参与者的多重匹配拒绝。Near FK／Penalty 两项分别增强再 max；Corner 仅选中参与者，ThroughBall 不跨阶段泄漏。Binary 为实际 Runner 单动作单事件 2D6、任一 6 成功；普通仍为 1D6。原子提交、失败后完整重试、已提交结果去重／stale 不重掷、重建与安全披露、后续单刀／越位终结均保持。
+
+共享 Formula 解释保留 base、Trait 来源／rank、bonus 与 effective 权威事实；UI 不重算玩法。Full Card 维持 360×540、2×3 属性、资料区体力、双列 Trait、左对齐小标题、金／紫／蓝 rank、Binary 仅名称及原技能。AntiOffside 两句失败原因与 D6 标签浅色／实际骰点强调均通过回归。未发现活动生产旧属性依赖；历史文本、移除字段测试、暂不可用 PassControl 入口及由 tier 转换的内部 Stamina 数值不构成旧属性权威。未扩展客户端权限或复制隐藏 RNG／原始 State，无双 schema 兼容层。
+
+验证结果（重跑按唯一名称去重）：UE automation **875 项通过**，包括 CoreRules 754、MatchPlayRuntime 25、LocalPlay 37、NetworkPlay 48、RankedTraits 8、真实 Local PIE 3；另有 `Scripts/TestSimplifiedPlayerContent.py` 8 项通过。CoreRules 覆盖受影响战术、Formula assembly／resolver、Recovery／tie 与参与者合同；Runtime 覆盖 Session／HostPort／Coordinator／安全投影；Network 只选权限、闭合 wire、原子性、重试、ACK/View、RNG privacy 与披露边界，不复制 CoreRules 骰子数学矩阵。三条真实 Local PIE 为 `FMCodex.PIE.CrossRunnerZone.Production`、`FMCodex.PIE.FullCard.TraitLayoutSmoke`、`FMCodex.PIE.ThroughBall.BinaryTrait`；Binary 实际 [3,6] 成功后进入挑射进球及下一回合。Development Editor、Development Game、Shipping 构建通过；未改反射类型，无额外 UHT 或 clean build，未声称完成 cook/package。
+
+独立 Host A／Remote B Golden Path 一条：生产萨卡／哈弗茨低球传中，对迪亚斯／格伊。双方相同生产 JSON hash；共享 screen action 经 generated RPC、自然 replication 与 ACK。两端 owner-safe View 都保留萨卡 Passing base 5、`Trait.CrossCarrier` B、bonus 1、effective 6；攻击 base subtotal 4.5。最终骰 6 对 1 触发原快速压制，哈弗茨进球、比分 1–0；两端终结 revision 8 一致，Advance 到 sequence 2 后继续下一 D12／部署，pending 清除。胜负由快速压制决定，不将总值 10.5 对 7.5 误述为进球原因。
+
+首轮将渲染测试放入 NullRHI，导致 `FormulaFamily.ReadableStatesAndReuse` 的 DrawWidget 无效 render target；改用真实 RHI 后通过，未改生产代码。首次 Network 前缀展开过多骰子组合，主动停止并收窄剩余范围，仅统计已完成项。Network 观察脚本不能通过 Python 读取 protected UI 属性，改用现有 owner-safe DTO 日志及窗口截图确认事实，不将该观察限制当作产品缺陷。测试清单与原始证据存于本地 ignored `Saved/Stage8_20B4`、`Saved/Automation/B4Integration`、`Saved/Automation/B4Visual` 及相关日志。
+
+这是全局六属性／Formula 迁移的集成 milestone，因此扩大受影响 CoreRules 与 Runtime 覆盖；未修改公共 transport、全局 disclosure 或共享 screen 状态机，不运行 full NetworkPlay／LocalPlay，也不机械运行全仓 CoreRules／Runtime 中无关历史家族。`git diff --check` 通过。**REGRESSION SCOPE JUSTIFIED: YES。** Stage 8.20 工程阻断项：无。最终 USER PIE 仅需代表性卡面、Ranked／低球或内切 Formula、Near FK 或 Penalty 双属性 max、Binary／普通 AntiOffside；无须穷举全部战术。
+
+**Tactical Scene / Spatial Presentation = DEFERRED。** PassControl / 传控仍不可用。平衡调优、名单扩充及空间表现均属于未来工作；B.4 不启动。最终提交由用户通过 GitHub Desktop 手动完成。

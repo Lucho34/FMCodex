@@ -2,7 +2,7 @@
 
 ## Status
 
-Stage 8.20A.3 锁定设计。**当前实施：B.2 已启用 23 Ranked；B.3 已实现反越位专家的单事件双骰，等待 USER PIE 视觉验收；B.4 集成收尾待实施。** 下文 A.3 工作簿与迁移叙述保留为历史范围。
+Stage 8.20A.3 锁定设计。**当前实施：B.2 已启用 23 Ranked；B.3 单事件双骰及失败文案／D6 标签微调已由用户接受并提交；B.4 集成收尾状态见 [Runtime Migration Plan](Rules_Simplification_Runtime_Migration_Plan.md)。** 下文 A.3 工作簿与迁移叙述保留为历史范围。
 
 沿用 Stage 8.20A Patch 的 taxonomy v1：14 个进攻 Trait、10 个防守 Trait，共 24 个；其中 23 个 Ranked，1 个 Binary Procedural。Stage 8.20A.3 在已提交的 8.20A.2 基线 `625939ea5ee011260bba18f898cb16c6cc642bd7` 上锁定下表全部效果，取代此前 Ranked 效果 TBD / 候选加法的表述；不增删 Trait，不表示现有游戏已具备 Trait 系统，不启动 Stage 8.20B。
 
