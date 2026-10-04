@@ -1,4 +1,6 @@
 #include "FMCodexBroadcastPanel.h"
+#include "FMCodexMatchShellStyle.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 
 #include "Components/BorderSlot.h"
 #include "Components/ButtonSlot.h"
@@ -240,12 +242,7 @@ public:
 		FLinearColor Accent = Panel->GetBrushColor();
 		const bool bHeader = Kind == EFMCodexBroadcastSurface::HeaderLeft
 			|| Kind == EFMCodexBroadcastSurface::HeaderRight;
-		if (bHeader)
-		{
-			const float Neutral = FMath::Min3(Accent.R, Accent.G, Accent.B) * 0.85f;
-			Accent = FLinearColor(Accent.R - Neutral, Accent.G - Neutral, Accent.B - Neutral, Accent.A);
-			if (Accent.B > Accent.R) Accent.G *= 0.60f;
-		}
+		if (bHeader) Accent=FMCodexMatchShellStyle::DisplayAccent(FMCodexMatchShellStyle::HeaderAccent(Accent));
 		auto Lines = [&](TArray<FVector2f> Points, FLinearColor Color, float Width = 1.0f)
 		{
 			FSlateDrawElement::MakeLines(Out, Layer + 1, Geometry.ToPaintGeometry(),
@@ -284,72 +281,84 @@ public:
 		{
 			Quad({{X,Y},{X+Width,Y},{X+Width,Y+Height},{X,Y+Height}}, Top, Bottom);
 		};
+		auto Rounded = [&](FLinearColor Fill, FLinearColor Stroke, float Radius=10.f)
+		{
+			FSlateRoundedBoxBrush Brush(Fill,Radius,Stroke,1.f);
+			FSlateDrawElement::MakeBox(Out,Layer,Geometry.ToPaintGeometry(),&Brush,ESlateDrawEffect::None,Fill*Tint);
+		};
 		const FLinearColor Edge(0.13f,0.25f,0.36f,0.65f);
 		const FLinearColor Glint(0.36f,0.57f,0.73f,0.30f);
 		if (bHeader)
 		{
-			const bool bLeft = Kind == EFMCodexBroadcastSurface::HeaderLeft;
-			const float Cut = FMath::Min(H * 0.66f, W * 0.18f);
-			TArray<FVector2f> Shape = bLeft
-				? TArray<FVector2f>{{0,0},{W-Cut,0},{W,H},{0,H}}
-				: TArray<FVector2f>{{Cut,0},{W,0},{W,H},{0,H}};
-			FLinearColor Top = FMath::Lerp(FLinearColor(0.003f,0.010f,0.024f,1), Accent, 0.58f);
-			FLinearColor Bottom = FMath::Lerp(FLinearColor(0.002f,0.006f,0.014f,1), Accent, 0.12f);
-			Top.A = 0.94f; Bottom.A = 0.90f;
-			Quad(Shape, Top, Bottom);
-			const TArray<FVector2f> Rail = bLeft
-				? TArray<FVector2f>{{W-Cut-14,0},{W-Cut,0},{W,H},{W-14,H}}
-				: TArray<FVector2f>{{Cut,0},{Cut+14,0},{14,H},{0,H}};
-			Quad(Rail, Accent * FLinearColor(1.35f,1.35f,1.35f,1), Accent * FLinearColor(0.35f,0.35f,0.35f,1));
-			const FVector2f FirstPoint = Shape[0];
-			Shape.Add(FirstPoint);
-			Lines(Shape, Glint);
-			Lines({{bLeft ? 0.0f : Cut+18,4},{bLeft ? W-Cut-18 : W,4}}, Accent, 2);
-			Lines({{0,H-4},{W,H-4}}, FLinearColor(0.25f,0.48f,0.68f,0.27f));
-			const float X = bLeft ? 28.0f : W-64.0f;
-			// Small broadcast corner ticks, deliberately no invented crest or sponsor.
-			for (int32 I=0; I<3; ++I)
-				Lines({{X+I*12,H-11},{X+I*12+5,H-18}}, Accent * FLinearColor(1,1,1,0.45f), 2);
+			const bool Left=Kind==EFMCodexBroadcastSurface::HeaderLeft;
+			const float Cut=FMath::Min(H*.52f,W*.15f);
+			// Two rounded silhouettes make a narrow, soft-ended identity ribbon.
+			// Mirror the same geometry for B; never alter the header's layout bounds.
+			auto Silhouette = [&](float Inset, FLinearColor Top, FLinearColor Bottom, bool bOutline)
+			{
+				const TArray<FVector2f> Corners{{0,0},{W-Cut-Inset,0},{W-Inset,H},{0,H}};
+				TArray<FVector2f> Path;
+				for (int32 I=0; I<4; ++I)
+				{
+					const FVector2f Corner=Corners[I];
+					const FVector2f Start=Corner+(Corners[(I+3)%4]-Corner).GetSafeNormal()*10.f;
+					const FVector2f End=Corner+(Corners[(I+1)%4]-Corner).GetSafeNormal()*10.f;
+					for (int32 Segment=0; Segment<=8; ++Segment)
+					{
+						const float T=Segment/8.f;
+						FVector2f Point=Start*FMath::Square(1-T)+Corner*(2*T*(1-T))+End*(T*T);
+						if (!Left) Point.X=W-Point.X;
+						Path.Add(Point);
+					}
+				}
+				TArray<FSlateVertex> Vertices;
+				TArray<SlateIndex> Indices;
+				for (const FVector2f& Point : Path)
+					Vertices.Add(FSlateVertex::Make<ESlateVertexRounding::Disabled>(
+						Geometry.GetAccumulatedRenderTransform(),Point,FVector2f::ZeroVector,
+						(FMath::Lerp(Top,Bottom,Point.Y/H)*Tint).ToFColor(true)));
+				for (int32 I=1; I<Path.Num()-1; ++I)
+				{
+					Indices.Add(0); Indices.Add(I); Indices.Add(I+1);
+				}
+				const auto Resource=FSlateApplication::Get().GetRenderer()->GetResourceHandle(
+					*FCoreStyle::Get().GetBrush("WhiteBrush"));
+				FSlateDrawElement::MakeCustomVerts(Out,Layer,Resource,Vertices,Indices,nullptr,0,0);
+				if (bOutline)
+				{
+					const FVector2f FirstPoint=Path[0];
+					Path.Add(FirstPoint);
+					Lines(Path,FMCodexMatchShellStyle::Border());
+				}
+			};
+			Silhouette(0,Accent,Accent*FLinearColor(.55f,.55f,.55f,1),false);
+			Silhouette(12,FMCodexMatchShellStyle::Color(26,52,75),FMCodexMatchShellStyle::Color(8,31,49),true);
+			// The ribbon turns into a hairline along the upper edge, fading back
+			// into the neutral frame. Painting after the inner outline keeps it visible.
+			const float TailLength=FMath::Min(H*1.75f,W-Cut-24.f);
+			const float TailX=Left ? W-Cut-10.f-TailLength : Cut+10.f;
+			FLinearColor TailColor=Accent; TailColor.A=.90f;
+			FLinearColor TailClear=Accent; TailClear.A=0.f;
+			FSlateDrawElement::MakeGradient(Out,Layer+1,
+				Geometry.ToPaintGeometry(FVector2f(TailLength,1.2f),FSlateLayoutTransform(FVector2f(TailX,0))),
+				{FSlateGradientStop(FVector2f(0,0), (Left ? TailClear : TailColor)*Tint),
+				 FSlateGradientStop(FVector2f(TailLength*(Left ? .25f : .75f),0),TailColor*Tint),
+				 FSlateGradientStop(FVector2f(TailLength,0),(Left ? TailColor : TailClear)*Tint)},Orient_Vertical);
 		}
 		else if (Kind == EFMCodexBroadcastSurface::Score)
 		{
-			Rect(0,0,W,H,FLinearColor(0.003f,0.010f,0.020f,0.66f),FLinearColor(0.001f,0.004f,0.009f,0.88f));
-			const float L = W*0.20f, R = W*0.80f;
-			Quad({{L+18,1},{R-18,1},{R,H-18},{L,H-18}},
-				FLinearColor(0.016f,0.037f,0.061f,0.83f),FLinearColor(0.002f,0.007f,0.016f,0.92f));
-			Lines({{0,4},{L+18,4},{L+26,0},{R-26,0},{R-18,4},{W,4}},Glint);
-			Lines({{0,H-4},{W,H-4}},Edge);
-			Lines({{L-30,H*0.46f},{L-10,H*0.46f}},Glint);
-			Lines({{R+10,H*0.46f},{R+30,H*0.46f}},Glint);
+			Rounded(FMCodexMatchShellStyle::Navy(),FMCodexMatchShellStyle::Border());
+			Quad({{W*.24f,1},{W*.76f,1},{W*.75f,H-1},{W*.25f,H-1}},
+				FMCodexMatchShellStyle::Color(13,43,61),FMCodexMatchShellStyle::Color(6,26,40));
 		}
-		else if (Kind == EFMCodexBroadcastSurface::TacticalResource
-			|| Kind == EFMCodexBroadcastSurface::TacticalResourceValue)
+		else if (Kind == EFMCodexBroadcastSurface::TacticalResource)
 		{
-			const bool bValue = Kind == EFMCodexBroadcastSurface::TacticalResourceValue;
-			const float Cut=5.0f;
-			const FLinearColor ResourceEdge=FMath::Lerp(Edge,Accent,0.36f);
-			if (bValue)
-			{
-				Quad({{0,1},{W-1,1},{W-Cut,H-1},{0,H-1}},
-					FMath::Lerp(FLinearColor(0.025f,0.055f,0.090f,1),Accent,0.38f),
-					FLinearColor(0.010f,0.027f,0.050f,1));
-				Lines({{0,5},{0,H-5}},ResourceEdge);
-			}
-			else
-			{
-				Quad({{0,0},{W,0},{W-Cut,H},{0,H}},FLinearColor(0.008f,0.022f,0.042f,0.96f),
-					FLinearColor(0.003f,0.010f,0.022f,0.98f));
-				Lines({{1,1},{W-1,1},{W-Cut,H-1},{1,H-1},{1,1}},ResourceEdge);
-				Lines({{6,3},{W-6,3}},FLinearColor(0.38f,0.59f,0.76f,0.18f));
-				Lines({{6,H-1},{W-Cut-3,H-1}},Accent*FLinearColor(1,1,1,0.68f));
-			}
+			Rounded(FMCodexMatchShellStyle::Color(11,30,45),FMCodexMatchShellStyle::Border(),7.f);
 		}
-		else if (Kind == EFMCodexBroadcastSurface::Progress)
+		else if (Kind == EFMCodexBroadcastSurface::TacticalResourceValue
+			|| Kind == EFMCodexBroadcastSurface::Progress)
 		{
-			Quad({{8,0},{W-8,0},{W,H},{0,H}},
-				FLinearColor(0.003f,0.016f,0.034f,1),FLinearColor(0.001f,0.007f,0.015f,0.98f));
-			Lines({{12,0},{W-12,0}},Glint);
-			Lines({{8,H-1},{W-8,H-1}},FLinearColor(0.04f,0.21f,0.37f,0.65f));
+			// Value and current attack context belong inside their shared parent panel.
 		}
 		else if (Kind == EFMCodexBroadcastSurface::PitchSurround)
 		{
@@ -400,44 +409,24 @@ public:
 		}
 		else if (Kind == EFMCodexBroadcastSurface::PitchHUD)
 		{
-			Rect(0,0,W,H,FLinearColor(0.003f,0.020f,0.021f,0.94f),FLinearColor(0.001f,0.008f,0.014f,0.94f));
-			Quad({{W*.38f,1},{W*.62f,1},{W*.64f,H-1},{W*.36f,H-1}},
-				FLinearColor(0.020f,0.040f,0.047f,0.95f),FLinearColor(0.004f,0.013f,0.021f,0.95f));
-			Lines({{18,0},{W-18,0}},Glint);
-			Lines({{8,H-1},{W-8,H-1}},FLinearColor(0.04f,0.17f,0.15f,0.75f));
-			for (const float X : {W*.13f,W*.36f,W*.64f,W*.87f})
-			{
-				const float D=X<W*.5f ? -1 : 1;
-				Lines({{X-D*4,H*.36f},{X+D*2,H*.5f},{X-D*4,H*.64f}},FLinearColor(0.10f,0.37f,0.34f,0.48f),1.4f);
-				Lines({{X-D*11,H*.36f},{X-D*5,H*.5f},{X-D*11,H*.64f}},FLinearColor(0.10f,0.37f,0.34f,0.28f),1.4f);
-			}
+			Rounded(FMCodexMatchShellStyle::Navy(),FMCodexMatchShellStyle::Border(),6.f);
+			for(float X : {W*.34f,W*.66f}) Lines({{X,9},{X,H-9}},Edge);
 		}
 		else if (Kind == EFMCodexBroadcastSurface::Prompt)
 		{
-			// Open status rail: deliberately no enclosed button-shaped frame.
-			Rect(0,0,W,H,FLinearColor(0.003f,0.016f,0.030f,0.35f),FLinearColor(0.001f,0.006f,0.015f,0.12f));
-			Lines({{1,10},{1,H-10}},Accent,3);
-			Lines({{W-1,10},{W-1,H-10}},Edge);
-			Lines({{13,H*.5f-4},{17,H*.5f},{13,H*.5f+4}},FLinearColor(0.32f,0.66f,0.92f,0.95f),2);
+			Lines({{1,8},{1,H-8}},FMCodexMatchShellStyle::Border(),2.f);
 		}
 		else if (Kind == EFMCodexBroadcastSurface::Instruction)
 		{
-			Rect(0,0,W,H,FLinearColor(0.017f,0.031f,0.043f,0.80f),FLinearColor(0.003f,0.010f,0.017f,0.92f));
-			Lines({{6,0},{W-6,0},{W,6},{W,H-6},{W-6,H},{6,H},{0,H-6},{0,6},{6,0}},Edge);
-			Lines({{7,2},{W-7,2}},Glint);
-			const float X=22,Y=H*.5f;
-			Lines({{X-8,Y},{X+8,Y}},Glint,1.5f);
-			Lines({{X,Y-8},{X,Y+8}},Glint,1.5f);
-			Lines({{X-5,Y-3},{X-8,Y},{X-5,Y+3}},Glint,1.5f);
-			Lines({{X+5,Y-3},{X+8,Y},{X+5,Y+3}},Glint,1.5f);
-			Lines({{X-3,Y-5},{X,Y-8},{X+3,Y-5}},Glint,1.5f);
-			Lines({{X-3,Y+5},{X,Y+8},{X+3,Y+5}},Glint,1.5f);
+			// A short instruction is text, not another button-shaped control.
+		}
+		else if (Kind == EFMCodexBroadcastSurface::Dock)
+		{
+			Rounded(FMCodexMatchShellStyle::Navy(),FMCodexMatchShellStyle::Border(),10.f);
+			Rect(10,2,W-20,H-4,FLinearColor(.045f,.085f,.12f,.16f),FLinearColor::Transparent);
 		}
 		else if (Kind == EFMCodexBroadcastSurface::Brand)
 		{
-			Lines({{8,H*.52f},{W-368,H*.52f},{W-355,H*.52f-13}},Edge);
-			for (int32 I=0;I<3;++I)
-				Lines({{W-350+I*10,H*.52f},{W-338+I*10,H*.52f-14}},FLinearColor(0.13f,0.25f,0.35f,0.60f),3);
 			TArray<FVector2f> Ball;
 			for (int32 I=0;I<=32;++I)
 				Ball.Add({W-19+13*FMath::Cos(2*PI*I/32),H*.5f+13*FMath::Sin(2*PI*I/32)});
@@ -511,22 +500,11 @@ public:
 			Brush->GetTint(InWidgetStyle) * Tint * GetBorderBackgroundColor().GetColor(InWidgetStyle));
 		const FVector2f Size(Geometry.GetLocalSize());
 		const float W=Size.X,H=Size.Y;
-		const FPaintGeometry Inset = Geometry.ToPaintGeometry(
-			FVector2f(FMath::Max(0.0f,W-6),FMath::Max(0.0f,H-6)),
-			FSlateLayoutTransform(FVector2f(3,3)));
-		const float Light = !bEnabled ? 0.015f : IsPressed() ? 0.025f : IsHovered() ? 0.22f : 0.13f;
-		FSlateDrawElement::MakeGradient(Out, Layer+1, Inset,
-			{FSlateGradientStop(FVector2f(0,0), FLinearColor(0.60f,0.78f,1,Light)*Tint),
-			 FSlateGradientStop(FVector2f(0,H*.48f), FLinearColor(0.08f,0.16f,0.28f,0.02f)*Tint),
-			 FSlateGradientStop(FVector2f(0,H-6), FLinearColor(0,0,0,IsPressed() ? 0.42f : 0.30f)*Tint)},
-			Orient_Horizontal, Effect);
-		const FLinearColor Rim=FLinearColor(0.55f,0.77f,1,bEnabled ? 0.25f : 0.05f)*Tint;
-		FSlateDrawElement::MakeLines(Out,Layer+2,Geometry.ToPaintGeometry(),
-			TArray<FVector2f>{{8,3},{W-8,3}},Effect,Rim,true,1);
-		FSlateDrawElement::MakeLines(Out,Layer+2,Geometry.ToPaintGeometry(),
-			TArray<FVector2f>{{7,H-3},{W-7,H-3}},Effect,FLinearColor(0,0,0,0.50f)*Tint,true,2);
-		FSlateDrawElement::MakeLines(Out,Layer+2,Geometry.ToPaintGeometry(),
-			TArray<FVector2f>{{14,H*.5f-4},{18,H*.5f},{14,H*.5f+4}},Effect,Rim,true,1.5f);
+		if(HasKeyboardFocus())
+		{
+			FSlateRoundedBoxBrush Focus(FLinearColor::Transparent,8.f,FMCodexMatchShellStyle::Text(),2.f);
+			FSlateDrawElement::MakeBox(Out,Layer+1,Geometry.ToPaintGeometry(),&Focus,Effect,FLinearColor::Transparent);
+		}
 		return SCompoundWidget::OnPaint(Args, Geometry, Cull, Out, Layer+3, InWidgetStyle, bEnabled);
 	}
 };

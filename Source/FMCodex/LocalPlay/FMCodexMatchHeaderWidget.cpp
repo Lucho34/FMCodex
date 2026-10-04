@@ -1,5 +1,6 @@
 #include "FMCodexMatchHeaderWidget.h"
 #include "FMCodexBroadcastPanel.h"
+#include "FMCodexMatchShellStyle.h"
 
 #include "FMCodexPlayerUIStyle.h"
 #include "FMCodexPlayerUIPresentationText.h"
@@ -13,6 +14,7 @@
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
+#include "Styling/CoreStyle.h"
 
 namespace FMCodexMatchHeaderWidget
 {
@@ -59,27 +61,25 @@ namespace FMCodexMatchHeaderWidget
 			FFMCodexPlayerUIPresentationText::TacticalPointsHeading());
 		FFMCodexPlayerUIStyle::Get().ApplyText(
 			*Heading, EFMCodexPlayerUITextRole::Kicker);
-		FSlateFontInfo HeadingFont = Heading->GetFont();
-		HeadingFont.Size = 11;
+		FSlateFontInfo HeadingFont = FMCodexMatchShellStyle::Font(13);
 		Heading->SetFont(HeadingFont);
 		Heading->SetRenderOpacity(0.88f);
 		UHorizontalBoxSlot* HeadingSlot = Body->AddChildToHorizontalBox(Heading);
-		HeadingSlot->SetPadding(FMargin(11.0f, 3.0f, 9.0f, 3.0f));
+		HeadingSlot->SetPadding(FMargin(10.0f, 3.0f, 4.0f, 3.0f));
 		HeadingSlot->SetVerticalAlignment(VAlign_Center);
 
 		OutValueText = MakeText(Tree,
 			FName(*(SidePrefix + TEXT("TacticalPointChipValue"))));
 		FFMCodexPlayerUIStyle::Get().ApplyText(
 			*OutValueText, EFMCodexPlayerUITextRole::Status);
-		FSlateFontInfo ValueFont = OutValueText->GetFont();
-		ValueFont.Size = 18;
+		// Match the other numeric facts without the taller CJK line metrics.
+		FSlateFontInfo ValueFont = FCoreStyle::GetDefaultFontStyle("Bold", 28);
 		OutValueText->SetFont(ValueFont);
-		OutValueText->SetShadowOffset(FVector2D(0,1));
-		OutValueText->SetShadowColorAndOpacity(FLinearColor(0,0,0,0.55f));
+		OutValueText->SetShadowOffset(FVector2D::ZeroVector);
 		UFMCodexBroadcastPanel* ValueBay = Tree.ConstructWidget<UFMCodexBroadcastPanel>(
 			UFMCodexBroadcastPanel::StaticClass(), FName(*(SidePrefix + TEXT("TacticalPointValueBay"))));
 		ValueBay->Surface = EFMCodexBroadcastSurface::TacticalResourceValue;
-		ValueBay->SetPadding(FMargin(10.0f, 2.0f));
+		ValueBay->SetPadding(FMargin(8.0f, 2.0f));
 		ValueBay->SetVerticalAlignment(VAlign_Center);
 		ValueBay->AddChild(OutValueText);
 		Body->AddChildToHorizontalBox(ValueBay)->SetVerticalAlignment(VAlign_Fill);
@@ -120,8 +120,8 @@ namespace FMCodexMatchHeaderWidget
 			USizeBox* Bounds = Tree.ConstructWidget<USizeBox>(
 				USizeBox::StaticClass(), FName(*FString::Printf(
 					TEXT("%sBounds%d"), *WidgetPrefix, StepIndex)));
-			Bounds->SetWidthOverride(32.0f);
-			Bounds->SetHeightOverride(32.0f);
+			Bounds->SetWidthOverride(36.0f);
+			Bounds->SetHeightOverride(36.0f);
 			UBorder* Frame = Tree.ConstructWidget<UBorder>(
 				UBorder::StaticClass(), FName(*FString::Printf(
 					TEXT("%sFrame%d"), *WidgetPrefix, StepIndex)));
@@ -131,48 +131,44 @@ namespace FMCodexMatchHeaderWidget
 			switch (Step.State)
 			{
 			case EFMCodexUMGAttackTurnStepState::Used:
-				StepColor = Presentation.PrimarySideColor * 0.82f
-					+ FLinearColor(0.95f, 0.97f, 1.0f, 1.0f) * 0.18f;
+				StepColor = FMCodexMatchShellStyle::DisplayAccent(FMCodexMatchShellStyle::HeaderAccent(Presentation.PrimarySideColor)) * FLinearColor(.24f,.24f,.24f,1);
 				StepColor.A = 0.96f;
 				OutlineColor = FLinearColor(0.96f, 0.98f, 1.0f, 0.68f);
 				break;
 			case EFMCodexUMGAttackTurnStepState::Current:
-				StepColor = FLinearColor(0.14f, 0.29f, 0.47f, 1.0f);
-				OutlineColor = Presentation.PrimarySideColor * 0.52f
-					+ FLinearColor(0.97f, 0.98f, 1.0f, 1.0f) * 0.48f;
+				StepColor = FMCodexMatchShellStyle::CurrentTurnFill(Presentation.PrimarySideColor);
 				OutlineColor = FLinearColor(0.88f, 0.96f, 1.0f, 1.0f);
-				OutlineWidth = 2.0f;
+				OutlineWidth = 1.8f;
 				break;
 			case EFMCodexUMGAttackTurnStepState::Remaining:
 			default:
-				StepColor = FLinearColor(0.035f, 0.052f, 0.066f, 0.14f);
-				OutlineColor = FLinearColor(0.72f, 0.77f, 0.82f, 0.62f);
-				OutlineWidth = 1.0f;
+				StepColor = FMCodexMatchShellStyle::Color(13,38,62,64);
+				OutlineColor = FMCodexMatchShellStyle::Color(78,111,140);
+				OutlineWidth = 1.2f;
 				break;
 			}
 			Frame->SetBrush(FSlateRoundedBoxBrush(
-				StepColor, 16.0f, OutlineColor, OutlineWidth,
-				FVector2f(32.0f, 32.0f)));
+				StepColor, 18.0f, OutlineColor, OutlineWidth,
+				FVector2f(36.0f, 36.0f)));
 			Frame->SetBrushColor(FLinearColor::White);
-			Frame->SetPadding(FMargin(2.0f));
+			Frame->SetPadding(FMargin(0.0f));
 			UTextBlock* Label = MakeText(Tree, FName(*FString::Printf(
 				TEXT("%sLabel%d"), *WidgetPrefix, StepIndex)));
 			Label->SetText(FText::AsNumber(Step.AttackIndex));
 			FFMCodexPlayerUIStyle::Get().ApplyText(
 				*Label, EFMCodexPlayerUITextRole::Body);
-			Label->SetRenderOpacity(
-				Step.State == EFMCodexUMGAttackTurnStepState::Current
-					? 1.0f : Step.State == EFMCodexUMGAttackTurnStepState::Used
-						? 0.94f : 0.78f);
-			FSlateFontInfo StepFont = Label->GetFont();
-			StepFont.Size = 17;
+			Label->SetRenderOpacity(Step.State == EFMCodexUMGAttackTurnStepState::Remaining ? .95f : 1.f);
+			Label->SetColorAndOpacity(Step.State == EFMCodexUMGAttackTurnStepState::Current
+				? FMCodexMatchShellStyle::Text() : FMCodexMatchShellStyle::Color(163,180,195));
+			// Use the numeric face's own metrics; CJK line height pushes digits down.
+			FSlateFontInfo StepFont = FCoreStyle::GetDefaultFontStyle("Bold", 19);
 			Label->SetFont(StepFont);
 			Frame->SetVerticalAlignment(VAlign_Center);
 			Frame->AddChild(Label);
 			Bounds->AddChild(Frame);
 			if (UHorizontalBoxSlot* Slot = Steps.AddChildToHorizontalBox(Bounds))
 			{
-				Slot->SetPadding(FMargin(StepIndex == 0 ? 0.0f : 4.0f,
+				Slot->SetPadding(FMargin(StepIndex == 0 ? 0.0f : 9.0f,
 					0.0f, 0.0f, 0.0f));
 				Slot->SetVerticalAlignment(VAlign_Center);
 			}
@@ -266,15 +262,14 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 	CastChecked<UFMCodexBroadcastPanel>(AttackerStatusRegion)->Surface = EFMCodexBroadcastSurface::HeaderLeft;
 	Style.ApplyBorder(*AttackerStatusRegion,
 		EFMCodexPlayerUIColorRole::PlayerAAccent, Style.GetCompactPadding());
-	AttackerStatusRegion->SetPadding(FMargin(22.0f, 12.0f, 70.0f, 12.0f));
+	AttackerStatusRegion->SetPadding(FMargin(18.0f, 4.0f, 52.0f, 4.0f));
 	AttackerStatusRegion->SetVerticalAlignment(VAlign_Center);
 	UVerticalBox* Left = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("LeftPlayerBroadcastBody"));
 	AttackerStatusRegion->AddChild(Left);
 	PlayerAIdentityText = MakeText(*WidgetTree, TEXT("LeftPlayerIdentityLabel"));
 	Style.ApplyText(*PlayerAIdentityText, EFMCodexPlayerUITextRole::Identity);
-	FSlateFontInfo IdentityFont = PlayerAIdentityText->GetFont();
-	IdentityFont.Size = 24;
+	FSlateFontInfo IdentityFont = FMCodexMatchShellStyle::Font(24, true);
 	PlayerAIdentityText->SetFont(IdentityFont);
 	UHorizontalBox* LeftIdentityRow =
 		WidgetTree->ConstructWidget<UHorizontalBox>(
@@ -285,7 +280,7 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 	if (UHorizontalBoxSlot* ChipSlot =
 		LeftIdentityRow->AddChildToHorizontalBox(LeftTacticalPointChip))
 	{
-		ChipSlot->SetPadding(FMargin(8.0f, 0.0f, 0.0f, 0.0f));
+		ChipSlot->SetPadding(FMargin(22.0f, 0.0f, 0.0f, 0.0f));
 		ChipSlot->SetVerticalAlignment(VAlign_Center);
 	}
 	if (UVerticalBoxSlot* IdentitySlot =
@@ -301,10 +296,9 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 	LeftTrackerHeading->SetText(
 		FFMCodexPlayerUIPresentationText::AttackTurnHeading());
 	Style.ApplyText(*LeftTrackerHeading, EFMCodexPlayerUITextRole::Body);
-	FSlateFontInfo LeftTrackerFont = LeftTrackerHeading->GetFont();
-	LeftTrackerFont.Size = 13;
+	FSlateFontInfo LeftTrackerFont = FMCodexMatchShellStyle::Font(13);
 	LeftTrackerHeading->SetFont(LeftTrackerFont);
-	LeftTrackerRow->AddChildToHorizontalBox(LeftTrackerHeading);
+	LeftTrackerRow->AddChildToHorizontalBox(LeftTrackerHeading)->SetVerticalAlignment(VAlign_Center);
 	LeftAttackTurnSteps = WidgetTree->ConstructWidget<UHorizontalBox>(
 		UHorizontalBox::StaticClass(), TEXT("LeftAttackTurnSteps"));
 	if (UHorizontalBoxSlot* StepsSlot =
@@ -317,7 +311,7 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 		Left->AddChildToVerticalBox(LeftTrackerRow))
 	{
 		TrackerSlot->SetHorizontalAlignment(HAlign_Center);
-		TrackerSlot->SetPadding(FMargin(0.0f, 3.0f, 0.0f, 0.0f));
+		TrackerSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 0.0f));
 	}
 	AddFill(*Row, AttackerStatusRegion, 1.0f);
 
@@ -326,7 +320,7 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 	Center->Surface = EFMCodexBroadcastSurface::Score;
 	Style.ApplyBorder(*Center, EFMCodexPlayerUIColorRole::PanelRaised,
 		Style.GetCompactPadding());
-	Center->SetPadding(FMargin(12.0f, 2.0f));
+	Center->SetPadding(FMargin(12.0f, 0.0f));
 	Center->SetVerticalAlignment(VAlign_Center);
 	UVerticalBox* CenterBody = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("CentralBroadcastMatchFactsBody"));
@@ -347,13 +341,10 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 	Style.ApplyText(*CentralScoreText, EFMCodexPlayerUITextRole::Score);
 	Style.ApplyText(*CurrentAttackProgressText, EFMCodexPlayerUITextRole::Status);
 	Style.ApplyText(*CurrentMatchPhaseText, EFMCodexPlayerUITextRole::Secondary);
-	FSlateFontInfo CentralScoreFont = CentralScoreText->GetFont();
-	CentralScoreFont.Size = 46;
-	CentralScoreText->SetShadowOffset(FVector2D(0,2));
-	CentralScoreText->SetShadowColorAndOpacity(FLinearColor(0,0,0,0.65f));
+	FSlateFontInfo CentralScoreFont = FCoreStyle::GetDefaultFontStyle("Bold", 44);
+	CentralScoreText->SetShadowOffset(FVector2D::ZeroVector);
 	CentralScoreText->SetFont(CentralScoreFont);
-	FSlateFontInfo ProgressFont = CurrentAttackProgressText->GetFont();
-	ProgressFont.Size = 16;
+	FSlateFontInfo ProgressFont = FMCodexMatchShellStyle::Font(14, true);
 	CurrentAttackProgressText->SetFont(ProgressFont);
 	FSlateFontInfo PhaseFont = CurrentMatchPhaseText->GetFont();
 	PhaseFont.Size = 10;
@@ -362,7 +353,7 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 	UFMCodexBroadcastPanel* ProgressPlate = WidgetTree->ConstructWidget<UFMCodexBroadcastPanel>(
 		UFMCodexBroadcastPanel::StaticClass(), TEXT("AttackProgressBackplate"));
 	ProgressPlate->Surface = EFMCodexBroadcastSurface::Progress;
-	ProgressPlate->SetPadding(FMargin(30.0f, 3.0f));
+	ProgressPlate->SetPadding(FMargin(10.0f, 0.0f));
 	ProgressPlate->AddChild(CurrentAttackProgressText);
 	CenterBody->AddChildToVerticalBox(ProgressPlate)->SetHorizontalAlignment(HAlign_Center);
 	// Keep the canonical phase copy here; the shared screen places it in the pitch HUD.
@@ -370,13 +361,14 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 	CurrentMatchPhaseText->SetVisibility(ESlateVisibility::Collapsed);
 	CenterBody->AddChildToVerticalBox(FinalResultRegion);
 	AddFill(*Row, Center, 1.20f);
+	CastChecked<UHorizontalBoxSlot>(Center->Slot)->SetPadding(FMargin(22,0));
 
 	ActorStatusRegion = WidgetTree->ConstructWidget<UFMCodexBroadcastPanel>(
 		UFMCodexBroadcastPanel::StaticClass(), TEXT("RightPlayerBroadcastRegion"));
 	CastChecked<UFMCodexBroadcastPanel>(ActorStatusRegion)->Surface = EFMCodexBroadcastSurface::HeaderRight;
 	Style.ApplyBorder(*ActorStatusRegion,
 		EFMCodexPlayerUIColorRole::PlayerBAccent, Style.GetCompactPadding());
-	ActorStatusRegion->SetPadding(FMargin(70.0f, 12.0f, 22.0f, 12.0f));
+	ActorStatusRegion->SetPadding(FMargin(52.0f, 4.0f, 18.0f, 4.0f));
 	ActorStatusRegion->SetVerticalAlignment(VAlign_Center);
 	UVerticalBox* Right = WidgetTree->ConstructWidget<UVerticalBox>(
 		UVerticalBox::StaticClass(), TEXT("RightPlayerBroadcastBody"));
@@ -393,7 +385,7 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 	if (UHorizontalBoxSlot* ChipSlot =
 		RightIdentityRow->AddChildToHorizontalBox(RightTacticalPointChip))
 	{
-		ChipSlot->SetPadding(FMargin(8.0f, 0.0f, 0.0f, 0.0f));
+		ChipSlot->SetPadding(FMargin(22.0f, 0.0f, 0.0f, 0.0f));
 		ChipSlot->SetVerticalAlignment(VAlign_Center);
 	}
 	if (UVerticalBoxSlot* IdentitySlot =
@@ -409,12 +401,11 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 	RightTrackerHeading->SetText(
 		FFMCodexPlayerUIPresentationText::AttackTurnHeading());
 	Style.ApplyText(*RightTrackerHeading, EFMCodexPlayerUITextRole::Body);
-	FSlateFontInfo RightTrackerFont = RightTrackerHeading->GetFont();
-	RightTrackerFont.Size = 13;
+	FSlateFontInfo RightTrackerFont = FMCodexMatchShellStyle::Font(13);
 	RightTrackerHeading->SetFont(RightTrackerFont);
 	RightAttackTurnSteps = WidgetTree->ConstructWidget<UHorizontalBox>(
 		UHorizontalBox::StaticClass(), TEXT("RightAttackTurnSteps"));
-	RightTrackerRow->AddChildToHorizontalBox(RightTrackerHeading);
+	RightTrackerRow->AddChildToHorizontalBox(RightTrackerHeading)->SetVerticalAlignment(VAlign_Center);
 	if (UHorizontalBoxSlot* StepsSlot =
 		RightTrackerRow->AddChildToHorizontalBox(RightAttackTurnSteps))
 	{
@@ -425,9 +416,15 @@ void UFMCodexMatchHeaderWidget::BuildWidgetTree()
 		Right->AddChildToVerticalBox(RightTrackerRow))
 	{
 		TrackerSlot->SetHorizontalAlignment(HAlign_Center);
-		TrackerSlot->SetPadding(FMargin(0.0f, 3.0f, 0.0f, 0.0f));
+		TrackerSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 0.0f));
 	}
 	AddFill(*Row, ActorStatusRegion, 1.0f);
+}
+
+void UFMCodexMatchHeaderWidget::SetPlayerAccentColors(const FFMCodexUMGSidePrimaryColors& Colors)
+{
+	PlayerAccentOverride=Colors;
+	RefreshVisuals();
 }
 
 void UFMCodexMatchHeaderWidget::RefreshVisuals()
@@ -466,24 +463,33 @@ void UFMCodexMatchHeaderWidget::RefreshVisuals()
 		Presentation.LeftPlayerLabel));
 	PlayerBIdentityText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 		Presentation.RightPlayerLabel));
+	// Consume the existing projected palette by default; optional settings supply A/B once.
+	FFMCodexUMGAttackTurnTrackerViewModel LeftTracker=Presentation.LeftAttackTurnTracker;
+	FFMCodexUMGAttackTurnTrackerViewModel RightTracker=Presentation.RightAttackTurnTracker;
+	if(PlayerAccentOverride.IsSet())
+	{
+		const bool LeftIsA=Presentation.LeftPlayerSide==EInitialTurnOrderPlayer::PlayerA;
+		LeftTracker.PrimarySideColor=LeftIsA?PlayerAccentOverride->PlayerAPrimaryColor:PlayerAccentOverride->PlayerBPrimaryColor;
+		RightTracker.PrimarySideColor=LeftIsA?PlayerAccentOverride->PlayerBPrimaryColor:PlayerAccentOverride->PlayerAPrimaryColor;
+	}
 	RefreshTracker(*WidgetTree, *LeftAttackTurnSteps,
-		Presentation.LeftAttackTurnTracker);
+		LeftTracker);
 	RefreshTracker(*WidgetTree, *RightAttackTurnSteps,
-		Presentation.RightAttackTurnTracker);
+		RightTracker);
 	RefreshTacticalPointChip(
 		*LeftTacticalPointChip, *LeftTacticalPointValueText,
 		Presentation.bShowLeftTacticalPointChip,
 		Presentation.LeftTacticalPoints,
-		Presentation.LeftAttackTurnTracker.PrimarySideColor);
+		LeftTracker.PrimarySideColor);
 	RefreshTacticalPointChip(
 		*RightTacticalPointChip, *RightTacticalPointValueText,
 		Presentation.bShowRightTacticalPointChip,
 		Presentation.RightTacticalPoints,
-		Presentation.RightAttackTurnTracker.PrimarySideColor);
+		RightTracker.PrimarySideColor);
 	AttackerStatusRegion->SetBrushColor(
-		Presentation.LeftAttackTurnTracker.PrimarySideColor);
+		LeftTracker.PrimarySideColor);
 	ActorStatusRegion->SetBrushColor(
-		Presentation.RightAttackTurnTracker.PrimarySideColor);
+		RightTracker.PrimarySideColor);
 	AttackerStatusRegion->SetRenderOpacity(1.0f);
 	ActorStatusRegion->SetRenderOpacity(1.0f);
 	FinalResultText->SetText(

@@ -2698,3 +2698,38 @@ B.3 同一节点的 D6 标签颜色微调：原原因栏按数字字符加 Value
 真实控件继续通过既有语义目标绑定；几何只用于画框与避让 Full Card。聚焦 TP／部署完毕时暂时隐藏旁边无关状态，离开聚焦或退出即恢复。教学步骤、TP 3、自动跳过 Runner、5／3骰、9 对 10未进球、重演解锁厄德高、11 对 10进球及退出清理不变；没有修改规则、名单、Full Card、production UI 或 Network。首轮截图发现透明描边被白色填充遮盖，已按 Slate brush tint 修正；顶部横条避开 Full Card。旧正文断言同步为新标题／正文分工，原流程、门控与恢复断言保留。
 
 本跟进最小验证为GuidedLesson1三项、拖放／普通hover两项和真实`FMCodex.PIE.GuidedLesson1.FullFlow`，六项唯一测试最终通过，0剩余失败／警告；准确名称与首轮旧文案断言修正见Lesson 1文档。最终真实窗口流程约70.0秒，核对两阶段呈现和退出恢复，不代表用户验收。增量Development Editor／Game与diff检查通过；无反射变化，不运行UHT。省略未受影响full CoreRules／Runtime／LocalPlay／NetworkPlay、Host/Remote、Shipping及cook/package。REGRESSION SCOPE JUSTIFIED: YES。USER PIE REQUIRED。Guided Match扩展保持暂停，正常production UI review/polish尚未开始，全部8.21A仍由用户统一手动staging／commit。
+
+
+### Stage 8.22A Production Match Shell 商业化第一轮 — 2026-10-04
+
+仅修改共享比赛外围表现：统一深蓝 Header／比分区／操作条、朝中央的身份色边缘、已用／当前／未来回合标记、姓名旁突出的当前进攻方 TP，以及短指令、薄荷青主 CTA、深色次 CTA 和低对比品牌。保留原 Header／球场空间与稳定语义控件。用户参考图明确授权 shell 的 mint CTA 局部例外；新增 [Production Match Shell Visual Contract](UI/Production_Match_Shell_Visual_Contract.md)，同步 Match Flow 规范。玩家色复用既有 SidePrimaryColors，并提供 Header-only 设置入口；只影响身份边缘和回合绘制，不改变卡牌语义或 gameplay。
+
+未修改 CoreRules／Formula／Traits／RNG／TP／回合／比分与揭示门控／部署／角色／Network／名单数据；没有修改共享 Screen 状态机。Tactic Explainer 留给 8.22B，Guided Match 扩展继续暂停，教学文件未改。
+
+最小充分验证为 8 项唯一测试，最终均通过：
+
+- `FMCodex.LocalPlay.MatchShell.HeaderThemeAndResources`：默认／自定义配色与 viewer 对调、资源归属、回合三态、极暗／极亮边缘、比分中性、CTA 固定 mint。
+- `FMCodex.LocalPlay.MatchShell.ActionHierarchyAndWaiting`：真实按钮、主次层级、占位去重及等待方无动作。
+- `FMCodex.LocalPlay.ControlSurface.31.UMGInteractionPanelVisualFoundation`：直接受影响 Dock／TP／部署／角色控件。
+- `FMCodex.LocalPlay.ControlSurface.33.UMGMatchHeaderVisualRefinement`：Header 事实、TP 归属、比分与 authority 边界。
+- `FMCodex.LocalPlay.ControlSurface.37.FiveSlotDragDropDeploymentIntegration`：保留实际拖放链。
+- `FMCodex.LocalPlay.ControlSurface.57.MatchHeaderScoreIdentityMapping`：viewer-relative 比分身份未漂移。
+- `FMCodex.LocalPlay.MatchStartFlow.02.AttackTurnTrackerProjection`：既有回合投影。
+- `FMCodex.PIE.MatchShell.Commercialization`：真实 Local PIE 生产链，host DEV provider TP 3，正常部署／角色／战术／方式／自然 5、3 结算／结果／下一回合。按钮使用真实 Widget delegate，部署和角色使用既有 Screen typed 请求；不冒充真人鼠标操作。检查 1600×900 与 1920×1080，共六张截图。
+
+首轮 4 项测试失败，原因是旧字号／布局断言和独立未挂载 Widget 的 IsVisible 检查；已更新为新表现合同与明确 visibility 属性，保留 gameplay／authority 断言。最终补跑 6 项零失败，PIE 51.1 秒，附带 5 条引擎 DDC 读取缓慢警告；先前通过且未再受影响的拖放、回合投影结果复用。工程截图保存到 Saved/Stage8_22A/PIE，自动报告位于 Saved/Automation/Stage822A 与 Stage822A_Final，不作为跟踪资源。
+
+增量 Development Editor／Game 和必要 UHT 通过；git diff --check 通过。没有 transport/disclosure 或全局玩法改动，未运行真实 Host/Remote Golden Path、full NetworkPlay／CoreRules／Runtime／LocalPlay、Shipping 或 cook/package。REGRESSION SCOPE JUSTIFIED: YES。USER PIE REQUIRED：顶部／底部参考相似度、TP、回合、玩家色、CTA、球场平衡与整体商业观感。工程 PASS 不代表视觉验收；所有 staging／commit 留给用户。
+
+### 顶部／底部参考图局部对齐 — 2026-10-04
+
+用户明确仅调整顶部和底部：身份色带改为圆润镜像斜边，Header 默认 A/B 色局部提亮为蓝／红，回合圆点缩至 28 并减轻描边；移除掷点的重复操作说明。姓名、动作标题、按钮与进攻说明使用真实中文粗体，辅助文字常规字重；Noto Sans SC 字体及 OFL 许可只服务 Header／Dock，并配置随包分发。比分保留引擎数字字体以控制固定顶栏的行高。此决定替代上一轮“保留沉稳默认边色／掷点额外短指令”的局部取舍，详见 Production Match Shell Visual Contract；球场、名单、其他 UI 家族和权威／交互合同均不变。视觉仍待 USER PIE 验收。
+
+同日用户提供色条／回合圆圈的放大参考，指出上一轮相似度不足：补齐色条顶部渐隐延伸、加深下端；回合圆点以新参考为准调整为 36、间距 6、灰蓝填充和 Roboto Bold 数字，替代上一轮 28／鲜蓝／中文字体数字的取舍。本轮仅顶部绘制和排版，底部与其他区域保持不变，仍需 USER PIE 确认。
+
+
+### Stage 8.22A 最终间距与部署文案微调 — 2026-10-04
+
+继续同一未提交 Stage 8.22A。左右姓名／TP 间距从 8 增至 22，回合行间距从 3 增至 8；TP 标签 14→13、数字仍 28，并复用现有数字字体，避免中文行高挤压下方圆点。回合圆点保持 36 与既有三态／1.8 当前白边，数字 22→19，圆点间距 6→9；Header 高度仍为 104。设计意图是保留资源突出程度，同时给身份和回合数字留出舒适空白。
+
+仅生产 Match Shell 操作上下文使用“玩家 A/B 操作”；不全局修改“请”。部署保留标题、“战术说明”次 CTA 和“结束部署”主 CTA，省略“拖动球员卡进行部署”，说明区域折叠后按钮自然前移。其他阶段的有用提示仍为可选显示。最终表现原则同步既有 Match Shell 视觉合同。

@@ -29,6 +29,8 @@ public:
 	FString GetDisplayedAttackerLabel() const;
 	FString GetDisplayedActorLabel() const;
 	FText GetDisplayedPhaseText() const;
+	// Presentation-only settings seam; A/B identity remains independent of viewer order.
+	void SetPlayerAccentColors(const FFMCodexUMGSidePrimaryColors& Colors);
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -37,6 +39,7 @@ protected:
 private:
 	void BuildWidgetTree();
 	void RefreshVisuals();
+	TOptional<FFMCodexUMGSidePrimaryColors> PlayerAccentOverride;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Header Presentation",

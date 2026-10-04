@@ -11,6 +11,8 @@ public class FMCodex : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "Json", "Slate", "SlateCore", "UMG", "PlatformCrypto", "PlatformCryptoOpenSSL" });
+		// The shell's Chinese typefaces must also be available in packaged games.
+		RuntimeDependencies.Add("$(ProjectDir)/Content/Slate/Fonts/MatchShell/...", StagedFileType.UFS);
 		if (Target.bBuildEditor)
 		{
 			PrivateDependencyModuleNames.Add("UnrealEd");

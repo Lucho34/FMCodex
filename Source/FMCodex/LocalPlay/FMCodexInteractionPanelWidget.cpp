@@ -1,5 +1,6 @@
 #include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexBroadcastPanel.h"
+#include "FMCodexMatchShellStyle.h"
 
 #include "FMCodexInteractionOptionWidget.h"
 #include "FMCodexPlayerCardWidget.h"
@@ -20,6 +21,16 @@
 
 namespace FMCodexInteractionPanelWidget
 {
+	FText ShellActorText(const FText& Text)
+	{
+		// Shorten only the shared production dock's acting-side label.
+		if (Text.EqualTo(FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("PLAYER A TO ACT"))))
+			return NSLOCTEXT("FMCodexMatchShell", "PlayerAToAct", "玩家 A 操作");
+		if (Text.EqualTo(FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("PLAYER B TO ACT"))))
+			return NSLOCTEXT("FMCodexMatchShell", "PlayerBToAct", "玩家 B 操作");
+		return Text;
+	}
+
 	UTextBlock* MakeText(
 		UWidgetTree& Tree,
 		const FName Name,
@@ -48,9 +59,9 @@ namespace FMCodexInteractionPanelWidget
 		LabelText->SetJustification(ETextJustify::Center);
 		FFMCodexPlayerUIStyle::Get().ApplyText(
 			*LabelText, EFMCodexPlayerUITextRole::SectionHeading);
-		FSlateFontInfo ActionFont = LabelText->GetFont();
-		ActionFont.Size = 16;
+		FSlateFontInfo ActionFont = FMCodexMatchShellStyle::Font(18, true);
 		LabelText->SetFont(ActionFont);
+		LabelText->SetColorAndOpacity(FSlateColor::UseForeground());
 		Result->AddChild(LabelText);
 		Result->SetStyle(FFMCodexPlayerUIStyle::Get().MakeDockButtonStyle(Role));
 		return Result;
@@ -285,7 +296,7 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	UFMCodexBroadcastPanel* Frame = WidgetTree->ConstructWidget<UFMCodexBroadcastPanel>(
 		UFMCodexBroadcastPanel::StaticClass(), TEXT("InteractionPanelFrame"));
 	Frame->Surface = EFMCodexBroadcastSurface::Dock;
-	Frame->SetPadding(FMargin(12.0f, 10.0f));
+	Frame->SetPadding(FMargin(20.0f, 10.0f));
 	Bounds->AddChild(Frame);
 	UHorizontalBox* Body = WidgetTree->ConstructWidget<UHorizontalBox>(
 		UHorizontalBox::StaticClass(), TEXT("InteractionPanelHierarchy"));
@@ -294,7 +305,7 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	ActionHeaderRegion = WidgetTree->ConstructWidget<UFMCodexBroadcastPanel>(
 		UFMCodexBroadcastPanel::StaticClass(), TEXT("InteractionActionHeader"));
 	CastChecked<UFMCodexBroadcastPanel>(ActionHeaderRegion)->Surface = EFMCodexBroadcastSurface::Prompt;
-	ActionHeaderRegion->SetPadding(FMargin(30.0f, 8.0f, 20.0f, 8.0f));
+	ActionHeaderRegion->SetPadding(FMargin(20.0f, 6.0f, 16.0f, 6.0f));
 	ActionHeaderRegion->SetVerticalAlignment(VAlign_Center);
 	ActionHeaderRegion->SetVisibility(ESlateVisibility::HitTestInvisible);
 	UVerticalBox* HeaderBody = WidgetTree->ConstructWidget<UVerticalBox>(
@@ -322,8 +333,8 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	HeaderBody->AddChildToVerticalBox(ContextText);
 	ActionHeaderRegion->AddChild(HeaderBody);
 	USizeBox* PromptBounds = WidgetTree->ConstructWidget<USizeBox>();
-	PromptBounds->SetMinDesiredWidth(260.0f);
-	PromptBounds->SetMaxDesiredWidth(430.0f);
+	PromptBounds->SetMinDesiredWidth(240.0f);
+	PromptBounds->SetMaxDesiredWidth(390.0f);
 	PromptBounds->AddChild(ActionHeaderRegion);
 	Body->AddChildToHorizontalBox(PromptBounds)->SetPadding(FMargin(0,0,12,0));
 
@@ -412,7 +423,7 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	TacticalPointRollButton = MakeButton(
 		*WidgetTree, TEXT("InteractionTacticalPointRollButton"), RollLabel,
 		EFMCodexPlayerUIActionRole::Primary);
-	Style.ApplyText(*RollLabel, EFMCodexPlayerUITextRole::SectionHeading);
+	RollLabel->SetColorAndOpacity(FSlateColor::UseForeground());
 	// This dock action is shared by both acting sides. Fit its unchanged label
 	// inside the actual padded button allocation at every viewport/DPI scale.
 	RollLabel->RemoveFromParent();
@@ -427,7 +438,7 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	USizeBox* TacticalPointRollBounds =
 		WidgetTree->ConstructWidget<USizeBox>(
 			USizeBox::StaticClass(), TEXT("TacticalPointPrimaryActionBounds"));
-	TacticalPointRollBounds->SetWidthOverride(246.0f);
+	TacticalPointRollBounds->SetWidthOverride(238.0f);
 	TacticalPointRollBounds->SetHeightOverride(66.0f);
 	TacticalPointRollBounds->AddChild(TacticalPointRollButton);
 	if (UHorizontalBoxSlot* RollSlot =
@@ -475,9 +486,9 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	Style.ApplyText(*BrandText, EFMCodexPlayerUITextRole::Kicker);
 	FSlateFontInfo BrandFont = BrandText->GetFont();
 	BrandFont.Size = 12;
-	BrandFont.LetterSpacing = 100;
+	BrandFont.LetterSpacing = 0;
 	BrandText->SetFont(BrandFont);
-	BrandText->SetColorAndOpacity(FSlateColor(FLinearColor(0.18f,0.30f,0.40f,0.85f)));
+	BrandText->SetColorAndOpacity(FSlateColor(FMCodexMatchShellStyle::Color(94,132,153)));
 	CastChecked<UScaleBoxSlot>(BrandFit->AddChild(BrandText))->SetHorizontalAlignment(HAlign_Right);
 	Brand->AddChild(BrandFit);
 	UHorizontalBoxSlot* BrandSlot = Body->AddChildToHorizontalBox(Brand);
@@ -524,8 +535,8 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 		Presentation.KickerLabel.IsEmpty()
 			? TEXT("LOCAL MATCH") : Presentation.KickerLabel));
 	KickerText->SetVisibility(ESlateVisibility::Collapsed);
-	ActorText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
-		Presentation.ExpectedActorLabel));
+	ActorText->SetText(FMCodexInteractionPanelWidget::ShellActorText(
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(Presentation.ExpectedActorLabel)));
 	TitleText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 		Presentation.TitleLabel.IsEmpty()
 			? TEXT("Interaction unavailable") : Presentation.TitleLabel));
@@ -549,11 +560,11 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	const bool bCompactTacticalPointAction =
 		Presentation.bCanRollTacticalPoints;
 	Style.ApplyText(*ActorText, EFMCodexPlayerUITextRole::Body);
-	FSlateFontInfo DockTitleFont = TitleText->GetFont();
-	DockTitleFont.Size = 18;
+	ActorText->SetFont(FMCodexMatchShellStyle::Font(13));
+	FSlateFontInfo DockTitleFont = FMCodexMatchShellStyle::Font(20, true);
 	TitleText->SetFont(DockTitleFont);
 	TitleText->SetVisibility(ESlateVisibility::HitTestInvisible);
-	ContextText->SetVisibility(bCompactTacticalPointAction || Presentation.Category == EFMCodexUMGInteractionCategory::Deploy
+	ContextText->SetVisibility(bCompactTacticalPointAction || Presentation.bUseOnPitchPlayerSelection || Presentation.Category == EFMCodexUMGInteractionCategory::Deploy
 		? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	ActionHeaderRegion->SetBrushColor(
 		Presentation.KickerLabel.Contains(TEXT("SYSTEM"))
@@ -562,23 +573,22 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	ChoiceSectionText->SetText(FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 		Presentation.BranchSectionLabel.IsEmpty()
 			? TEXT("LEGAL OPTIONS") : Presentation.BranchSectionLabel));
-	DeploymentHandInstructionText->SetText(
-		FFMCodexPlayerUIPresentationText::DeploymentHandInstruction());
-	DeploymentHandInstructionText->SetVisibility(
-		Presentation.Category == EFMCodexUMGInteractionCategory::Deploy
-			? ESlateVisibility::HitTestInvisible
-			: ESlateVisibility::Collapsed);
-
+	const bool bDeployment=Presentation.Category==EFMCodexUMGInteractionCategory::Deploy;
+	const FText OptionalInstruction=!bDeployment && Presentation.bUseOnPitchPlayerSelection
+		? FFMCodexPlayerUIPresentationText::MatchScreenLabel(Presentation.OnPitchSelectionHintLabel)
+		: FText::GetEmpty();
+	const bool bShellInstruction=!OptionalInstruction.IsEmpty();
+	DeploymentHandInstructionText->SetText(OptionalInstruction);
+	DeploymentHandInstructionText->SetVisibility(bShellInstruction?ESlateVisibility::HitTestInvisible:ESlateVisibility::Collapsed);
+	FSlateFontInfo InstructionFont=FMCodexMatchShellStyle::Font(16);
+	DeploymentHandInstructionText->SetFont(InstructionFont);
+	DeploymentHandInstructionText->SetColorAndOpacity(FMCodexMatchShellStyle::Secondary());
 	RefreshCandidateChoices();
-	const bool bDeploymentInstruction = Presentation.Category == EFMCodexUMGInteractionCategory::Deploy;
-	CastChecked<UFMCodexBroadcastPanel>(CandidateRegion)->Surface = bDeploymentInstruction
-		? EFMCodexBroadcastSurface::Instruction : EFMCodexBroadcastSurface::Panel;
-	CandidateRegion->SetPadding(bDeploymentInstruction ? FMargin(44,20,24,20) : Style.GetSectionPadding());
-	CandidateRegion->SetVisibility(
-		Presentation.Category == EFMCodexUMGInteractionCategory::Deploy
-			|| (!Presentation.bUseOnPitchPlayerSelection
-				&& !Presentation.SelectionChoices.IsEmpty())
-				? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	CastChecked<UFMCodexBroadcastPanel>(CandidateRegion)->Surface=bShellInstruction
+		? EFMCodexBroadcastSurface::Instruction:EFMCodexBroadcastSurface::Panel;
+	CandidateRegion->SetPadding(bShellInstruction?FMargin(8,14,18,14):Style.GetSectionPadding());
+	CandidateRegion->SetVisibility(bShellInstruction || (!bDeployment && !Presentation.bUseOnPitchPlayerSelection && !Presentation.SelectionChoices.IsEmpty())
+		? ESlateVisibility::Visible:ESlateVisibility::Collapsed);
 	ChoiceRegion->SetVisibility(
 		!Presentation.BranchChoices.IsEmpty()
 			|| !Presentation.OneOnOneChoices.IsEmpty()
@@ -619,6 +629,7 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	}
 	SetButton(FinishButton, Presentation.bCanFinishDeployment,
 		Presentation.PrimaryAction.Label);
+	CastChecked<UTextBlock>(FinishButton->GetChildAt(0))->SetText(NSLOCTEXT("FMCodexMatchShell","FinishDeployment","结束部署"));
 	FinishButton->GetParent()->SetVisibility(FinishButton->GetVisibility());
 	const bool bUseContinueButton = Presentation.PrimaryAction.bAvailable
 		&& !Presentation.bCanStartNewMatch
@@ -638,12 +649,14 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	const bool bHasPrimaryAction = Presentation.PrimaryAction.bAvailable
 		|| Presentation.bCanDecline
 		|| Presentation.bCanResolveNoLegal;
-	const FString Fallback = !Presentation.EmptyStateLabel.IsEmpty()
+	FString Fallback = !Presentation.EmptyStateLabel.IsEmpty()
 		? Presentation.EmptyStateLabel
 		: Presentation.bUseOnPitchPlayerSelection
 			? FString()
 		: !bHasDynamicChoices && !bHasPrimaryAction
 			? FString(TEXT("No player action is available.")) : FString();
+	// Suppress only the generic empty placeholder when the shell already has an action.
+	if(Fallback==TEXT("No player action is available.") && (bHasPrimaryAction || bHasDynamicChoices || bShellInstruction)) Fallback.Empty();
 	EmptyStateText->SetText(
 		FFMCodexPlayerUIPresentationText::MatchScreenLabel(Fallback));
 	EmptyStateText->SetVisibility(Fallback.IsEmpty()
@@ -651,14 +664,12 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	if (bActionWaitPrompt)
 	{
 		// Override only rendered copy; the original actor label still drives the existing style.
-		ActorText->SetText(ActionWaitActorText);
+		ActorText->SetText(FMCodexInteractionPanelWidget::ShellActorText(ActionWaitActorText));
 		TitleText->SetText(ActionWaitActionText);
 		TitleText->SetVisibility(ActionWaitActionText.IsEmpty()
 			? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 		// Two status lines replace generic fallback/context, while existing controls keep their locations.
-		ContextText->SetVisibility(!bReadOnlyPrompt && Presentation.bUseOnPitchPlayerSelection
-			&& !Presentation.OnPitchSelectionHintLabel.IsEmpty()
-			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		ContextText->SetVisibility(ESlateVisibility::Collapsed);
 		EmptyStateText->SetVisibility(ESlateVisibility::Collapsed);
 		if (bReadOnlyPrompt)
 		{
