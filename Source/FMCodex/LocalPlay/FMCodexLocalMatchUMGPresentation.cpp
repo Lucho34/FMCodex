@@ -802,7 +802,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			::ResolutionParticipantRole(Term.ParticipantRole).ToString();
 		if (!Name.IsEmpty() && !Role.IsEmpty())
 		{
-			OutRow.Participants.Add({ Role, Name });
+			OutRow.Participants.Add({ Role, Name, Term.CardId, Term.ParticipantRole });
 		}
 	}
 
@@ -1997,6 +1997,8 @@ namespace FMCodexLocalMatchUMGPresentation
 			bElectiveDirectOutcomeResolved
 			&& ElectiveDirectDecision->Outcome
 				== EMatchPlayResolutionDecisionOutcome::ImmediateMiss;
+		if (ContestId == FName(TEXT("LongShot.DirectShot")) && bElectiveDirectOutcomeResolved)
+			Result.SpatialOutcome = ElectiveDirectDecision->Outcome;
 		Result.bShowFormulaRows = !bBehindOutOfPlay
 			&& !bElectiveDirectImmediateMiss;
 		Result.StatusLabel = !bAttackResolved
@@ -2570,6 +2572,31 @@ namespace FMCodexLocalMatchUMGPresentation
 				? FFMCodexPlayerUIPresentationText::CutInsideTitle().ToString()
 				: FFMCodexPlayerUIPresentationText::LongShotTitle().ToString();
 		Result.InteractionCategory = Interaction.Category;
+		if (bLongShot)
+		{
+			using R = EMatchPlayResolutionParticipantRole;
+			Result.SpatialAttackingSide = InteractionView.CurrentAttackingPlayer;
+			const auto Defender = OtherSide(Result.SpatialAttackingSide);
+			auto Identity = [&](FName Id, R Role, EInitialTurnOrderPlayer Side)
+			{
+				FFMCodexUMGInlineFormulaParticipantViewModel P;
+				if (!Id.IsNone())
+				{
+					P.CardId = Id; P.Role = Role;
+					P.PlayerName = PlayerFacingName(InteractionView, Side, Id);
+					P.RoleLabel = FFMCodexPlayerUIPresentationText::ResolutionParticipantRole(Role).ToString();
+				}
+				return P;
+			};
+			const auto* Carrier = FindParticipant(Facts, R::Carrier);
+			const auto* Marker = FindParticipant(Facts, R::Marker);
+			Result.SpatialCarrier = Identity(Carrier ? Carrier->CardId : InteractionView.SelectedCarrierCardId, R::Carrier, Result.SpatialAttackingSide);
+			Result.SpatialMarker = Identity(Marker ? Marker->CardId : InteractionView.SelectedMarkerCardId, R::Marker, Defender);
+			const auto& Roster = Defender == EInitialTurnOrderPlayer::PlayerA
+				? InteractionView.PlayerACardRoster : InteractionView.PlayerBCardRoster;
+			const auto* Keeper = Roster.FindByPredicate([](const auto& Card) { return Card.bGoalkeeper; });
+			if (Keeper) Result.SpatialGoalkeeper = Identity(Keeper->CardId, R::Goalkeeper, Defender);
+		}
 		if (bLongShot || bCutInside)
 		{
 			// Identity-only context for the existing attack card. This invisible
@@ -2581,7 +2608,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			Context.SideLabel=NSLOCTEXT("FMCodexTheater", "ShotAttack", "进攻").ToString();
 			if (!CardId.IsNone()) Context.Participants.Add({
 				FFMCodexPlayerUIPresentationText::ResolutionParticipantRole(EMatchPlayResolutionParticipantRole::Carrier).ToString(),
-				PlayerFacingName(InteractionView,Context.Side,CardId)});
+				PlayerFacingName(InteractionView,Context.Side,CardId), CardId, EMatchPlayResolutionParticipantRole::Carrier});
 		}
 		if (bChoosingBranch)
 		{
@@ -2739,6 +2766,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			if (Decision != nullptr && Decision->bResolved
 				&& InteractionView.bTerminalPendingAdvance)
 			{
+				if (bLongShot) Result.Formula.SpatialOutcome = Decision->Outcome;
 				FFMCodexTacticalNarrativePresentationInput Input;
 				Input.Branch = bCutInside
 					? EFMCodexTacticalNarrativeBranch::CutInsideDeadCorner

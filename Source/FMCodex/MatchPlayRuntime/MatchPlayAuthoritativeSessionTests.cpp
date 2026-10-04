@@ -27856,6 +27856,174 @@ bool FMatchPlayServerCoordinatorAutomaticProgressionTest::RunTest(
 	return true;
 }
 
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(
+	FMatchPlayShotMethodSafeFactProjectionTest,
+	"ShotMethodSafeFactProjection")
+
+bool FMatchPlayShotMethodSafeFactProjectionTest::RunTest(const FString& Parameters)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	using EPurpose = EMatchPlayCurrentAttackPostRouteRollPurpose;
+	using ERole = EMatchPlayResolutionParticipantRole;
+	using EOutcome = EMatchPlayResolutionDecisionOutcome;
+	(void)Parameters;
+
+	// Both shot families share the mapping. Reach each method through real
+	// selection/session commands; never supply hand-authored resolution facts.
+	for (const auto Skill : { ESkillRuleType::LongShot, ESkillRuleType::CutInsideShot })
+	for (int32 Case = 0; Case < 3; ++Case)
+	{
+		const bool bDeadCorner = Case != 0;
+		const bool bGoal = Case == 1;
+		const FString Prefix = FString::Printf(TEXT("ShotFact.%d.%d"), int32(Skill), Case);
+		const FName SkillId(*FString::Printf(TEXT("Skill.%s.%d"), *Prefix, int32(Skill)));
+		const auto Rules = MakeSkillRuleSet(SkillId, Skill);
+		InitialRouteFixtures::FQueueRollProvider Initial;
+		FQueuePostRouteRollProvider Post;
+		Post.Enqueue(MakePostRouteSuccess(5));
+		Post.Enqueue(MakePostRouteSuccess(bGoal ? 6 : 5));
+		FMatchPlayAuthoritativeSession Session(Initial, Post, Rules);
+		FReachabilityTrace Trace;
+		if (!TestTrue(*FString::Printf(TEXT("%s reaches actual method"), *Prefix),
+			BuildStage7166ToAwaitingRoute(Session, Prefix, Skill,
+				bDeadCorner ? EMatchPlayElectiveBranchIntent::DeadCorner
+					: EMatchPlayElectiveBranchIntent::DirectShot, Trace)
+			&& Session.ResolveIntentDeterminedRoute().RouteResult.bSuccess)) return false;
+
+		const auto Pending = Session.GetStateSnapshot();
+		const auto& Bundle = Pending.CurrentAttack.ResolutionSession.Bundle;
+		TestTrue(TEXT("Real shot bundle has Carrier and selected Marker context"),
+			Bundle.Carrier.bIsPresent && Bundle.Marker.bIsPresent);
+		TestTrue(TEXT("Real shot bundle has no Runner or Helper"),
+			!Bundle.Runner.bIsPresent && !Bundle.Helper.bIsPresent);
+
+		auto CheckFacts = [&](const FMatchPlayState& State, const bool bResolved)
+		{
+			// This is the same fully disclosed safe projection used by LocalPlay.
+			const auto View = FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(
+				State, Rules, Trace.AttackingSide,
+				FFMCodexLocalMatchViewerDisclosure::FullyDisclosed());
+			const auto& Facts = View.ResolutionFacts;
+			TestTrue(*FString::Printf(TEXT("%s safe projection succeeds: %s"),
+				*Prefix, *Facts.ErrorMessage), Facts.bSuccess && Facts.bHasFacts);
+			TestTrue(TEXT("Projection has no error"), Facts.ErrorMessage.IsEmpty());
+			TestEqual(TEXT("Selected tactic preserved"), Facts.ActionType, Skill);
+			TestTrue(TEXT("Actual method preserved"), Facts.bHasActualBranch
+				&& (Skill == ESkillRuleType::LongShot
+					? Facts.ActualBranch.LongShot == (bDeadCorner
+						? EMatchPlayLongShotActualBranch::DeadCorner
+						: EMatchPlayLongShotActualBranch::DirectShot)
+					: Facts.ActualBranch.CutInsideShot == (bDeadCorner
+						? EMatchPlayCutInsideShotActualBranch::DeadCorner
+						: EMatchPlayCutInsideShotActualBranch::DirectShot)));
+			TestEqual(TEXT("Only real selected Carrier/Marker identities projected"),
+				Facts.Participants.Num(), 2);
+			TestTrue(TEXT("Authoritative shooter identity retained"),
+				Facts.Participants.ContainsByPredicate([&](const auto& P)
+				{ return P.Role == ERole::Carrier && P.CardId == Bundle.Carrier.CardId; }));
+			TestFalse(TEXT("No fake participant identity"),
+				Facts.Participants.ContainsByPredicate([](const auto& P)
+				{ return P.CardId.IsNone() || (P.Role != ERole::Carrier && P.Role != ERole::Marker); }));
+			TestEqual(TEXT("Two ordered roll facts"), Facts.Rolls.Num(), 2);
+			if (Facts.Rolls.Num() == 2)
+			{
+				for (int32 Index = 0; Index < 2; ++Index)
+				{
+					const auto& Roll = Facts.Rolls[Index];
+					TestEqual(TEXT("Reveal sequence preserved"), Roll.SequenceIndex, Index);
+					TestEqual(TEXT("Roll purpose matches method"), Roll.PostRoutePurpose,
+						bDeadCorner ? (Index == 0 ? EPurpose::PairedAttackA : EPurpose::PairedAttackB)
+							: (Index == 0 ? EPurpose::PrimaryAttack : EPurpose::PrimaryDefense));
+					TestEqual(TEXT("Procedural versus arithmetic semantics"), Roll.Semantics,
+						bDeadCorner ? EMatchPlayResolutionRollSemantics::OutcomeDecision
+							: EMatchPlayResolutionRollSemantics::ArithmeticContest);
+					TestEqual(TEXT("Correct roll owner"), Roll.OwningSide,
+						bDeadCorner || Index == 0 ? Trace.AttackingSide : Trace.DefendingSide);
+					TestEqual(TEXT("Only accepted values are resolved"), Roll.bResolved, bResolved);
+					TestEqual(TEXT("Exact accepted D6 or undisclosed zero"), Roll.RawD6,
+						bResolved ? (Index == 1 && bGoal ? 6 : 5) : 0);
+				}
+			}
+			TestEqual(TEXT("Pending reveal entry complete"), Facts.bHasPendingRoll, !bResolved);
+			TestEqual(TEXT("First pending reveal is A"), Facts.NextPendingRollSequenceIndex,
+				bResolved ? INDEX_NONE : 0);
+			const auto* Decision = Facts.Decisions.FindByPredicate([](const auto& D)
+			{ return D.DecisionId == TEXT("DeadCorner.Outcome"); });
+			if (bDeadCorner)
+			{
+				TestTrue(TEXT("Procedural method has no attribute or defense Formula"), Facts.FormulaContests.IsEmpty());
+				if (TestNotNull(TEXT("Existing procedural outcome fact retained"), Decision))
+				{
+					TestEqual(TEXT("Outcome waits for both accepted dice"), Decision->bResolved, bResolved);
+					TestEqual(TEXT("Typed terminal decision"), Decision->Outcome,
+						!bResolved ? EOutcome::None : bGoal ? EOutcome::Goal : EOutcome::Miss);
+					TestTrue(TEXT("Decision references A then B"), Decision->RollSequenceIndices == TArray<int32>({0, 1}));
+				}
+			}
+			else
+			{
+				TestNull(TEXT("Direct does not receive DeadCorner decision"), Decision);
+				TestEqual(TEXT("Direct keeps one attribute Formula"), Facts.FormulaContests.Num(), 1);
+				if (Facts.FormulaContests.Num() == 1)
+				{
+					const auto& Contest = Facts.FormulaContests[0];
+					TestEqual(TEXT("Direct keeps its contest identity"), Contest.ContestId,
+						FName(Skill == ESkillRuleType::LongShot ? TEXT("LongShot.DirectShot") : TEXT("CutInsideShot.DirectShot")));
+					TestEqual(TEXT("Direct Formula resolves normally"), Contest.bHasResolvedFormula, bResolved);
+				}
+			}
+		};
+		CheckFacts(Pending, false);
+		TestEqual(TEXT("Pending safe projection consumes no RNG"), Post.GetCallCount(), 0);
+		bool bAccepted = false;
+		if (bDeadCorner)
+		{
+			if (Skill == ESkillRuleType::LongShot)
+			{
+				FMatchPlayAuthoritativeResolveLongShotDeadCornerRollRequest Request;
+				Request.AttackSequence = Trace.AttackSequence; Request.RequestingSide = Trace.AttackingSide;
+				bAccepted = Session.ResolveLongShotDeadCornerRoll(Request).OrchestrationResult.bSuccess;
+			}
+			else
+			{
+				FMatchPlayAuthoritativeResolveCutInsideShotDeadCornerRollRequest Request;
+				Request.AttackSequence = Trace.AttackSequence; Request.RequestingSide = Trace.AttackingSide;
+				bAccepted = Session.ResolveCutInsideShotDeadCornerRoll(Request).OrchestrationResult.bSuccess;
+			}
+		}
+		else if (Skill == ESkillRuleType::LongShot)
+		{
+			FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest Attack;
+			Attack.AttackSequence = Trace.AttackSequence; Attack.RequestingSide = Trace.AttackingSide;
+			FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest Defense;
+			Defense.AttackSequence = Trace.AttackSequence; Defense.RequestingSide = Trace.DefendingSide;
+			bAccepted = Session.ResolveLongShotDirectAttackRoll(Attack).OrchestrationResult.bSuccess
+				&& Session.ResolveLongShotDirectDefenseRoll(Defense).OrchestrationResult.bSuccess;
+		}
+		else
+		{
+			FMatchPlayAuthoritativeResolveCutInsideShotDirectAttackRollRequest Attack;
+			Attack.AttackSequence = Trace.AttackSequence; Attack.RequestingSide = Trace.AttackingSide;
+			FMatchPlayAuthoritativeResolveCutInsideShotDirectDefenseRollRequest Defense;
+			Defense.AttackSequence = Trace.AttackSequence; Defense.RequestingSide = Trace.DefendingSide;
+			bAccepted = Session.ResolveCutInsideShotDirectAttackRoll(Attack).OrchestrationResult.bSuccess
+				&& Session.ResolveCutInsideShotDirectDefenseRoll(Defense).OrchestrationResult.bSuccess;
+		}
+		if (!TestTrue(TEXT("Real typed roll request accepted"), bAccepted)) return false;
+		FMatchPlayServerCoordinator Coordinator(Session, Rules);
+		TestTrue(TEXT("Canonical coordinator persists terminal"), Coordinator.AdvanceToStableState().bSuccess);
+		const auto Terminal = Session.GetStateSnapshot();
+		TestEqual(TEXT("Real terminal awaits explicit continuation"), Terminal.CurrentAttack.LifecycleState,
+			EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+		CheckFacts(Terminal, true);
+		TestEqual(TEXT("Resolution and repeated projection use exactly two D6"), Post.GetCallCount(), 2);
+		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Advance;
+		Advance.AttackSequence = Trace.AttackSequence; Advance.RequestingSide = Trace.AttackingSide;
+		TestTrue(TEXT("Existing continuation succeeds"), Session.AdvanceAfterTerminal(Advance).CompletionResult.bSuccess);
+	}
+	return true;
+}
+
 #undef MATCH_PLAY_AUTHORITATIVE_SESSION_TEST
 
 #endif

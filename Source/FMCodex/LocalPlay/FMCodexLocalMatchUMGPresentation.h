@@ -1300,6 +1300,10 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaParticipantViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
 	FString PlayerName;
+
+	/** Public participant identity, carried through the existing viewer-safe DTO. */
+	UPROPERTY() FName CardId;
+	UPROPERTY() EMatchPlayResolutionParticipantRole Role = EMatchPlayResolutionParticipantRole::None;
 };
 
 USTRUCT(BlueprintType)
@@ -1437,6 +1441,9 @@ USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 {
 	GENERATED_BODY()
+
+	/** Disclosed LongShot Direct decision; visual consumers still obey the reveal gate. */
+	UPROPERTY() EMatchPlayResolutionDecisionOutcome SpatialOutcome = EMatchPlayResolutionDecisionOutcome::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")
@@ -1813,6 +1820,12 @@ USTRUCT(BlueprintType)
 struct FMCODEX_API FFMCodexUMGLongShotResolutionViewModel
 {
 	GENERATED_BODY()
+
+	/** Public identity-only spatial context, independent of Formula participation. */
+	UPROPERTY() FFMCodexUMGInlineFormulaParticipantViewModel SpatialCarrier;
+	UPROPERTY() FFMCodexUMGInlineFormulaParticipantViewModel SpatialMarker;
+	UPROPERTY() FFMCodexUMGInlineFormulaParticipantViewModel SpatialGoalkeeper;
+	UPROPERTY() EInitialTurnOrderPlayer SpatialAttackingSide = EInitialTurnOrderPlayer::None;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Long Shot")
 	bool bVisible = false;

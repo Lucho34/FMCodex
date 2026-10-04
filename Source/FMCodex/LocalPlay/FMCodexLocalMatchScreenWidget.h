@@ -6,6 +6,7 @@
 #include "FMCodexLocalMatchUMGPresentation.h"
 #include "FMCodexMatchScreenBackend.h"
 #include "FMCodexResolutionTheaterPrototype.h"
+#include "FMCodexTacticalScene.h"
 
 #include "FMCodexLocalMatchScreenWidget.generated.h"
 
@@ -86,6 +87,8 @@ class FMCODEX_API UFMCodexLocalMatchScreenWidget : public UUserWidget
 	TObjectPtr<UTexture2D> ResolutionTheaterAthletes;
 
 public:
+	const FMCodexTacticalScene::FState& GetTacticalScene() const { return TacticalScene; }
+	void SkipTacticalScene();
 #if !UE_BUILD_SHIPPING
 	/** Read-only DEV observation around the existing widget application. */
 	TMulticastDelegate<void(bool)> HandoffAuditRefresh;
@@ -217,6 +220,7 @@ protected:
 
 private:
 	FMCodexResolutionTheaterPrototype::FMotion TheaterMotion;
+	FMCodexTacticalScene::FState TacticalScene;
 	FMCodexResolutionTheaterPrototype::FTakerInspection TheaterTakerInspection;
 	void RefreshResolutionTheater(const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed,
 		const FFMCodexUMGMatchHeaderViewModel& DisplayedHeader);

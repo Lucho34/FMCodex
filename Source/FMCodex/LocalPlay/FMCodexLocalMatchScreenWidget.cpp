@@ -472,6 +472,8 @@ void UFMCodexLocalMatchScreenWidget::NativeTick(const FGeometry& MyGeometry, flo
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	if (!WidgetTree || !MatchHeader) return;
+	FMCodexTacticalScene::UpdatePreview(*WidgetTree,TacticalScene);
+	if (TacticalScene.Tick(InDeltaTime)) RefreshVisuals();
 	const bool bEnabled = FMCodexResolutionTheaterPrototype::IsEnabled();
 	const bool bLowEnabled = FMCodexResolutionTheaterPrototype::IsLowCrossEnabled();
 	const bool bNearEnabled = FMCodexResolutionTheaterPrototype::IsNearFreeKickEnabled();
@@ -524,10 +526,14 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 	if (bActive)
 	{
 		TheaterPresentation.LongShotResolution=BuildDisplayedLongShotResolution();
+		TacticalScene.Gate(TheaterPresentation.LongShotResolution);
 		TheaterPresentation.LocalRack=BuildDisplayedHandRack(Presentation.LocalRack);
 		TheaterPresentation.OpponentRack=BuildDisplayedHandRack(Presentation.OpponentRack);
 		const bool bConfirmation=MatchController?MatchController->GetInteractionView().bCornerLockConfirmationPending:bNetworkCornerConfirmation;
 		Refresh(*WidgetTree, TheaterPresentation, Displayed, DisplayedHeader, IsScreenRequestPending(), TheaterTakerInspection, bConfirmation);
+		FMCodexTacticalScene::RefreshSurface(*WidgetTree,TacticalScene,[Weak=TWeakObjectPtr<UFMCodexLocalMatchScreenWidget>(this)]()
+		{ if (Weak.IsValid()) Weak->SkipTacticalScene(); });
+
 		SetPieceResolutionSurface->SetVisibility(ESlateVisibility::Collapsed);
 		if (IsOrdinaryShotConsumer(TheaterPresentation.LongShotResolution))
 			LongShotResolutionSurface->SetVisibility(ESlateVisibility::Collapsed);
@@ -541,6 +547,11 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 	// This affects visibility only. FormulaV2 keeps its own setting and original tree.
 	if (bActive || TheaterMotion.bActive)
 		SetActive(*WidgetTree, TheaterMotion, bActive);
+}
+
+void UFMCodexLocalMatchScreenWidget::SkipTacticalScene()
+{
+	if (TacticalScene.Skip()) RefreshVisuals();
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleTheaterFreeKickDirectRequested()
@@ -939,6 +950,7 @@ bool UFMCodexLocalMatchScreenWidget::IsScreenRequestPending() const
 
 void UFMCodexLocalMatchScreenWidget::ResetPresentationSession()
 {
+	TacticalScene = {};
 	ResetInlineFormulaRevealState();
 	if (WidgetTree && WidgetTree->FindWidget(TEXT("ResolutionTheater")))
 		FMCodexResolutionTheaterPrototype::ClearTakerInspection(*WidgetTree, TheaterTakerInspection);
@@ -970,7 +982,7 @@ EFMCodexMatchScreenSubmission UFMCodexLocalMatchScreenWidget::SubmitScreenReques
  const TArray<FName>& CornerCandidates, EMatchPlayCornerRouteIntent CornerIntent)
 {
 	LastScreenSubmission = EFMCodexMatchScreenSubmission::Rejected;
-	if (bDeploymentTacticalReferenceOpen || !MatchBackend || IsScreenRequestPending()
+	if (bDeploymentTacticalReferenceOpen || !MatchBackend || IsScreenRequestPending() || TacticalScene.IsAnimating()
 		|| (Kind != EFMCodexMatchScreenIntent::StartMatch && IsInlineFormulaRevealInputBlocked()))
 		return LastScreenSubmission;
 	FFMCodexMatchScreenRequest Request;
@@ -4146,7 +4158,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedHeader(const bool bOutcomeDisclose
 {
 	FFMCodexUMGMatchHeaderViewModel Result = CanRevealTacticalPointDependentPresentation()
 		? Presentation.Header : CachedPreRollHeader;
-	if (IsInlineFormulaRevealInputBlocked() && !bOutcomeDisclosed && MatchHeader != nullptr)
+	if ((IsInlineFormulaRevealInputBlocked() || TacticalScene.IsAnimating()) && !bOutcomeDisclosed && MatchHeader != nullptr)
 	{
 		// Retain only the score that was actually painted. Capturing the latest
 		// authority Header at paired reel B would leak the already-resolved Goal.
@@ -5238,12 +5250,17 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	OpponentRackWidget->RefreshFromPresentation(
 		BuildDisplayedHandRack(Presentation.OpponentRack));
 	PitchWidget->RefreshFromPitchPresentation(Presentation.PitchRegions);
-	const FFMCodexUMGInlineFormulaSurfaceViewModel DisplayedInlineFormula =
+	FFMCodexUMGInlineFormulaSurfaceViewModel DisplayedInlineFormula =
 		BuildDisplayedInlineFormula();
 	FFMCodexUMGThroughBallResolutionViewModel DisplayedThroughBall =
 		BuildDisplayedThroughBallResolution();
 	FFMCodexUMGLongShotResolutionViewModel DisplayedLongShot =
 		BuildDisplayedLongShotResolution();
+	TacticalScene.Sync(FMCodexTacticalScene::Project(DisplayedLongShot,Presentation.Header,
+		FMCodexResolutionTheaterPrototype::IsEnabled() && !Presentation.Resolution.bRejected
+		&& !(MatchController && MatchController->GetGuidedLesson1())));
+	TacticalScene.Gate(DisplayedInlineFormula);
+	TacticalScene.Gate(DisplayedLongShot);
 	// Ownership follows the current InteractionView-derived production surface,
 	// not a transient reveal phase or the previous frame's suppression state.
 	const bool bThroughBallProductionOwnsResolution =

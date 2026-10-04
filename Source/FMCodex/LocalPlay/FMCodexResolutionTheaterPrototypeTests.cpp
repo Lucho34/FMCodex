@@ -135,6 +135,7 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 	for (auto* W:{S,D})
 	{
 		TestTrue(TEXT("Both viewers enter immediately after accepted Skill"),Visible(W,TEXT("ResolutionTheater")));
+		TestFalse(TEXT("LongShot spatial lane cannot alter Cross layout"),Visible(W,TEXT("TheaterSpatialLane")));
 		TestEqual(TEXT("Field stays painted but board input is suppressed"),W->GetWidgetFromName(TEXT("MatchShellViewportFit"))->GetVisibility(),ESlateVisibility::HitTestInvisible);
 		TestEqual(TEXT("Entry does not predict route"),Label(W,TEXT("TheaterTitle")),FString(TEXT("传中")));
 		TestFalse(TEXT("No invented pre-route formula"),Visible(W,TEXT("TheaterAttackValue")));
@@ -249,8 +250,9 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Pending roll is explicit"),Visible(W,TEXT("TheaterAttackPending")));
 		TestEqual(TEXT("Displayed value is verbatim safe projection"),Label(W,TEXT("TheaterAttackNumber")),W->GetInlineFormulaSurface()->GetPresentation().AttackRow.DisplayedResultLabel);
 	}
-	TestEqual(TEXT("Actor roll information uses copy family"),Label(S,TEXT("TheaterDetail")),FString(TEXT("轮到进攻方掷点")));
-	TestEqual(TEXT("Waiting roll information uses copy family"),Label(D,TEXT("TheaterDetail")),FString(TEXT("等待进攻方掷点")));
+	// Stage 8.19C merged operation identity and action into the reason lane.
+	TestEqual(TEXT("Actor roll information uses copy family"),Label(S,TEXT("TheaterDetail")),FString(TEXT("轮到你操作  进攻方掷点")));
+	TestEqual(TEXT("Waiting roll information uses copy family"),Label(D,TEXT("TheaterDetail")),FString::Printf(TEXT("等待玩家 %s 操作  等待进攻方掷点"),BFirst?TEXT("B"):TEXT("A")));
 	for (const auto Prefix:{FString(TEXT("TheaterAttack")),FString(TEXT("TheaterDefense"))})
 	{
 		TestEqual(TEXT("Unresolved RHS is current value"),Label(S,*(Prefix+TEXT("ValueLabel"))),FString(TEXT("当前值")));
@@ -260,7 +262,8 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 		const FString Explanation=CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(Hover->GetToolTip())->GetContent())->GetContent())->GetText().ToString();
 		TestTrue(TEXT("Tooltip describes weighted authoritative attributes"),Explanation.Contains(TEXT("×")) && Explanation.Contains(TEXT("当前基础值")));
 		TestFalse(TEXT("Tooltip contains no unresolved die"),Explanation.Contains(TEXT("掷点")));
-		if (!High) TestTrue(TEXT("Low tooltip uses the actual route attributes"),Explanation.Contains(Prefix.EndsWith(TEXT("Attack"))?TEXT("射门"):TEXT("盯防")));
+		// Stage 8.20's current low-cross terms are Passing/Speed and Defense/Speed.
+		if (!High) TestTrue(TEXT("Low tooltip uses the actual route attributes"),Explanation.Contains(Prefix.EndsWith(TEXT("Attack"))?TEXT("传球"):TEXT("防守")) && Explanation.Contains(TEXT("速度")));
 		if (Prefix.EndsWith(TEXT("Defense"))) TestTrue(TEXT("Fixed +2 is defense bonus, not tactical points"),Explanation.Contains(TEXT("防守加成 +2")) && !Explanation.Contains(TEXT("战术点数")));
 	}
 	for (const auto Name:{TEXT("TheaterTitle"),TEXT("TheaterAttackName0"),TEXT("TheaterContinueLabel"),TEXT("TheaterAttackFinalNumber")})

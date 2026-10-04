@@ -2754,3 +2754,27 @@ B.3 同一节点的 D6 标签颜色微调：原原因栏按数字字符加 Value
 范围仅为布局与样式：不改规则、Formula、RNG、权威状态、Network transport、角色候选或按钮意图，不扩展 Guided Match／Full Card／Header。详见 [Match Flow Visual Language](UI/MatchFlow_Visual_Language_v1.md) 与 [Tactic Explainer](UI/Tactic_Explainer_Visual_Contract.md)。视觉与手感仍需 USER PIE。
 
 8.22B-C 最终微调续于同一未提交工作树：战术选择按钮改为名称单行，返回手牌通知统一停留 2.5 秒；说明面板保留导航／外壳，完整替换动态右栏并明确首帧换行宽度，消除重建后默认宽度引起的布局跳变。概览、计算方式、hover 信息与只读边界继续有效，不扩展其他 UI 家族。
+
+## Stage 8.23A — Tactical Scene Foundation + LongShot Direct Prototype
+
+恢复此前延期的空间表现，但本轮仅实现 LongShot Direct。空间层读取现有安全 Formula 参与者与 typed outcome，固定向右进攻，使用项目草皮、圆形头像与语义锚点。门将严格按真实公式参与者出现；当前 Goal / Miss / ImmediateMiss 没有独立扑救事实，因此不新增 GK Save 演出。
+
+Setup 0.5 秒、Intent 0.75 秒、现有 Roll / Formula、Outcome 0.9 秒，再交还原结果／继续流程。点击球场或焦点内空格仅加速一个空间阶段，不提交命令、不跳骰子或公式。resolved 重建直接停在已披露结果。Local 与 Network 复用共享 Screen，无新增 replicated animation state；Guided Match 保持原路径。参考构图与当前 UI 的差异、权威边界及后续范围见 [Tactical Scene Spatial Presentation](UI/Tactical_Scene_Spatial_Presentation_Contract.md)。工程验证和 USER PIE 视觉／节奏验收分开。
+
+### Stage 8.23A 商业化 follow-up（同一未提交阶段）
+
+LongShot 空间场景扩至方法 hover/focus 预览和 Dead Corner 双骰流程；场地采用延伸出视口的透视草坪、现有看台纹理、项目品牌挡板与完整门框／网面。Goal 终点从立柱移入门内；失败保持中性门外语义。叙事恢复顶部，公式与平局解释保留在下层。
+
+视觉门将改为来自安全守方阵容的实际 GK，独立于 Formula 参与身份；未激活时弱化光环，不加入贡献或演绎扑救。仅 Formula 参与者获得对应阶段的强调。没有假 Runner / Helper 或额外 ambient 身份。
+
+同阶段 blocker fix 修正死角的安全事实投影：此前 ActualBranch 已存在，但 PrimaryContestId 只按 tactic 把 DeadCorner 归入 DirectShot，误入 composite terms 后读取空 Runner CardId。程序方法现在不创建属性 contest，继续投影原 `PairedAttackA → PairedAttackB` 和 `DeadCorner.Outcome`；共享修正同时覆盖远射／内切的死角语义，Direct 映射不变。Carrier 是射手，已选 Marker 只是上下文身份，没有 Runner／Helper 或 GK 公式贡献。UI 继续拒绝失败的投影，不新增 intent 绕过、骰子算术或伪造 Formula。玩法、RNG、terminal lifecycle 与 Network authority 未改变；工程闭环与 USER PIE 视觉验收分开。详细边界见 [空间合同](UI/Tactical_Scene_Spatial_Presentation_Contract.md)。
+
+### Stage 8.23A 场景美术细节 follow-up
+
+用户要求改善实机草地、球、场线、球路、球门及广告牌看台，使其接近已确认的进攻半场参考。授权独立的 TacticalScene 草皮／足球资源，限定 LongShot 空间消费者，不替换主棋盘贴图。细化场地透视衔接、球网和立柱材质、路线虚线与球体层次；参考图不成为玩法或镜头米制事实。现有权威、安全投影、身份、揭示、结果映射与时序保持不变。只做局部绘制验证与已有 LongShot 空间流程检查；商业视觉仍须 USER PIE。
+
+### Stage 8.23A 实机 GIF：美术观感与节奏 follow-up
+
+用户要求保留“直接射门／射向死角”的按钮与文案，集中改善空间演出。球场从下方内容的自动缩放中分离，避免方法选择、Formula、双骰和结果切换时整体缩放／位移；预览到执行不再重复消失／淡入。压低草皮、球网与光圈噪声，出球加入旋转、远近缩放与短尾迹，实际路线只随球经过显现。
+
+本条将空间 Setup / Intent / Outcome 预算由 0.5 / 0.75 / 0.9 秒改为 0.18 / 0.24 / 0.80 秒，合计减少 0.93 秒；真实 elapsed 跨相邻空间阶段保留余量，不跨越原 Formula / Roll 等待。既有骰子节奏、玩法、权威披露、结果映射、比分与继续门控不变；只在已披露 Goal 到达时轻量回应网面。不引入扑救、封堵或中柱事件，仍需 USER PIE 验收。详细合同见 [空间表现](UI/Tactical_Scene_Spatial_Presentation_Contract.md)。

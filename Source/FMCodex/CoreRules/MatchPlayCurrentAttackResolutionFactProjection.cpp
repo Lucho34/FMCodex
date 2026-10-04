@@ -471,6 +471,12 @@ namespace MatchPlayCurrentAttackResolutionFactProjection
 
 	FName PrimaryContestId(const FMatchPlayCurrentAttackActualBranch& Branch)
 	{
+		// Dead Corner is a paired-dice decision, not an attribute contest.
+		// Its existing DeadCorner.Outcome fact owns the procedural result.
+		if (IsDeadCornerBranch(Branch))
+		{
+			return NAME_None;
+		}
 		if (Branch.ActionType == ESkillRuleType::LongShot)
 		{
 			return TEXT("LongShot.DirectShot");

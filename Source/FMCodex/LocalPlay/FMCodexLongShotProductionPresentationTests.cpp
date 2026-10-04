@@ -534,6 +534,10 @@ bool FFMCodexLongShotProductionDeadCornerSequentialRevealTest::RunTest(
 		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
 	Screen->TakeWidget();
 	Screen->RefreshFromPresentation(PendingScreen);
+	// This headless widget has no NativeTick. Finish only the local spatial
+	// setup/intent; neither call may advance the mandatory paired reveal.
+	Screen->SkipTacticalScene();
+	Screen->SkipTacticalScene();
 	Screen->BeginPendingCrossRollRevealForTesting();
 	Screen->RefreshFromPresentation(TerminalScreen);
 	Screen->PauseInlineFormulaRevealTimerForTesting();
@@ -568,6 +572,11 @@ bool FFMCodexLongShotProductionDeadCornerSequentialRevealTest::RunTest(
 			&& SecondHeld.RollReel.bResultHold);
 
 	Screen->AdvanceInlineFormulaRevealForTesting(3.0f);
+	TestEqual(TEXT("Settled pair hands off to local ball flight"),
+		Screen->GetTacticalScene().Phase, FMCodexTacticalScene::EPhase::Outcome);
+	TestFalse(TEXT("Terminal narrative waits for local ball flight"),
+		Screen->GetLongShotResolutionSurface()->GetPresentation().bNarrativeAvailable);
+	Screen->SkipTacticalScene();
 	const auto& Settled =
 		Screen->GetLongShotResolutionSurface()->GetPresentation();
 	TestTrue(TEXT("Settled terminal reconstructs both dice"),
