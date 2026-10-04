@@ -3,6 +3,9 @@
 #include "FMCodexDiceResultWidget.h"
 #include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPlayerUIStyle.h"
+#include "FMCodexMatchShellStyle.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
+#include "Components/HorizontalBoxSlot.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -198,6 +201,8 @@ void UFMCodexResolutionPanelWidget::BuildWidgetTree()
 	Style.ApplyText(*RouteText, EFMCodexPlayerUITextRole::Secondary);
 	StepBody->AddChildToVerticalBox(StepTitleText);
 	StepBody->AddChildToVerticalBox(StepSummaryText);
+	StepBody->AddChildToVerticalBox(WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(), TEXT("RecoverySummaryRows")));
 	StepBody->AddChildToVerticalBox(RouteText);
 	StepRegion->AddChild(StepBody);
 	AcceptedResultBody->AddChildToVerticalBox(StepRegion);
@@ -345,6 +350,57 @@ void UFMCodexResolutionPanelWidget::RefreshVisuals()
 	StepSummaryText->SetText(FText::FromString(Presentation.StepSummaryLabel));
 	StepSummaryText->SetVisibility(Presentation.StepSummaryLabel.IsEmpty()
 		? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	// This is only a visual treatment of the canonical notification title/lines.
+	// No card identity, recovery decision or gameplay state is inferred from text.
+	const bool bRecovery = Presentation.bNonBlockingNotification
+		&& Presentation.StepLabel == FFMCodexPlayerUIPresentationText::RecoveryNotificationTitle().ToString();
+	const auto& Style = FFMCodexPlayerUIStyle::Get();
+	auto* Frame = CastChecked<UBorder>(GetWidgetFromName(TEXT("ResolutionPanelFrame")));
+	auto* Step = CastChecked<UBorder>(GetWidgetFromName(TEXT("ResolutionStepRegion")));
+	Frame->SetBrush(*FCoreStyle::Get().GetBrush("WhiteBrush"));
+	Style.ApplyBorder(*Frame, EFMCodexPlayerUIColorRole::PanelBackground, Style.GetPanelPadding());
+	Style.ApplyBorder(*Step, EFMCodexPlayerUIColorRole::PanelRaised, Style.GetSectionPadding());
+	Style.ApplyText(*StepTitleText, EFMCodexPlayerUITextRole::ActionTitle);
+	auto* Rows = CastChecked<UVerticalBox>(GetWidgetFromName(TEXT("RecoverySummaryRows")));
+	Rows->ClearChildren();
+	Rows->SetVisibility(bRecovery ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	if (bRecovery)
+	{
+		Frame->SetBrush(FSlateRoundedBoxBrush(FMCodexMatchShellStyle::Navy(), 10.f, FMCodexMatchShellStyle::Border(), 1.f));
+		Frame->SetBrushColor(FLinearColor::White);
+		Frame->SetPadding(FMargin(22,16));
+		Step->SetBrushColor(FLinearColor::Transparent);
+		Step->SetPadding(FMargin(0));
+		StepTitleText->SetFont(FMCodexMatchShellStyle::Font(26, true));
+		StepTitleText->SetColorAndOpacity(FMCodexMatchShellStyle::Text());
+		StepSummaryText->SetVisibility(ESlateVisibility::Collapsed);
+		TArray<FString> Lines;
+		Presentation.StepSummaryLabel.ParseIntoArrayLines(Lines);
+		for (const FString& Line : Lines)
+		{
+			FString Owner, Name;
+			// Split only the existing presentation separator. Preserve every name character,
+			// including middle dots; unknown formats stay intact and neutral.
+			const bool bFormatted = Line.Split(TEXT(" · "), &Owner, &Name);
+			auto* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
+			auto* Prefix = WidgetTree->ConstructWidget<UTextBlock>();
+			Prefix->SetFont(FMCodexMatchShellStyle::Font(16));
+			Prefix->SetColorAndOpacity(FMCodexMatchShellStyle::Secondary());
+			Prefix->SetText(FText::FromString(bFormatted ? Owner + TEXT(" · ") : Line));
+			Prefix->SetAutoWrapText(!bFormatted);
+			Row->AddChildToHorizontalBox(Prefix)->SetVerticalAlignment(VAlign_Center);
+			if (bFormatted)
+			{
+				auto* Player = WidgetTree->ConstructWidget<UTextBlock>();
+				Player->SetFont(FMCodexMatchShellStyle::Font(18, true));
+				Player->SetColorAndOpacity(FMCodexMatchShellStyle::Mint());
+				Player->SetAutoWrapText(true);
+				Player->SetText(FText::FromString(Name));
+				Row->AddChildToHorizontalBox(Player)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+			}
+			Rows->AddChildToVerticalBox(Row)->SetPadding(FMargin(0,4,0,0));
+		}
+	}
 	RouteText->SetText(FText::FromString(Presentation.RouteLabel));
 	RouteText->SetVisibility(Presentation.RouteLabel.IsEmpty()
 		? ESlateVisibility::Collapsed : ESlateVisibility::Visible);

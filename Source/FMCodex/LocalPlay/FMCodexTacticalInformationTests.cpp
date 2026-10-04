@@ -1,3 +1,4 @@
+#include "FMCodexTacticExplainerWidget.h"
 #include "FMCodexTacticalDetailPanelWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -9,6 +10,7 @@
 
 #include "Components/Border.h"
 #include "Components/Button.h"
+#include "Components/ButtonSlot.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/SizeBox.h"
@@ -255,11 +257,20 @@ bool FFMCodexTacticalInformationHoverLifecycleTest::RunTest(
 		Interaction->GetRenderedOptionWidgets()[0];
 	UFMCodexInteractionOptionWidget* CutCard =
 		Interaction->GetRenderedOptionWidgets()[1];
-	TestTrue(TEXT("Compact tactical cards have primary and secondary content"),
+	TestTrue(TEXT("Tactical choice keeps its name and preview metadata"),
 		CrossCard->IsTacticalCard() && CutCard->IsTacticalCard()
 			&& CrossCard->GetLabel() == TEXT("传中")
 			&& CrossCard->GetSecondaryLabel() == TEXT("高球 / 低球")
 			&& !CrossCard->GetLabel().Contains(TEXT("Canonical.Skill")));
+	for (auto* Card : {CrossCard, CutCard})
+	{
+		Card->TakeWidget();
+		auto* Secondary=CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("InteractionOptionSecondaryLabel")));
+		auto* Button=CastChecked<UButton>(Card->GetWidgetFromName(TEXT("InteractionOptionButton")));
+		TestTrue(TEXT("Name-only tactical button collapses subtitle without a blank row"),
+			Secondary->GetText().IsEmpty() && Secondary->GetVisibility()==ESlateVisibility::Collapsed
+			&& CastChecked<UButtonSlot>(Button->GetChildAt(0)->Slot)->GetVerticalAlignment()==VAlign_Center);
+	}
 	TestEqual(TEXT("Shared detail begins hidden"), Detail->GetVisibility(),
 		ESlateVisibility::Collapsed);
 
@@ -306,7 +317,7 @@ bool FFMCodexTacticalInformationHoverLifecycleTest::RunTest(
 			&& DetailBranches->GetChildrenCount() == 2
 			&& DetailBranches->UseExplicitWrapSize()
 			&& DetailBranches->GetHorizontalAlignment() == HAlign_Center
-			&& DetailBranches->GetInnerSlotPadding().X <= 5.0f
+			&& DetailBranches->GetInnerSlotPadding().X <= 12.0f
 			&& CrossFirstBranchBounds != nullptr
 			&& CrossFirstBranchBounds->GetWidthOverride() >= 350.0f
 			&& CrossFirstBranchBounds->GetWidthOverride() <= 380.0f
@@ -492,107 +503,18 @@ bool FFMCodexDeploymentTacticalReferenceEntryTest::RunTest(
 		? Cast<UButton>(Interaction->GetWidgetFromName(
 			TEXT("DeploymentTacticalReferenceEntryButton")))
 		: nullptr;
-	UBorder* Controls = Cast<UBorder>(Screen->GetWidgetFromName(
-		TEXT("DeploymentTacticalReferenceControls")));
-	UTextBlock* EntryLabel = EntryButton != nullptr
-		? Cast<UTextBlock>(EntryButton->GetChildAt(0)) : nullptr;
-	TestTrue(TEXT("Deployment exposes a local tactical reference entry"),
-		Interaction != nullptr && EntryButton != nullptr
-			&& EntryButton->GetVisibility() == ESlateVisibility::Visible
-			&& EntryLabel != nullptr
-			&& EntryLabel->GetText().ToString() == TEXT("战术说明")
-			&& Controls != nullptr
-			&& Controls->GetVisibility() == ESlateVisibility::Collapsed
-			&& Detail != nullptr
-			&& Detail->GetVisibility() == ESlateVisibility::Collapsed);
-
-	EntryButton->OnClicked.Broadcast();
-	TestTrue(TEXT("Entry opens the shared detail without gameplay state"),
-		Screen->IsDeploymentTacticalReferenceOpen()
-			&& Screen->GetDeploymentTacticalReferenceSkillType()
-				== ESkillRuleType::LongShot
-			&& Controls->GetVisibility() == ESlateVisibility::Visible
-			&& Detail->GetVisibility() == ESlateVisibility::Visible
-			&& Detail->GetPresentation().SkillType
-				== ESkillRuleType::LongShot
-			&& Screen->GetMatchController() == nullptr
-			&& Screen->GetPresentation().Interaction.Category
-				== EFMCodexUMGInteractionCategory::Deploy);
-
-	struct FReferenceExpectation
-	{
-		const TCHAR* ButtonName;
-		ESkillRuleType SkillType;
-		const TCHAR* ChineseName;
-	};
-	const TArray<FReferenceExpectation> Expectations = {
-		{ TEXT("DeploymentReferenceLongShotButton"),
-			ESkillRuleType::LongShot, TEXT("远射") },
-		{ TEXT("DeploymentReferenceCutInsideButton"),
-			ESkillRuleType::CutInsideShot, TEXT("内切") },
-		{ TEXT("DeploymentReferenceCrossButton"),
-			ESkillRuleType::Cross, TEXT("传中") },
-		{ TEXT("DeploymentReferenceThroughBallButton"),
-			ESkillRuleType::ThroughBall, TEXT("直塞") }
-	};
-	UHorizontalBox* Selector = Cast<UHorizontalBox>(Screen->GetWidgetFromName(
-		TEXT("DeploymentTacticalReferenceSelector")));
-	TestTrue(TEXT("Experiment reference selector owns four stable production choices"),
-		Selector != nullptr && Selector->GetChildrenCount() == 7
-			&& Selector->GetChildAt(5)->GetName()
-				== TEXT("DeploymentReferenceCloseSpacer"));
-	for (int32 Index = 0; Index < Expectations.Num(); ++Index)
-	{
-		const FReferenceExpectation& Expectation = Expectations[Index];
-		UButton* Button = Cast<UButton>(
-			Screen->GetWidgetFromName(Expectation.ButtonName));
-		UTextBlock* Label = Button != nullptr
-			? Cast<UTextBlock>(Button->GetChildAt(0)) : nullptr;
-		TestTrue(FString::Printf(TEXT("Reference selector %s is Chinese"),
-			Expectation.ChineseName),
-			Button != nullptr && Label != nullptr
-				&& Label->GetText().ToString() == Expectation.ChineseName
-				&& !Label->GetAutoWrapText());
-		TestEqual(TEXT("Reference selector order remains canonical"),
-			Selector->GetChildAt(Index + 1)->GetName(),
-			FString(Expectation.ButtonName) + TEXT("Bounds"));
-		Screen->SelectDeploymentTacticalReference(Expectation.SkillType);
-		TestTrue(FString::Printf(TEXT("Reference selects %s read-only detail"),
-			Expectation.ChineseName),
-			Detail->GetPresentation().SkillType == Expectation.SkillType
-				&& Detail->GetPresentation().DisplayName
-					== Expectation.ChineseName);
-	}
-	TestNull(TEXT("Dormant PassControl has no production reference button"),
-		Screen->GetWidgetFromName(TEXT("DeploymentReferencePassControlButton")));
-	const FString PlayerText = Detail->CollectPlayerFacingText();
-	TestTrue(TEXT("Deployment reference retains compact player contract"),
-		!PlayerText.Contains(TEXT("进攻"))
-			&& !PlayerText.Contains(TEXT("防守公式"))
-			&& !PlayerText.Contains(TEXT("战术球员"))
-			&& !PlayerText.Contains(TEXT("×"))
-			&& !PlayerText.Contains(TEXT("+2"))
-			&& !PlayerText.Contains(TEXT("Canonical.Skill")));
-
-	UButton* CloseButton = Cast<UButton>(Screen->GetWidgetFromName(
-		TEXT("DeploymentReferenceCloseButton")));
-	UTextBlock* CloseLabel = CloseButton != nullptr
-		? Cast<UTextBlock>(CloseButton->GetChildAt(0)) : nullptr;
-	TestTrue(TEXT("Reference has an explicit Chinese close action"),
-		CloseButton != nullptr && CloseLabel != nullptr
-			&& CloseLabel->GetText().ToString() == TEXT("关闭战术说明"));
-	if (CloseButton != nullptr)
-	{
-		CloseButton->OnClicked.Broadcast();
-	}
-	TestTrue(TEXT("Close returns to unchanged deployment presentation"),
-		!Screen->IsDeploymentTacticalReferenceOpen()
-			&& Controls->GetVisibility() == ESlateVisibility::Collapsed
-			&& Detail->GetVisibility() == ESlateVisibility::Collapsed
-			&& Screen->GetPresentation().Interaction.Category
-				== EFMCodexUMGInteractionCategory::Deploy
-			&& Screen->GetPresentation().Interaction.bCanFinishDeployment
-			&& !Interaction->IsInteractionBlocked());
+ auto* Explainer=Screen->GetTacticExplainer();
+ TestNotNull(TEXT("New modal exists"),Explainer);
+ if(!Explainer || !EntryButton) return false;
+ TestTrue(TEXT("Deployment entry retained"),EntryButton->GetVisibility()==ESlateVisibility::Visible);
+ EntryButton->OnClicked.Broadcast();
+ TestTrue(TEXT("New modal opens; hover remains hidden"),Screen->IsDeploymentTacticalReferenceOpen()
+  && Explainer->GetVisibility()==ESlateVisibility::Visible && Detail->GetVisibility()==ESlateVisibility::Collapsed);
+ Screen->SelectDeploymentTacticalReference(ESkillRuleType::Cross);
+ TestEqual(TEXT("Compatibility selection targets modal"),Explainer->GetTacticId(),FName(TEXT("Cross")));
+ Explainer->OnClose.Broadcast();
+ TestTrue(TEXT("Close restores unchanged deployment"),!Screen->IsDeploymentTacticalReferenceOpen()
+  && Explainer->GetVisibility()==ESlateVisibility::Collapsed && Screen->GetPresentation().Interaction.bCanFinishDeployment);
 
 	FFMCodexUMGMatchScreenViewModel SelectionView;
 	SelectionView.Interaction.Category =
@@ -601,7 +523,7 @@ bool FFMCodexDeploymentTacticalReferenceEntryTest::RunTest(
 	TestTrue(TEXT("Reference entry is not a global non-deployment control"),
 		EntryButton->GetVisibility() == ESlateVisibility::Collapsed
 			&& !Screen->IsDeploymentTacticalReferenceOpen()
-			&& Controls->GetVisibility() == ESlateVisibility::Collapsed);
+			&& Explainer->GetVisibility()==ESlateVisibility::Collapsed);
 	Interaction->RequestDeploymentTacticalReference();
 	TestFalse(TEXT("Non-deployment presentation cannot open reference"),
 		Screen->IsDeploymentTacticalReferenceOpen());

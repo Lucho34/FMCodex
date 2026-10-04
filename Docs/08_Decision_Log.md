@@ -2733,3 +2733,24 @@ B.3 同一节点的 D6 标签颜色微调：原原因栏按数字字符加 Value
 继续同一未提交 Stage 8.22A。左右姓名／TP 间距从 8 增至 22，回合行间距从 3 增至 8；TP 标签 14→13、数字仍 28，并复用现有数字字体，避免中文行高挤压下方圆点。回合圆点保持 36 与既有三态／1.8 当前白边，数字 22→19，圆点间距 6→9；Header 高度仍为 104。设计意图是保留资源突出程度，同时给身份和回合数字留出舒适空白。
 
 仅生产 Match Shell 操作上下文使用“玩家 A/B 操作”；不全局修改“请”。部署保留标题、“战术说明”次 CTA 和“结束部署”主 CTA，省略“拖动球员卡进行部署”，说明区域折叠后按钮自然前移。其他阶段的有用提示仍为可选显示。最终表现原则同步既有 Match Shell 视觉合同。
+
+### Stage 8.22B 战术说明商业化 — 2026-10-04
+
+以固定左导航＋右栏概览／详情替代部署时的水平标签说明，覆盖四种基础进攻与四种定位球，继续隐藏 PassControl。复用 Match Shell 的字体与配色；门将按实际路线属性显示，特性使用 canonical ID/name 的无图标 chip。近任意球和点球保留双属性取高，程序方法不制造属性对抗。完整表现合同见 [Tactic Explainer](UI/Tactic_Explainer_Visual_Contract.md)。旧 Tactical Information v1 的 hover 合同保留，部署 reference 结构由新合同替代。
+
+只读目录复用已有基础进攻／角球 description，定位球说明对应现有 resolver；不改 gameplay、数据、RNG、Formula 或 Trait。打开模态框后公共 Screen 意图提交与部署拖动被拦截；导航、路线和详情状态只属于本地说明面板。关闭恢复原部署，离开部署自动关闭。Guided Match 未适配，Tactical Scene 仍延期。工程验证与 USER PIE 视觉验收保持分离。
+
+
+### Stage 8.22B 计算方式微调 — 2026-10-04
+
+延续同一未提交 8.22B。用户已接受概览／导航／模态结构，剩余详情从规则长文收敛为“查看计算方式”：可选前置判定、核心攻防公式卡、简短结果；程序方法只列一次／两次骰子的实际条件。属性、系数、固定修正、门将项、近任意球／点球取高和角球自身人数修正保留；不再逐页重复通用特性、战术球员优势、平局／体力、掷骰流程或参与者理论。移除的是说明文案，所有玩法机制继续生效，实际 Formula disclosure 不变。
+
+复用既有只读目录的结构化操作数，概览仅替换次级 CTA 名称，同栏返回、特性 chips、技能提示与隔离边界不变。聚焦合同／UI 测试三个均通过；真实 Local PIE 检查四个代表计算页。首轮行距过大，压缩空白后内切页仍有 2.2 个逻辑像素溢出，最终仅减小计算页返回按钮上方间距并做内切专项复查。实际三次增量 Editor build、两次四页 PIE 与一次内切专项 PIE，最终受影响布局验证通过；未运行全量 suites，工程结果与新计算视图 USER PIE 验收仍分开。详见既有 [Tactic Explainer](UI/Tactic_Explainer_Visual_Contract.md)，不创建新阶段或新文档。
+
+## Stage 8.22C — 战术选择与过渡界面局部商业化
+
+将战术选择、紧凑战术摘要、定位球类型参考／结果和返回手牌通知接入现有 Match Shell 圆角深蓝样式。定位球类型仅有一个 mint 掷点 CTA，四格保持静态说明；结果继续使用原 CompactBox 与披露／停留／接管流程。通知只强化既有 canonical 显示文案，不新增玩法事实。战术说明的“前置判定／结果”去掉固定标题宽度，修复中文尾字与正文重叠。
+
+范围仅为布局与样式：不改规则、Formula、RNG、权威状态、Network transport、角色候选或按钮意图，不扩展 Guided Match／Full Card／Header。详见 [Match Flow Visual Language](UI/MatchFlow_Visual_Language_v1.md) 与 [Tactic Explainer](UI/Tactic_Explainer_Visual_Contract.md)。视觉与手感仍需 USER PIE。
+
+8.22B-C 最终微调续于同一未提交工作树：战术选择按钮改为名称单行，返回手牌通知统一停留 2.5 秒；说明面板保留导航／外壳，完整替换动态右栏并明确首帧换行宽度，消除重建后默认宽度引起的布局跳变。概览、计算方式、hover 信息与只读边界继续有效，不扩展其他 UI 家族。

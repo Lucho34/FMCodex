@@ -25,6 +25,7 @@ class UFMCodexResolutionPanelWidget;
 class UFMCodexRollReelWidget;
 class UFMCodexSelectionFeedbackToastWidget;
 class UFMCodexTacticalDetailPanelWidget;
+class UFMCodexTacticExplainerWidget;
 class UFMCodexThroughBallResolutionSurfaceWidget;
 class UImage;
 class UHorizontalBox;
@@ -181,6 +182,7 @@ public:
 #endif
 	UFMCodexSelectionFeedbackToastWidget* GetSelectionFeedbackToast() const;
 	UFMCodexTacticalDetailPanelWidget* GetTacticalDetailPanel() const;
+ UFMCodexTacticExplainerWidget* GetTacticExplainer() const { return TacticExplainer; }
 	bool IsDeploymentTacticalReferenceOpen() const;
 	ESkillRuleType GetDeploymentTacticalReferenceSkillType() const;
 	void OpenDeploymentTacticalReference();
@@ -507,7 +509,7 @@ private:
 	TObjectPtr<UVerticalBox> TacticalDetailSurface;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UBorder> DeploymentTacticalReferenceControls;
+	TObjectPtr<UFMCodexTacticExplainerWidget> TacticExplainer;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Local Match|Interaction Presentation")
 	TSubclassOf<UFMCodexInteractionPanelWidget> InteractionPanelWidgetClass;

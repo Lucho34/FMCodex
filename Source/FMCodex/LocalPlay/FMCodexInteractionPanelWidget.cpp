@@ -584,9 +584,10 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	DeploymentHandInstructionText->SetFont(InstructionFont);
 	DeploymentHandInstructionText->SetColorAndOpacity(FMCodexMatchShellStyle::Secondary());
 	RefreshCandidateChoices();
-	CastChecked<UFMCodexBroadcastPanel>(CandidateRegion)->Surface=bShellInstruction
+	const bool bTacticalChoice = Presentation.Category == EFMCodexUMGInteractionCategory::SelectSkill;
+	CastChecked<UFMCodexBroadcastPanel>(CandidateRegion)->Surface=bShellInstruction || bTacticalChoice
 		? EFMCodexBroadcastSurface::Instruction:EFMCodexBroadcastSurface::Panel;
-	CandidateRegion->SetPadding(bShellInstruction?FMargin(8,14,18,14):Style.GetSectionPadding());
+	CandidateRegion->SetPadding(bTacticalChoice ? FMargin(0) : bShellInstruction ? FMargin(8,14,18,14) : Style.GetSectionPadding());
 	CandidateRegion->SetVisibility(bShellInstruction || (!bDeployment && !Presentation.bUseOnPitchPlayerSelection && !Presentation.SelectionChoices.IsEmpty())
 		? ESlateVisibility::Visible:ESlateVisibility::Collapsed);
 	ChoiceRegion->SetVisibility(
@@ -639,6 +640,15 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 		Presentation.PrimaryAction.Label);
 	SetButton(DeclineButton, Presentation.bCanDecline,
 		Presentation.DeclineActionLabel);
+	FButtonStyle DeclineStyle = Style.MakeDockButtonStyle(EFMCodexPlayerUIActionRole::Decline);
+	if (bTacticalChoice)
+	{
+		DeclineStyle.SetNormalForeground(FMCodexMatchShellStyle::Secondary());
+		DeclineStyle.SetNormalPadding(FMargin(24,19));
+		DeclineStyle.SetPressedPadding(FMargin(24,20,24,18));
+	}
+	DeclineButton->SetStyle(DeclineStyle);
+	CastChecked<UTextBlock>(DeclineButton->GetChildAt(0))->SetFont(FMCodexMatchShellStyle::Font(18, !bTacticalChoice));
 	SetButton(NoLegalButton, Presentation.bCanResolveNoLegal,
 		Presentation.NoLegalActionLabel);
 	SetButton(DeploymentTacticalReferenceButton,
@@ -760,7 +770,8 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 		}
 		Option->SetIsEnabled(Choice.bEnabled);
 		Group->AddChildToVerticalBox(Option);
-		CandidateCardsBody->AddChildToHorizontalBox(Group);
+		CandidateCardsBody->AddChildToHorizontalBox(Group)->SetPadding(FMargin(
+			Presentation.Category == EFMCodexUMGInteractionCategory::SelectSkill && ChoiceIndex > 0 ? 12.f : 0.f, 0, 0, 0));
 	}
 
 	for (int32 Index = 0; Index < Presentation.BranchChoices.Num(); ++Index)

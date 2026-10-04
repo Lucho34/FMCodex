@@ -268,3 +268,15 @@ Stage 8.8F.3、8.9A.2、8.9B 和 8.10A.1 USER PIE 均已由用户接受。中性
 ## 22. Production Match Shell — Stage 8.22A
 
 用户参考图明确授权 Match Shell 主 CTA 使用薄荷青填充与深色字，这是第 4 节 Primary Action Blue 的局部例外。共享 Header、Pitch HUD 和底部操作条采用深蓝底、细边框、克制身份色边缘及清楚主次操作；具体配色入口、TP／回合信息职责与范围见 [Production Match Shell Visual Contract](Production_Match_Shell_Visual_Contract.md)。规则／safe View／比分揭示门控不变，其他 UI family 不因此迁移。USER PIE REQUIRED；Tactic Explainer 留给 8.22B，Guided Match 扩展继续暂停。
+
+## Stage 8.22C：战术选择与过渡提示的局部商业样式
+
+战术选择 dock、紧凑 hover 摘要、`SetPiece.Type` 类型参考／结果与返回手牌提示沿用 Match Shell 的深海军蓝、细圆角边框、冷白主文字和灰蓝辅助文字。此范围替代旧切角／灰色面板样式，不改变其他 Formula、Theater、Header、Full Card 或 Guided Match 家族。
+
+- 战术选择：每个已有合法战术独立成卡式按钮，只显示战术名称并垂直居中；次级文本折叠，路线／方法信息仍由 hover 摘要与战术说明提供；不再套第二层候选框。“不使用战术”为弱次级操作；保留原 enabled、hover/focus、intent 和等待方合同。
+- 紧凑摘要：仍只显示 canonical read-only 分支及角色属性；普通分支双列卡片与行分隔线，ThroughBall 保持三路线层级。不是完整战术说明模态框。外宽 780、最大高度 430，左右留白 16、分支间距 12、普通列宽 368。
+- 定位球类型：2×2 静态范围、名称与原示意图不具选择能力；“掷一次 D6 决定定位球类型”保持。唯一动作“掷定位球类型”使用 mint。仅稳定 `SetPiece.Type` 语义启用此样式，组件复用后恢复其他家族样式。
+- 类型结果：圆角深蓝框、标题、canonical 掷点／类型文案与原金色 CompactBox 数字。不改 Cycling、Settling、ResultHold、披露或 handoff 时序，不增加确认动作。
+- 返回手牌：标题加大，原有逐行所有者文字为灰蓝、完整显示名为 mint。仅拆分已格式化的“ · ”展示分隔符，不解析 FullName 或推导球员身份；未知格式原样保留。单个与多个返回球员统一采用 2.5 秒可读停留，沿用既有直接消失方式；保持非阻塞、无确认 CTA 和下一进攻操作合同。
+
+USER PIE 仍负责整体观感、长中文、遮挡和自然揭示节奏验收；工程截图不能替代用户验收。

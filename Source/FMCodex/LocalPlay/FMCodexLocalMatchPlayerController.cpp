@@ -786,7 +786,8 @@ void AFMCodexLocalMatchPlayerController::ScheduleRecoveryNotificationDismiss()
 			RecoveryNotificationDismissTimerHandle,
 			this,
 			&AFMCodexLocalMatchPlayerController::DismissRecoveryNotification,
-			RecoveryNotificationDurationSeconds,
+			ResolutionFeedback.CommandName == TEXT("ConsumedRecovery") ? 2.5f
+				: RecoveryNotificationDurationSeconds,
 			false);
 	}
 }

@@ -48,7 +48,7 @@ bool FFMCodexSetPieceFlowIsolationTest::RunTest(const FString&)
 	auto* RuleBody = Formula->GetWidgetFromName(TEXT("SetPieceTypeInformationBody"));
 	auto* Action = CastChecked<UButton>(Formula->GetWidgetFromName(TEXT("InlineFormulaContinueButton")));
 	TestTrue(TEXT("Stable type mode opts in; rule subtree cannot intercept input"),
-		Frame->IsFlowStyleEnabled() && Rules->GetChildrenCount() == 4
+		!Frame->IsFlowStyleEnabled() && Frame->Background.DrawAs == ESlateBrushDrawType::RoundedBox && Rules->GetChildrenCount() == 4
 		&& RuleBody->GetVisibility() == ESlateVisibility::HitTestInvisible);
 	const TCHAR* Ranges[] = {TEXT("1–2"), TEXT("3–4"), TEXT("5"), TEXT("6")};
 	const TCHAR* Types[] = {TEXT("角球"), TEXT("远距离任意球"), TEXT("近距离任意球"), TEXT("点球")};
@@ -94,7 +94,7 @@ bool FFMCodexSetPieceFlowIsolationTest::RunTest(const FString&)
 		*TypeDice->GetCachedGeometry().GetAbsolutePosition().ToString(), *TypeDice->GetCachedGeometry().GetLocalSize().ToString()));
 	BeginCleanup(TypeRenderer);
 	TestTrue(TEXT("Type reveal adopts CompactBox in its existing host without selectable reference"),
-		Frame->IsFlowStyleEnabled() && RuleBody->GetVisibility() == ESlateVisibility::Collapsed
+		!Frame->IsFlowStyleEnabled() && Frame->Background.DrawAs == ESlateBrushDrawType::RoundedBox && RuleBody->GetVisibility() == ESlateVisibility::Collapsed
 		&& Formula->GetRollReelWidget()->GetVisualVariant() == EFMCodexRollVisualVariant::CompactBox
 		&& CastChecked<USizeBox>(Formula->GetWidgetFromName(TEXT("InlineFormulaDiceBounds")))->GetWidthOverride() == 84.f);
 	FFMCodexUMGInlineFormulaSurfaceViewModel D;

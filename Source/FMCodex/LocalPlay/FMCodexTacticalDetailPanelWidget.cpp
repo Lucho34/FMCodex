@@ -1,6 +1,8 @@
 #include "FMCodexTacticalDetailPanelWidget.h"
 
 #include "FMCodexPlayerUIStyle.h"
+#include "FMCodexMatchShellStyle.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -17,14 +19,14 @@ namespace FMCodexTacticalDetailPanelWidget
 {
 	constexpr float PanelWidth = 780.0f;
 	constexpr float PanelMaxHeight = 430.0f;
-	constexpr float PanelHorizontalPadding = 10.0f;
-	constexpr float PanelVerticalPadding = 8.0f;
-	constexpr float BranchGap = 5.0f;
-	constexpr float BranchWidth = 365.0f;
+	constexpr float PanelHorizontalPadding = 16.0f;
+	constexpr float PanelVerticalPadding = 14.0f;
+	constexpr float BranchGap = 12.0f;
+	constexpr float BranchWidth = 368.0f;
 	constexpr float WideBranchWidth = (BranchWidth * 2.0f) + BranchGap;
 	constexpr float RoleWidth = 116.0f;
 	constexpr float RouteGap = 6.0f;
-	constexpr float RouteWidth = 242.0f;
+	constexpr float RouteWidth = 245.0f;
 	constexpr float RouteRoleWidth = 82.0f;
 
 	UTextBlock* MakeText(
@@ -38,6 +40,13 @@ namespace FMCodexTacticalDetailPanelWidget
 		Result->SetClipping(EWidgetClipping::ClipToBounds);
 		FFMCodexPlayerUIStyle::Get().ApplyText(*Result, TextRole);
 		return Result;
+	}
+
+	void Round(UBorder& Border, bool bRaised = false)
+	{
+		Border.SetBrush(FSlateRoundedBoxBrush(bRaised ? FMCodexMatchShellStyle::Color(12,34,49)
+			: FMCodexMatchShellStyle::Navy(), 10.f, FMCodexMatchShellStyle::Border().CopyWithNewOpacity(bRaised ? .45f : 1.f), 1.f));
+		Border.SetBrushColor(FLinearColor::White);
 	}
 
 	void AddSpaced(UVerticalBox& Parent, UWidget* Child, const float Top = 4.0f)
@@ -145,6 +154,7 @@ void UFMCodexTacticalDetailPanelWidget::BuildWidgetTree()
 		UBorder::StaticClass(), TEXT("TacticalDetailFrame"));
 	Style.ApplyBorder(*Frame, EFMCodexPlayerUIColorRole::PanelBackground,
 		FMargin(PanelHorizontalPadding, PanelVerticalPadding));
+	Round(*Frame);
 	Bounds->AddChild(Frame);
 
 	UVerticalBox* Root = WidgetTree->ConstructWidget<UVerticalBox>(
@@ -152,9 +162,13 @@ void UFMCodexTacticalDetailPanelWidget::BuildWidgetTree()
 	Frame->AddChild(Root);
 	TitleText = MakeText(*WidgetTree, TEXT("TacticalDetailTitle"),
 		EFMCodexPlayerUITextRole::ActionTitle);
+	TitleText->SetFont(FMCodexMatchShellStyle::Font(26, true));
+	TitleText->SetColorAndOpacity(FMCodexMatchShellStyle::Text());
 	Root->AddChildToVerticalBox(TitleText);
 	HintText = MakeText(*WidgetTree, TEXT("TacticalDetailHint"),
 		EFMCodexPlayerUITextRole::Secondary);
+	HintText->SetFont(FMCodexMatchShellStyle::Font(13));
+	HintText->SetColorAndOpacity(FMCodexMatchShellStyle::Secondary());
 	AddSpaced(*Root, HintText, 0.0f);
 
 	BranchBody = WidgetTree->ConstructWidget<UWrapBox>(
@@ -163,7 +177,7 @@ void UFMCodexTacticalDetailPanelWidget::BuildWidgetTree()
 	BranchBody->SetExplicitWrapSize(true);
 	BranchBody->SetWrapSize(PanelWidth - (PanelHorizontalPadding * 2.0f));
 	BranchBody->SetHorizontalAlignment(HAlign_Center);
-	AddSpaced(*Root, BranchBody, 3.0f);
+	AddSpaced(*Root, BranchBody, 10.0f);
 
 	RouteBody = WidgetTree->ConstructWidget<UHorizontalBox>(
 		UHorizontalBox::StaticClass(), TEXT("TacticalDetailRoutes"));
@@ -219,6 +233,7 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 					TEXT("TacticalDetailRouteFrame%d"), RouteIndex)));
 			FFMCodexPlayerUIStyle::Get().ApplyBorder(*RouteFrame,
 				EFMCodexPlayerUIColorRole::PanelRaised, FMargin(6.0f, 5.0f));
+			Round(*RouteFrame, true);
 			UVerticalBox* RouteContent =
 				WidgetTree->ConstructWidget<UVerticalBox>(
 					UVerticalBox::StaticClass(), FName(*FString::Printf(
@@ -263,6 +278,7 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 						RouteIndex, StepIndex)));
 				FFMCodexPlayerUIStyle::Get().ApplyBorder(*StepFrame,
 					EFMCodexPlayerUIColorRole::PanelInset, FMargin(6.0f, 4.0f));
+				StepFrame->SetBrushColor(FLinearColor::Transparent);
 				UVerticalBox* StepContent =
 					WidgetTree->ConstructWidget<UVerticalBox>(
 						UVerticalBox::StaticClass(), FName(*FString::Printf(
@@ -357,7 +373,8 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 			UBorder::StaticClass(), FName(*FString::Printf(
 				TEXT("TacticalDetailBranchFrame%d"), Index)));
 		FFMCodexPlayerUIStyle::Get().ApplyBorder(*BranchFrame,
-			EFMCodexPlayerUIColorRole::PanelInset, FMargin(8.0f, 5.0f));
+			EFMCodexPlayerUIColorRole::PanelInset, FMargin(14.0f, 10.0f));
+		Round(*BranchFrame, true);
 		USizeBox* BranchBounds = WidgetTree->ConstructWidget<USizeBox>(
 			USizeBox::StaticClass(), FName(*FString::Printf(
 				TEXT("TacticalDetailBranchBounds%d"), Index)));
@@ -371,6 +388,7 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 		UTextBlock* Heading = MakeText(*WidgetTree,
 			FName(*FString::Printf(TEXT("TacticalDetailBranchTitle%d"), Index)),
 			EFMCodexPlayerUITextRole::SectionHeading);
+		Heading->SetFont(FMCodexMatchShellStyle::Font(19, true));
 		Heading->SetText(FText::FromString(Branch.Label));
 		BranchContent->AddChildToVerticalBox(Heading);
 		if (Branch.bRollOnly)
@@ -394,6 +412,8 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 			Role->SetAutoWrapText(false);
 			Role->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
 			Role->SetText(FText::FromString(RoleAttribute.RoleLabel));
+			Role->SetFont(FMCodexMatchShellStyle::Font(14));
+			Role->SetColorAndOpacity(FMCodexMatchShellStyle::Secondary());
 			USizeBox* RoleBounds = WidgetTree->ConstructWidget<USizeBox>(
 				USizeBox::StaticClass(), FName(*FString::Printf(
 					TEXT("TacticalDetailRoleBounds%d_%d"), Index, RowIndex)));
@@ -411,6 +431,7 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 			Attribute->SetAutoWrapText(false);
 			Attribute->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
 			Attribute->SetJustification(ETextJustify::Left);
+			Attribute->SetFont(FMCodexMatchShellStyle::Font(16, true));
 			Attribute->SetText(FText::FromString(RoleAttribute.AttributeLabel));
 			if (UHorizontalBoxSlot* AttributeSlot =
 				Row->AddChildToHorizontalBox(Attribute))
@@ -419,7 +440,13 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 				AttributeSlot->SetHorizontalAlignment(HAlign_Left);
 				AttributeSlot->SetVerticalAlignment(VAlign_Center);
 			}
-			AddSpaced(*BranchContent, Row, 1.0f);
+			auto* RuleBounds = WidgetTree->ConstructWidget<USizeBox>();
+			RuleBounds->SetHeightOverride(1.f);
+			auto* Rule = WidgetTree->ConstructWidget<UBorder>();
+			Rule->SetBrushColor(FMCodexMatchShellStyle::Border().CopyWithNewOpacity(.35f));
+			RuleBounds->AddChild(Rule);
+			AddSpaced(*BranchContent, RuleBounds, 3.f);
+			AddSpaced(*BranchContent, Row, 3.f);
 		}
 		BranchFrame->AddChild(BranchContent);
 		BranchBounds->AddChild(BranchFrame);

@@ -1,10 +1,12 @@
 #include "FMCodexInteractionOptionWidget.h"
 
 #include "FMCodexPlayerUIStyle.h"
+#include "FMCodexMatchShellStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
+#include "Components/ButtonSlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
@@ -177,9 +179,9 @@ void UFMCodexInteractionOptionWidget::RefreshVisuals()
 	const bool bTwoLineBranch = BindingMode == EBindingMode::Branch
 		&& !SecondaryLabel.IsEmpty();
 	const bool bStaticTwoLineChoice = bOneOnOneChoice || bTwoLineBranch;
-	OptionSecondaryText->SetText(FText::FromString(SecondaryLabel));
+	OptionSecondaryText->SetText(bTacticalCard ? FText::GetEmpty() : FText::FromString(SecondaryLabel));
 	OptionSecondaryText->SetVisibility(
-		(bTacticalCard || bStaticTwoLineChoice) && !SecondaryLabel.IsEmpty()
+		bStaticTwoLineChoice && !SecondaryLabel.IsEmpty()
 			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	OptionLabelText->SetAutoWrapText(!bTacticalCard && !bStaticTwoLineChoice);
 	OptionLabelText->SetTextOverflowPolicy(
@@ -187,13 +189,24 @@ void UFMCodexInteractionOptionWidget::RefreshVisuals()
 	FFMCodexPlayerUIStyle::Get().ApplyText(*OptionLabelText,
 		bTacticalCard ? EFMCodexPlayerUITextRole::Identity
 			: EFMCodexPlayerUITextRole::Body);
+	const auto& Style = FFMCodexPlayerUIStyle::Get();
+	auto* Frame = CastChecked<UBorder>(GetWidgetFromName(TEXT("InteractionOptionFrame")));
+	Style.ApplyBorder(*Frame, EFMCodexPlayerUIColorRole::PanelRaised, Style.GetCompactPadding());
+	Style.ApplyText(*OptionSecondaryText, EFMCodexPlayerUITextRole::Secondary);
 	if (bTacticalCard)
 	{
+		Frame->SetPadding(FMargin(0));
+		CastChecked<UButtonSlot>(OptionButton->GetChildAt(0)->Slot)->SetVerticalAlignment(VAlign_Center);
+		Frame->SetBrushColor(FLinearColor::Transparent);
+		OptionLabelText->SetFont(FMCodexMatchShellStyle::Font(20, true));
+		OptionLabelText->SetColorAndOpacity(FMCodexMatchShellStyle::Text());
+		OptionSecondaryText->SetFont(FMCodexMatchShellStyle::Font(12));
+		OptionSecondaryText->SetColorAndOpacity(FMCodexMatchShellStyle::Secondary());
 		OptionBounds->ClearMinDesiredWidth();
 		OptionBounds->ClearMinDesiredHeight();
 		OptionBounds->ClearWidthOverride();
-		OptionBounds->SetMinDesiredWidth(156.0f);
-		OptionBounds->SetHeightOverride(58.0f);
+		OptionBounds->SetMinDesiredWidth(164.0f);
+		OptionBounds->SetHeightOverride(70.0f);
 	}
 	else if (bStaticTwoLineChoice)
 	{
