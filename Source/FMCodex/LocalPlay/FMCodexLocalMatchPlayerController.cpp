@@ -583,6 +583,9 @@ void AFMCodexLocalMatchPlayerController::InitializeLocalDevRollOverrideSurface()
 void AFMCodexLocalMatchPlayerController::EndPlay(
 	const EEndPlayReason::Type EndPlayReason)
 {
+#if !UE_BUILD_SHIPPING
+	RemoveGuidedLesson1Overlay();
+#endif
 	CancelRecoveryNotificationDismiss();
 	if (PlayerMatchScreen != nullptr)
 	{
@@ -727,6 +730,9 @@ void AFMCodexLocalMatchPlayerController::RefreshPresentation()
 	auto& ViewForPlayerA = ViewForPlayerAResult.View;
 	auto& ViewForPlayerB = ViewForPlayerBResult.View;
 	const EInitialTurnOrderPlayer LocalViewerSide =
+#if !UE_BUILD_SHIPPING
+		GetGuidedLesson1() ? EInitialTurnOrderPlayer::PlayerA :
+#endif
 		ViewForPlayerA.ExpectedActingPlayer == EInitialTurnOrderPlayer::PlayerB
 			? EInitialTurnOrderPlayer::PlayerB
 			: ViewForPlayerA.ExpectedActingPlayer
@@ -837,6 +843,9 @@ void AFMCodexLocalMatchPlayerController::StartNewDevShortMatch()
 
 void AFMCodexLocalMatchPlayerController::StartNewDemoMatch()
 {
+#if !UE_BUILD_SHIPPING
+	RemoveGuidedLesson1Overlay();
+#endif
 	ResetSetPieceDraft();
 	AFMCodexLocalMatchHostGameMode* Host = FindLocalMatchHost();
 	if (Host == nullptr)
@@ -2215,6 +2224,9 @@ void AFMCodexLocalMatchPlayerController::RefreshPlayerMatchScreen()
 		return;
 	}
 	const EInitialTurnOrderPlayer LocalViewerSide =
+#if !UE_BUILD_SHIPPING
+		GetGuidedLesson1() ? EInitialTurnOrderPlayer::PlayerA :
+#endif
 		InteractionView.ExpectedActingPlayer == EInitialTurnOrderPlayer::PlayerA
 			|| InteractionView.ExpectedActingPlayer
 				== EInitialTurnOrderPlayer::PlayerB
@@ -2225,12 +2237,15 @@ void AFMCodexLocalMatchPlayerController::RefreshPlayerMatchScreen()
 						== EInitialTurnOrderPlayer::PlayerB
 						? InteractionView.CurrentAttackingPlayer
 						: EInitialTurnOrderPlayer::PlayerA;
-	PlayerMatchScreen->RefreshFromPresentation(
-		FFMCodexLocalMatchUMGPresentationBuilder::Build(
+	auto ScreenPresentation = FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			InteractionView,
 			ResolutionFeedback,
 			LastDiagnostic.Message,
-			LocalViewerSide));
+			LocalViewerSide);
+#if !UE_BUILD_SHIPPING
+	if (const auto* Lesson = GetGuidedLesson1()) Lesson->ApplyPresentation(ScreenPresentation);
+#endif
+	PlayerMatchScreen->RefreshFromPresentation(ScreenPresentation);
 }
 
 TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
@@ -2904,6 +2919,14 @@ TSharedRef<SWidget> AFMCodexLocalMatchPlayerController::BuildControlSurface()
 EFMCodexMatchScreenSubmission AFMCodexLocalMatchPlayerController::SubmitScreenIntent(
 	const FFMCodexMatchScreenRequest& Request)
 {
+#if !UE_BUILD_SHIPPING
+	if (auto* Lesson = GetGuidedLesson1(); Lesson && !Lesson->AllowsScreen(Request))
+	{
+		Lesson->ExplainUnavailable(Request);
+		// No gameplay command. Rejection also cancels any speculative screen roll reveal.
+		return EFMCodexMatchScreenSubmission::Rejected;
+	}
+#endif
 	using Kind = EFMCodexMatchScreenIntent;
 	switch (Request.Kind)
 	{

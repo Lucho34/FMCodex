@@ -1,4 +1,7 @@
 #include "FMCodexLocalMatchScreenWidget.h"
+#if !UE_BUILD_SHIPPING
+#include "FMCodexGuidedLesson1.h"
+#endif
 #include "FMCodexOutcomePresentation.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -593,7 +596,11 @@ void UFMCodexLocalMatchScreenWidget::ClearMatchController()
 void UFMCodexLocalMatchScreenWidget::RefreshFromPresentation(
 	const FFMCodexUMGMatchScreenViewModel& InPresentation)
 {
-	HideDetailOverlay();
+#if !UE_BUILD_SHIPPING
+	const auto* Lesson = MatchController ? MatchController->GetGuidedLesson1() : nullptr;
+	if (!Lesson || Lesson->GetStep() != EFMCodexLesson1Step::SkillRangeExplanation)
+#endif
+		HideDetailOverlay();
 	// Any authoritative presentation rebuild invalidates the transient hover
 	// source. The newly rendered tactical cards can publish a fresh identity.
 	HideTacticalDetail();
@@ -686,6 +693,9 @@ GetDeploymentTacticalReferenceSkillType() const
 
 void UFMCodexLocalMatchScreenWidget::OpenDeploymentTacticalReference()
 {
+#if !UE_BUILD_SHIPPING
+	if (MatchController && MatchController->GetGuidedLesson1()) return;
+#endif
 	if (TacticalDetailPanel == nullptr
 		|| DeploymentTacticalReferenceControls == nullptr
 		|| Presentation.Interaction.Category
@@ -2272,6 +2282,10 @@ bool UFMCodexLocalMatchScreenWidget::CanInspectOrdinaryFullCard() const
 void UFMCodexLocalMatchScreenWidget::HandleDetailHoverRequested(
 	UFMCodexPlayerCardWidget* SourceCard)
 {
+	#if !UE_BUILD_SHIPPING
+	if (const auto* Lesson = MatchController ? MatchController->GetGuidedLesson1() : nullptr)
+		if (!SourceCard || !Lesson->AllowsInspection(SourceCard->GetPresentation().CardId)) return;
+#endif
 	if (!CanInspectOrdinaryFullCard())
 	{
 		HideDetailOverlay();
@@ -2283,6 +2297,11 @@ void UFMCodexLocalMatchScreenWidget::HandleDetailHoverRequested(
 void UFMCodexLocalMatchScreenWidget::HandleDetailHoverDismissed(
 	UFMCodexPlayerCardWidget* SourceCard)
 {
+	#if !UE_BUILD_SHIPPING
+	// Keep the genuinely inspected production card visible beside its explanation.
+	if (const auto* Lesson = MatchController ? MatchController->GetGuidedLesson1() : nullptr)
+		if (Lesson->GetStep() == EFMCodexLesson1Step::SkillRangeExplanation) return;
+#endif
 	if (DetailHoverSource == SourceCard)
 	{
 		HideDetailOverlay();

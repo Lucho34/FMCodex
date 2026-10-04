@@ -7,6 +7,7 @@
 #include "FMCodexMatchClientViewPort.h"
 #if !UE_BUILD_SHIPPING
 #include "FMCodexLocalDevRollOverride.h"
+#include "FMCodexGuidedLesson1.h"
 #endif
 #include "../MatchPlayRuntime/MatchPlayAuthoritativeSession.h"
 #include "../MatchPlayRuntime/MatchPlayHostPort.h"
@@ -805,6 +806,12 @@ class FMCODEX_API AFMCodexLocalMatchHostGameMode final
 public:
 	AFMCodexLocalMatchHostGameMode();
 
+#if !UE_BUILD_SHIPPING
+	bool StartGuidedLesson1();
+	bool RebuildLesson1DeploymentCheckpoint();
+	FFMCodexGuidedLesson1* GetGuidedLesson1() const { return GuidedLesson1.Get(); }
+#endif
+
 	bool HasActiveLocalMatch() const;
 
 	virtual FMatchPlayPlayerIntentSubmissionResult SubmitPlayerIntent(
@@ -1224,4 +1231,8 @@ private:
 	}
 
 	TUniquePtr<FLocalMatchRuntime> ActiveMatchRuntime;
+#if !UE_BUILD_SHIPPING
+	bool InitializeLesson1Runtime(bool bDeploymentCheckpoint);
+	TUniquePtr<FFMCodexGuidedLesson1> GuidedLesson1;
+#endif
 };

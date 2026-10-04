@@ -9802,8 +9802,14 @@ bool FFMCodexFiveSlotDragDropDeploymentIntegrationTest::RunTest(
 			&& LoadProductionSource(
 				TEXT("Source/FMCodex/MatchPlayRuntime/MatchPlayAuthoritativeSession.cpp"),
 				SessionSource));
-	const FString DragDropSources = DragOperationHeader + CardWidgetSource
+	FString DragDropSources = DragOperationHeader + CardWidgetSource
 		+ PitchSlotSource + PitchWidgetSource;
+	// The accepted Full Card uses read-only trait labels/categories from this
+	// registry. Permit only those metadata references; Resolve/RankBonus and any
+	// other Formula use must still fail this authority-boundary assertion.
+	DragDropSources.ReplaceInline(TEXT("#include \"../CoreRules/PlayerTraitFormula.h\""), TEXT(""));
+	DragDropSources.ReplaceInline(TEXT("FPlayerTraitFormula::Category"), TEXT("TraitMetadataCategory"));
+	DragDropSources.ReplaceInline(TEXT("FPlayerTraitFormula::DisplayName"), TEXT("TraitMetadataName"));
 	TestTrue(TEXT("Drag/drop layer contains no gameplay authority or legality"),
 		!DragDropSources.Contains(TEXT("FMatchPlayState"))
 			&& !DragDropSources.Contains(TEXT("AuthoritativeSession"))

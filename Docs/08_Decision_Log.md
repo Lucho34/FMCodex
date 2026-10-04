@@ -2668,3 +2668,33 @@ B.3 同一节点的 D6 标签颜色微调：原原因栏按数字字符加 Value
 首轮 NullRHI 与 `FormulaFamily.ReadableStatesAndReuse` 的 DrawWidget 不兼容造成进程中止；改真实 RHI 后该测试通过，无产品修复。旧 Network 前缀展开过多数学组合后主动收窄，不把中止队列算作通过、不重复计数。Network Python 观察脚本遇到 protected UI 属性读取限制，使用现有 owner-safe DTO 日志和实际窗口截图补足，未绕过 gameplay／disclosure。工程截图与自动 PIE 不冒充用户验收。本次是迁移 milestone，扩大了受影响 CoreRules／Runtime 验证；没有公共 transport／全局披露／共享 screen 状态机改动，省略 full NetworkPlay／LocalPlay、未受影响 CoreRules／Runtime 历史家族及第二条 Host/Remote。`git diff --check` 通过。**REGRESSION SCOPE JUSTIFIED: YES。**
 
 **Stage 8.20 Rules Simplification runtime migration is COMPLETE；Stage 8.20 工程阻断项：无。PASS — SAFE TO COMMIT；USER PIE REQUIRED。** 用户仍需完成本 B.4 的代表性视觉／手感验收并手动 staging／commit；工程状态不等同于用户已验收或已提交。只需一张 Full Card、一个 Ranked／低球或内切 Formula、Near FK 或 Penalty 双属性 max、Binary 和普通 AntiOffside，不要求穷举战术。PassControl 仍不可用；**Tactical Scene / Spatial Presentation = DEFERRED**，平衡与内容扩充留后续规划。
+
+## 2026-10-03 — Stage 8.21A: Guided Match Lesson 1 prototype
+
+以干净 `main` / `3372344dc4301eb8fd6d162522f0a218d7b27a20` 为基线，实现 Local non-Shipping 第一课“第一次进攻：找到适合远射的球员”。教学只拥有场景、语义动作门、固定对手、提示、既有 DEV provider override 和一个预定义检查点；部署、角色、LongShot Direct、Ranked Trait、Formula、reveal 与比分全部复用生产权威路径。生产名单核对为哲凯赖什射门 4／无远射专家、厄德高射门 4／远射专家 A、斯通斯防守 4；两名进攻者远射范围均为 3–5。首轮仅呈现哲凯赖什，TP 3，两次比较骰均为 5／3，实际结果分别 9 对 10 未进球、11 对 10 进球。Full Card 保留 base，生产 Formula hover 披露 +2 来源和远射防守固定 +3。
+
+用户确认保留生产 Coordinator 的无合法 Runner 自动跳过，显示“不需要跑位球员”，不增造手动按钮。结果可见后才允许教学重演：明确正式比赛不能撤销，0.7 秒过渡后通过生产初始化／entry 在全新 runtime 重建 TP 3 的部署检查点，清除旧角色、骰、Formula、比分、pending 与表现缓存；不是通用 undo。随后开放厄德高，真实 Full Card 比较，12／25 秒提示升级；再次选哲凯赖什只提示、不提交玩法动作。退出／重复启动丢弃教学 runtime、override 和 overlay，普通 Local 对局恢复。开发入口 `fm.Tutorial.Lesson1`，退出 `fm.Tutorial.Exit`；均不编入 Shipping，不改 Network。
+
+最小验证共 **11 项通过，0 失败／警告**：`FMCodex.LocalPlay.GuidedLesson1.FlowAndCheckpoint`、`.IsolationAndHints`；affected 为 `FMCodex.LocalPlay.DirectShotTheater.FormulaAndSequentialRoll`、`.ImmediateMiss`，`FMCodex.LocalPlay.DevRollOverride.01.OneShotIsolationReplacementClear`、`.03.DefaultEquivalenceAndCursor`、`.04.ShippingAndRemovabilityBoundary`，`FMCodex.LocalPlay.LocalMatchHost.02.LifecycleEquivalenceAndReset`，`FMCodex.RankedTraits.MatrixAndBoundaries`、`.PlanIntegration`；真实窗口 `FMCodex.PIE.GuidedLesson1.FullFlow` 从注册入口完整走到完成并验证重启／退出，最后一轮约 54.7 秒，截图确认卡片及实际 Formula tooltip。这是自动操作的工程时间，不代表新玩家体验时间。增量 Development Editor／Game build、UBT 自动触发的 UHT 与 diff 检查通过。详细流程和入口见 [Lesson 1](Tutorial/Guided_Match_Lesson_01.md)。
+
+没有改变规则、名单／workbook／JSON、Full Card、公共 authority／transport／disclosure／生命周期，省略 full CoreRules／Runtime／LocalPlay／NetworkPlay 和独立 Host/Remote；没有 cook/package 或额外 Shipping 构建。**REGRESSION SCOPE JUSTIFIED: YES。USER PIE REQUIRED**，重点判断节奏、提示侵入、教学倒流边界、新选择自然性、特性发现与重复步骤。工程无阻断项；用户手动 staging／commit。Tactical Scene 继续 DEFERRED。
+
+### Stage 8.21A USER PIE UX follow-up — 2026-10-03
+
+继续当前未提交的 8.21A 原型，没有创建新 Stage 或重做既有教学。按用户真实 PIE 反馈删除第一课两排五格说明，采用中央 Explanation Mode 与 Action Focus Mode：适度变暗、真实语义目标留亮、青色描边和箭头、紧凑操作提示、常驻退出入口。未使用 BackgroundBlur；不为模糊重组生产 Widget 或增加多目标渲染捕获。几何只负责绘制，语义 Screen／typed Host 门继续阻止无关玩法输入。
+
+新增 TP 3 → 真正悬停哲凯赖什并显示 Full Card → 解释“远射 3–5” → 拖放的教学链。Full Card 内容和布局不改，技能说明期间仅保留已真实打开的卡用于对照。更新斯通斯／部署完毕、持球队员、远射、直接射门文案；删除跑位阻断说明和直接射门额外小字。动作成功即自动前进；第二轮不重复第一轮新增概念弹窗。重演、厄德高解锁、延迟提示、5／3固定骰、9对10与11对10、完成／重启／退出保持。
+
+最终14项唯一测试通过：GuidedLesson1三项、直接受影响的DirectShotTheater两项／拖放一项／普通Full Card七项，以及真实窗口`FMCodex.PIE.GuidedLesson1.FullFlow`一项。最后一轮实际Slate鼠标操作完成整课约70.0秒，确认退出后普通hover／TP点击恢复；这是工程时间，不是新玩家用时或用户验收。拖放源代码审计发现既有只读特性DisplayName／Category被泛化Formula字符串检查误伤，仅精确允许这两项元数据读取，保留其余authority／Formula禁用检查。初次RenderOffscreen因引擎D3D12 swapchain ensure未形成证据，改正常RHI窗口完成；PIE退出检查调整为等待新screen布局后的真实鼠标验证。
+
+增量Development Editor与Development Game build通过，UBT自动触发UHT通过，`git diff --check`通过。未修改生产规则、名单、Full Card、RNG、网络或全局生命周期，不跑full CoreRules／Runtime／LocalPlay／NetworkPlay、Host/Remote或Shipping。REGRESSION SCOPE JUSTIFIED: YES。USER PIE REQUIRED：重点验收中心说明、聚焦强度、箭头、TP→技能理解、拖放／持球说明、节奏、重演及第二轮。入口保持`fm.Tutorial.Lesson1`／`fm.Tutorial.Exit`。
+
+本次跟进后Guided Match expansion = PAUSED。正常production UI review/polish是下一项产品工作，未自动开始。完整8.21A由用户统一手动staging／commit，提交信息仍为`Stage 8.21A: prototype Guided Match Lesson 1`。
+
+### Stage 8.21A 教学 UI 商业化打磨 — 2026-10-04
+
+继续同一未提交的 8.21A，仅打磨 Lesson 1 教学层：深蓝圆角细边框、标题／短正文层级、薄荷青主 CTA、安静的退出按钮；操作横条采用“类别｜指令”，选择性强调球员与战术。箭头放大并轻微浮动，目标透明描边／外圈约 1.8 秒脉动，不增加动作等待、不改 reveal 时钟。参考 A／B／C 分别落到弹窗、聚焦提示、顶部横条；教学 CTA 按用户明确要求使用薄荷青，普通生产按钮主题不变。
+
+真实控件继续通过既有语义目标绑定；几何只用于画框与避让 Full Card。聚焦 TP／部署完毕时暂时隐藏旁边无关状态，离开聚焦或退出即恢复。教学步骤、TP 3、自动跳过 Runner、5／3骰、9 对 10未进球、重演解锁厄德高、11 对 10进球及退出清理不变；没有修改规则、名单、Full Card、production UI 或 Network。首轮截图发现透明描边被白色填充遮盖，已按 Slate brush tint 修正；顶部横条避开 Full Card。旧正文断言同步为新标题／正文分工，原流程、门控与恢复断言保留。
+
+本跟进最小验证为GuidedLesson1三项、拖放／普通hover两项和真实`FMCodex.PIE.GuidedLesson1.FullFlow`，六项唯一测试最终通过，0剩余失败／警告；准确名称与首轮旧文案断言修正见Lesson 1文档。最终真实窗口流程约70.0秒，核对两阶段呈现和退出恢复，不代表用户验收。增量Development Editor／Game与diff检查通过；无反射变化，不运行UHT。省略未受影响full CoreRules／Runtime／LocalPlay／NetworkPlay、Host/Remote、Shipping及cook/package。REGRESSION SCOPE JUSTIFIED: YES。USER PIE REQUIRED。Guided Match扩展保持暂停，正常production UI review/polish尚未开始，全部8.21A仍由用户统一手动staging／commit。

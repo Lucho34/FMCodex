@@ -70,6 +70,7 @@ public:
 	const FString& GetLabel() const;
 	const FString& GetSecondaryLabel() const;
 	bool IsTacticalCard() const;
+	FName GetOptionId() const { return CardId; }
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Intent")
 	FFMCodexInteractionSimpleOptionRequested OnSimpleRequested;

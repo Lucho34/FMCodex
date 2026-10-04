@@ -2,6 +2,9 @@
 #include "../MatchPlayRuntime/MatchPlayEntryDeploymentPlayerIntentPort.h"
 
 #include "FMCodexLocalMatchPlayerController.h"
+#if !UE_BUILD_SHIPPING
+#include "FMCodexLocalMatchDemoConfiguration.h"
+#endif
 
 namespace FMCodexLocalMatchHost
 {
@@ -212,6 +215,14 @@ AFMCodexLocalMatchHostGameMode::SubmitPlayerIntent(
 	const FMatchPlayPlayerIntent& Intent)
 {
 	FMatchPlayPlayerIntentSubmissionResult Result;
+#if !UE_BUILD_SHIPPING
+	if (GuidedLesson1 && !GuidedLesson1->AllowsIntent(Intent))
+	{
+		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::AuthoritativeCommandRejected;
+		Result.ErrorMessage = TEXT("本课暂不练习这项操作。");
+		return Result;
+	}
+#endif
 	if (!ActiveMatchRuntime.IsValid())
 	{
 		Result.ErrorCode = EMatchPlayPlayerIntentPortErrorCode::NoActiveMatch;
@@ -658,6 +669,10 @@ AFMCodexLocalMatchHostGameMode::StartNewLocalMatchWithSeed(
 
 	Result.bReplacedExistingMatch = ActiveMatchRuntime.IsValid();
 	ActiveMatchRuntime = MoveTemp(CandidateRuntime);
+#if !UE_BUILD_SHIPPING
+	// A normal new match discards the entire lesson, including its provider overrides.
+	GuidedLesson1.Reset();
+#endif
 	return Result;
 }
 
@@ -3150,3 +3165,67 @@ AFMCodexLocalMatchHostGameMode::AdvanceAfterTerminal(
 	}
 	return Result;
 }
+
+#if !UE_BUILD_SHIPPING
+bool AFMCodexLocalMatchHostGameMode::StartGuidedLesson1()
+{
+	if (!InitializeLesson1Runtime(false)) return false;
+	GuidedLesson1 = MakeUnique<FFMCodexGuidedLesson1>();
+	return true;
+}
+
+bool AFMCodexLocalMatchHostGameMode::RebuildLesson1DeploymentCheckpoint()
+{
+	if (!GuidedLesson1 || !GuidedLesson1->IsCheckpointDue()) return false;
+	if (!InitializeLesson1Runtime(true)) return false;
+	GuidedLesson1->EnterComparison();
+	return true;
+}
+
+bool AFMCodexLocalMatchHostGameMode::InitializeLesson1Runtime(bool bDeploymentCheckpoint)
+{
+	using Lesson = FFMCodexGuidedLesson1;
+	auto Demo = FFMCodexLocalMatchDemoConfigurationFactory::Create();
+	const auto* G = Demo.OpeningInput.OpeningInput.PlayerADeck.FindByPredicate([](const auto& C){ return C.CardId == Lesson::Gyokeres(); });
+	const auto* O = Demo.OpeningInput.OpeningInput.PlayerADeck.FindByPredicate([](const auto& C){ return C.CardId == Lesson::Odegaard(); });
+	const auto* S = Demo.OpeningInput.OpeningInput.PlayerBDeck.FindByPredicate([](const auto& C){ return C.CardId == Lesson::Stones(); });
+	const auto* Trait = O ? O->RankedTraits.FindByPredicate([](const auto& T){ return T.TraitId == FName(TEXT("Trait.LongShotCarrier")); }) : nullptr;
+	const auto* SkillRule = Demo.SkillRuleSet.SkillRules.FindByPredicate([](const auto& R){ return R.SkillId == Lesson::Skill(); });
+	if (!G || !O || !S || G->Attributes.Shooting != 4 || O->Attributes.Shooting != 4
+		|| S->Attributes.Defense != 4 || !Trait || Trait->Rank != EPlayerTraitRank::A
+		|| G->RankedTraits.ContainsByPredicate([](const auto& T){ return T.TraitId == FName(TEXT("Trait.LongShotCarrier")); })
+		|| S->RankedTraits.ContainsByPredicate([](const auto& T){ return T.TraitId == FName(TEXT("Trait.LongShotBlocker")); })
+		|| !G->AttackSkillIds.Contains(Lesson::Skill()) || !O->AttackSkillIds.Contains(Lesson::Skill())
+		|| !SkillRule || SkillRule->MinTriggerActionPoint > 3 || SkillRule->MaxTriggerActionPoint < 3)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Lesson 1 production content differs from the approved scenario; product decision required."));
+		return false;
+	}
+	Demo.OpeningInput.OpeningInput.PlayerATieBreakerRoll = 6;
+	Demo.OpeningInput.OpeningInput.PlayerBTieBreakerRoll = 2;
+	// Reconstruct this one predefined teaching checkpoint through normal initialization
+	// and entry commands. No arbitrary State adoption, reverse command, or gameplay undo.
+	auto PreservedLesson = MoveTemp(GuidedLesson1);
+	const bool bStarted = StartNewLocalMatch(Demo.OpeningInput, Demo.SkillRuleSet).bSuccess;
+	GuidedLesson1 = MoveTemp(PreservedLesson);
+	if (!bStarted) return false;
+	for (const auto& Pair : {TPair<EFMCodexLocalDevRollTarget, int32>(EFMCodexLocalDevRollTarget::FullD12, 3),
+		{EFMCodexLocalDevRollTarget::LongShotDirectAttack, 5}, {EFMCodexLocalDevRollTarget::LongShotDirectDefense, 3}})
+	{
+		FFMCodexLocalDevRollOverrideRequest R; R.Target = Pair.Key; R.Value = Pair.Value;
+		if (!ActiveMatchRuntime->DevRollOverride.SetOverride(R).bSuccess) return false;
+	}
+	if (bDeploymentCheckpoint)
+	{
+		FFMCodexMatchClientViewRequest Q; Q.ViewerSide = EInitialTurnOrderPlayer::PlayerA;
+		Q.Disclosure = FFMCodexLocalMatchViewerDisclosure::FullyDisclosed();
+		FMatchPlayFullD12EntryRequest R; R.RequestingSide = EInitialTurnOrderPlayer::PlayerA;
+		R.ExpectedAttackSequence = GetViewForViewer(Q).View.AttackSequence;
+		const auto Entry = FMatchPlayEntryDeploymentPlayerIntentPort(ActiveMatchRuntime->AuthoritativeSession,
+			ActiveMatchRuntime->ServerCoordinator).SubmitPlayerIntent(FMatchPlayPlayerIntent::Create(
+				EMatchPlayAuthoritativeCommandKind::RequestInitialActionPointRoll, R));
+		if (!Entry.bSuccess) return false;
+	}
+	return true;
+}
+#endif

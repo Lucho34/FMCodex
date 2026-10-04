@@ -18,6 +18,9 @@ class AFMCodexLocalMatchHostGameMode;
 class UFMCodexLocalMatchScreenWidget;
 class SBox;
 class SWidget;
+#if !UE_BUILD_SHIPPING
+class FFMCodexGuidedLesson1;
+#endif
 
 struct FMCODEX_API FFMCodexLocalMatchCommandDiagnostic
 {
@@ -53,6 +56,11 @@ public:
 #if !UE_BUILD_SHIPPING
 	/** Explicit DEV restart; the regular start entry always keeps three per side. */
 	void StartNewDevShortMatch();
+	void StartGuidedLesson1();
+	void ExitGuidedLesson1();
+	void GuidedLesson1Primary();
+	FFMCodexGuidedLesson1* GetGuidedLesson1() const;
+	bool HasGuidedLesson1Overlay() const { return GuidedLesson1Overlay.IsValid(); }
 #endif
 #if WITH_DEV_AUTOMATION_TESTS
 	void SetNextDemoMatchSeedForTesting(int32 Seed);
@@ -138,6 +146,12 @@ private:
 	void InitializeDeveloperSlateSurface();
 #if !UE_BUILD_SHIPPING
 	void InitializeLocalDevRollOverrideSurface();
+	void TickGuidedLesson1();
+	void ResetGuidedLesson1Presentation();
+	void RemoveGuidedLesson1Overlay();
+	TSharedPtr<SWidget> GuidedLesson1Overlay;
+	FTimerHandle GuidedLesson1Timer;
+	float GuidedLesson1LastTime = 0.f;
 #endif
 	void RefreshPlayerMatchScreen();
 	void RebuildControlSurface();
