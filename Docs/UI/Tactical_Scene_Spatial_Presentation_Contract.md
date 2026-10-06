@@ -1,4 +1,4 @@
-# Tactical Scene Spatial Presentation — Stage 8.23A–B
+# Tactical Scene Spatial Presentation — Stage 8.23A–8.24A
 
 本阶段覆盖 LongShot 的方法选择、Direct Shot 与 Dead Corner 商业空间表现。死角只消费有效安全事实，程序判定与属性公式分开。仍需 USER PIE 验收，不作为其他战术的已批准模板。此合同的商业化 follow-up 取代初版“只显示参与公式的门将”和“叙事放在公式下方”的视觉约定。
 
@@ -49,9 +49,9 @@ Formula 行里的 CardId / typed Role 是公式参与的唯一来源；空间身
 
 ## 时序、加速与重建
 
-`Preview → Setup 0.18s → Intent 0.24s → FormulaHold（现有 Roll v2／Formula 或双骰）→ Outcome 0.80s → ResultHold／原继续流程`。
+`Preview → Setup 0.18s → Intent 0.24s → FormulaHold（现有 Roll v2／Formula 或双骰）→ Outcome Action 1.15s + Visual Hold 0.30s → ResultHold／原继续流程`（8.24A 更新远射 Outcome，Cross 仍使用自己的时序）。
 
-NativeTick 使用实际 DeltaSeconds，相邻空间阶段保留超出的 elapsed，不跨越 Formula / Roll 等待。Intent 只画意图线，足球仍在持球者旁；完成原强制揭示且结果已可见后才接收 typed outcome。空间动画预算从 2.15s 缩至 1.22s，不包含玩家思考／点击时间及现有骰子揭示。Outcome 结束前延迟结果文案、显示比分和终局 CTA，不延迟服务器复制、不改变已经公开的数值。
+NativeTick 使用实际 DeltaSeconds，相邻空间阶段保留超出的 elapsed，不跨越 Formula / Roll 等待。Intent 只画意图线，足球仍在持球者旁；完成原强制揭示且结果已可见后才接收 typed outcome。当前远射空间预算为 1.87s，不包含玩家思考／点击时间及现有骰子揭示。Outcome 结束前延迟结果文案、显示比分和终局 CTA，不延迟服务器复制、不改变已经公开的数值。
 
 ### 实机 GIF 反馈：稳定构图与紧凑演出
 
@@ -134,3 +134,65 @@ Outcome 内先短暂出球，再完成旋转、远近缩放与短尾迹，最后
 未来只有既有结构化权威事实明确给出防守 actor 时，才允许低球由该人切入传球线、高球由该人争抢空中球路；机制明确但 actor 不明时仍不能任意指派。当前没有这些事实，因此不实现具体拦截、扑救、封堵或解围演出；这不是用叙事姓名补齐的缺口。
 
 最终停留仍属于本地 Outcome，不新增 gameplay state／CTA，不提前显示比分或结果。点击／空格直接到最终空间状态并进入原 ResultHold，不掷骰或继续玩法。resolved 重建立即恢复正确 High/Low 最终几何，不先显示 High 再插值到 Low，也不重播动作。focused 验证中性事实隔离、阶段停留、接应区／终点、skip 与重建；实际同场 Local PIE 覆盖高球防守成功、低球防守成功和 Cross Goal，仍需用户判断速度、停留与重复观看舒适度。
+
+## Stage 8.24A — LongShot tutorial-readiness polish
+
+本节更新上文远射的固定角色锚点与 0.80s Outcome 约定，不改变 Cross 的锚点、玩法或 1.20s + 0.30s 时序。这里只成熟生产表现，不接入 Guided Match。
+
+### Method preview
+
+方法选择默认 Direct：约 2.2 秒的平滑施压循环、意图线光带和轻量目标呼吸，不移动足球、不演示进球。真实 Marker 向射门线路小幅靠近；Direct 的球路更平直。Dead Corner hover/focus 在 150ms 内切换瞄准方向和门角标记，Marker 回到上下文位置、降低圆环强调并淡出施压线。两者复用持久场景、头像和球场，鼠标悬停优先于保留的键盘焦点；只有原按钮点击才提交 typed intent。预览不调用权威、RNG 或结果计算，也不重载头像／纹理。球路线段复用绘制缓存，避免逐虚线段临时分配。
+
+### Direct pressure and goalkeeper
+
+当前权威只有 ImmediateMiss、Formula Goal/Miss 和实际参与者，没有 Block/Save actor。进攻 1–2 仍为射手射偏，无 Marker 结果动作；普通 Goal 保留门内终点。普通防守胜且 Marker 确为 Formula 参与者时，允许该人向射门线路靠近，球在附近受压区偏离；球不明确碰到头像／脚下环。这是非因果的防守施压演绎，不是新增抢断、封堵或触球事实。远射 Direct 的叙事同步由“完成抢断”改为“施压”，其他战术的文案不变。
+
+GK 使用真实 roster 身份，远射锚点由 (1040,210) 调至 (1140,142)，脚下位置更接近门口并略向场内。只有 authoritative activation 才令站位 ×0.5 成为 Formula 贡献并获得对应阶段强调。贡献不证明扑救／接球，本轮保持中性非进球终点，不演出 GK 控球或新增扑救标签。Cross 自有 GK 锚点不变。
+
+### Outcome, grass and reuse
+
+Direct 与 Dead Corner 共用 1.15s Action + 0.30s Final Visual Hold；Setup 0.18s、Intent 0.24s 和原骰子／Formula 均不减速。短停留保持最终球位及角色位置，沿用比分／叙事／CTA 门控，再进入原 ResultHold。加速直接到最终空间状态；resolved 重建立即恢复正确方法、Marker 姿态与球位，不重新掷骰、演出或继续。Dead Corner 的已接受 Goal/Miss 曲线控制点与终点保持，顺序双骰及程序结果不掺入防守属性公式。
+
+草地保留原纹理、透视、平滑灯光池、场线与远处雾化；仅把绘制的明暗修剪带振幅从 0.06 降到 0.008，并去掉硬边交替。这是共享草皮的小幅兼容调整，不替换资源或主棋盘材质。
+
+后续 Guided Match 必须复用这里的生产 Method Choice、Tactical Scene、Formula 和 Result；不建 tutorial 专用副本。本阶段不修改 Lesson 1、checkpoint、rewind、引导箭头或启动流程。USER PIE 决定预览差异、施压可读性、门将位置、草地和重复观看节奏是否达到教学复用标准。
+
+### Final USER PIE follow-up：构图、死角与进球庆祝
+
+远射选择与结算共用更紧凑的 tactical-overview 构图，不建立相机或在点击时切换缩放。远端边线更接近水平、禁区平面更展开；减少顶部／球场分配和低价值底部草地。Carrier／Marker 向中部收拢，GK 保持 (1140,142) 的门前位置；方法按钮和说明区略增大。Direct 默认循环、150ms hover/focus、持久场景及 intent-only 预览不变。Cross 自有投影、锚点与布局分配不变。
+
+Dead Corner 的原 (1250,178) 普通网内目标改为 (1115,100) 左上内角，距门柱和横梁留有足球半径余量。预览与 authoritative Goal 的最终球位共用该目标；Miss 保留原控制点及门外终点，不加入撞柱、扑救或防守对抗。共同持球起点随远射构图收拢，双骰程序规则／揭示顺序未变。
+
+Direct 防守文案定为「{Marker}的防守干扰奏效，{Carrier}的远射未能破门。」当前没有结构化 tackle/block/save actor，故不采用「抢断成功」。动画只读 typed outcome 与实际 Formula 角色，不解析文案。
+
+`FMCodexGoalCelebration` 是无比分、无 RNG、无玩法命令的生产表现组件。本轮仅 LongShot 集成：自然完成 1.15s Outcome Action + 0.30s Visual Hold、进入既有 ResultHold 揭示边界后，已披露 Goal 才开始庆祝。结果文案、显示比分和继续 CTA 仍遵循原门控；庆祝不增加第二个比分源或确认步骤。未来 Guided Match／其他战术可复用，但本阶段不接入。
+
+庆祝总长 1.50s：0–0.20s 球场轻暗与薄荷色扫带；0.20–0.40s 中文进球标题快速入场、小幅过冲；0.40–1.10s 保持可读；1.10–1.50s 淡出。透明覆盖只占球场区域，顶部 HUD 和下方正式结果仍可见。字体与装饰以后续进球视觉修正为准，不新增音频。重复 View 不重播，resolved 重建不补播，离开／新动作清空。点击／空格可结束庆祝，或先前加速直接跳到空间终态；均不掷骰、计分或提交继续。
+
+商业 Tactical Scene 移除常驻「点击球场 / 空格 · 加速当前动画」提示，不替换成其他提示；原输入仍有效。保留已接受的草地低条纹、阵营身份、ImmediateMiss 射手失误与非因果 Marker 施压演绎。
+
+### LongShot 草地与场线连续性 follow-up（2026-10-06）
+
+用户指出实机场地偏灰、场线过弱，以及上下草地像两层画面。审计确认空间草皮原本在 380 高的场景控件底部淡出并裁切，下方露出 Match Shell 背景中另一种草地；场线也在该边界被截断。这是绘制范围和前后层级问题，不改变球场投影、角色锚点或相机。
+
+LongShot 改为同一地面延伸到操作区背后，使用现有 TacticalScene 草皮的镜像重复采样与半纹素内缩，避免 padding 造成细黑缝。草地不再通过底部透明度暴露另一张背景，而是在同一片草地上用连续的夜场灯光与前景暗部降低纹理对比。偏灰黄的混色改为较清晰的深绿；远射修剪带改成宽而柔和的微弱明暗变化，覆盖上文远射 0.008 振幅的旧参数。Cross 保持原低条纹参数、颜色、裁切及空间投影。
+
+场线使用更清晰的近白核心与轻柔边缘，远射线宽增加约 30%；前景线随地面暗部弱化，仍保持完整几何连接。草皮和场线均不在原空间槽底部消失。Theater 内使用显式 Overlay 前后层：场景在后，原操作区在前，以免延伸的草皮覆盖按钮底色。原空间槽和前景预留保持相同尺寸，按钮、说明区和结果布局不移动；场景点击范围仍为原槽位，最终由 Theater 根裁切。
+
+本修正只涉及绘制和局部布局分层。现有 Direct / Dead Corner 文案、按钮样式、球路／头像／球门、预览与 Outcome 预算、Goal Celebration、Formula / Roll、比分及继续门控保持不变，不新增资源或权威事实。验证使用增量 Editor build、既有空间事实与家族隔离检查、受影响的 Theater viewer lifecycle，以及实际 Local PIE 的方法选择和结果画面；用户仍需验收草地色调、场线强度和连续性。
+
+### 进球视觉修正（2026-10-06）
+
+用户要求按已提供的进球参考图修正实机字形、间距和飘带材质。此前普通 Bold 正体、硬边多边形飘带与整块矩形遮罩只实现了结构，没有实现参考图的视觉细节。本次仅调整 `FMCodexGoalCelebration::Paint` 的表现：独立 Noto Sans SC Black 字重、右倾字形、紧凑字距与窄感叹号；曲线飘带采用连续采样、横向明暗渐变、边缘羽化和两处局部薄荷柔光；深蓝衬底由曲线构成并向周围柔和消隐。碎光使用稳定的装饰序列，不消耗玩法 RNG。所有几何按原球场槽统一缩放，不调整 Theater 布局、球员或球场。
+
+Black 为未修改的上游 OTF，沿用随包提供的 SIL OFL 1.1，并由现有 MatchShell 字体目录 UFS staging 规则分发；不替换普通 UI 字体。这里是用户明确授权的局部事件表现，优先按给定薄荷参考图处理，不扩大为全局主题迁移。既有 1.50s 时间、开始条件、去重、skip、显示比分／Formula／结果和继续门控全部保持。
+
+验证预算为增量 Editor build、`FMCodex.LocalPlay.TacticalScene.LongShotGoalCelebration`、`FMCodex.LocalPlay.TacticalScene.LongShotRhythmContinuity`，以及 `FMCodex.PIE.TacticalScene.LongShotCommercialFlow` 的 `-TacticalSceneGoalOnly` 单次真实 Local 进球流程与实机截图。该参数只限制 editor automation 的测试场景，不改变生产行为或伪造结果。没有修改 authority、网络协议或共享生命周期，因此不扩大 CoreRules / Runtime / LocalPlay / NetworkPlay full suites，也不增加 Host/Remote golden path。最终字形、辉光与运动舒适度仍需 USER PIE。
+
+### 球门环境与操作区平衡 follow-up（2026-10-06）
+
+连续草皮保留，但 LongShot 场线不再跟随草皮延伸到前景信息区：省略下沿外边界，其他场线在空间区末端逐渐淡出。此项取代前文“场线完整延伸”的要求，解决白线穿过说明／Formula／CTA 的视觉噪声。球门后方使用现有 Stadium 观众纹理、深蓝通道和沿透视延伸的 FMCodex 广告牌围合；不新建资源或相机，不移动已接受的球门、球员、死角目标与球路。
+
+Method Choice 保持原布局。LongShot 的 Setup／Intent／FormulaHold 阶段中，Formula／掷骰／提示／CTA 整体上移 24 个设计单位：减少前景预留并在信息容器底部补回相同空间，保留原缩放、球场起点与点击范围。Outcome／ResultHold 保留既有信息区位置，让偏低的未进球落点完整可见。回到方法选择、其他家族或退出场景时恢复对应布局。Cross 原投影、场线裁切和布局不变。庆祝字形与 1.50s 时序、防守叙事、skip、比分与结果披露合同均不变。
+
+验证只覆盖现有方法预览与 Cross 预览隔离、增量 Editor 构建，以及真实 Local PIE。`-TacticalSceneLayoutOnly` 仅限 editor automation，使用宽屏窗口检查 Direct／Dead Corner 预览、真实 Direct 掷骰和防守结果；检查角色标签与公式卡无重叠、CTA 底部留白、结果足球未被卡片遮挡、场景几何不跳变，并采集必要截图。最终围合感、场线淡出与垂直舒适度仍需 USER PIE。

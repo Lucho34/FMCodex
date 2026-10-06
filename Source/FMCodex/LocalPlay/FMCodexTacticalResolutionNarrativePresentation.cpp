@@ -166,8 +166,8 @@ namespace FMCodexTacticalResolutionNarrativePresentation
 				if (Input.Marker.HasPlayerFacingName())
 				{
 					Narrative = bCarrier
-						? FormatTwo(LOCTEXT("LongShotMarkerDefensePrefix", "{0}完成抢断，{1}的远射"), Input.Marker.DisplayName, Input.Carrier.DisplayName)
-						: FormatOne(LOCTEXT("LongShotMarkerDefenseNoCarrierPrefix", "{0}完成抢断，远射"), Input.Marker.DisplayName);
+                        ? FormatTwo(LOCTEXT("LongShotMarkerDisruptionPrefix", "{0}的防守干扰奏效，{1}的远射"), Input.Marker.DisplayName, Input.Carrier.DisplayName)
+                        : FormatOne(LOCTEXT("LongShotMarkerDisruptionNoCarrierPrefix", "{0}的防守干扰奏效，远射"), Input.Marker.DisplayName);
 					SetPerformer(Result, ERole::Marker, Input);
 				}
 				CompleteOutcome(Result, ECategory::DefensiveSuccess,

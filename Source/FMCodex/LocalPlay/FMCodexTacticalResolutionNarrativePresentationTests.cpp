@@ -80,7 +80,7 @@ bool FFMCodexTacticalNarrativeMatrixTest::RunTest(const FString& Parameters)
 			TEXT("进球"), TEXT("厄德高远射破门！") },
 		{ TEXT("Long direct defense"), EBranch::LongShotDirect,
 			EOutcome::Miss, ECategory::DefensiveSuccess,
-			TEXT("防守成功"), TEXT("萨利巴完成抢断，厄德高的远射未能破门。") },
+			TEXT("防守成功"), TEXT("萨利巴的防守干扰奏效，厄德高的远射未能破门。") },
 		{ TEXT("Long dead goal"), EBranch::LongShotDeadCorner,
 			EOutcome::Goal, ECategory::Goal,
 			TEXT("进球"), TEXT("厄德高射向死角破门！") },

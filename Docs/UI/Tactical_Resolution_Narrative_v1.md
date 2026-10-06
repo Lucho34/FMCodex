@@ -52,7 +52,7 @@ Names come only from the existing player-facing PreferredDisplayName/DisplayName
 |---|---|---|---|
 | LongShot Direct | ImmediateMiss | 射门偏出 | `{Carrier}远射偏出。` / `远射偏出。` |
 | LongShot Direct | Goal | 进球 | `{Carrier}远射破门！` / `远射破门！` |
-| LongShot Direct | Miss | 防守成功 | `{Marker}完成抢断，{Carrier}的远射未能破门。`; Carrier absent: `{Marker}完成抢断，远射未能破门。`; Marker absent: `远射未能破门。` |
+| LongShot Direct | Miss | 防守成功 | `{Marker}的防守干扰奏效，{Carrier}的远射未能破门。`; Carrier absent: `{Marker}的防守干扰奏效，远射未能破门。`; Marker absent: `远射未能破门。`。只有实际 Marker 与 aggregate 防守胜事实，不声称抢断／封堵触球，亦不从本句反推动画因果。 |
 | LongShot DeadCorner | Goal | 进球 | `{Carrier}直射死角破门！` / `直射死角破门！` |
 | LongShot DeadCorner | Miss | 射门未进 | `{Carrier}直射死角未能得分。` / `直射死角未能得分。` |
 | CutInside Direct | ImmediateMiss | 射门偏出 | `{Carrier}内切后射门偏出。` / `内切后射门偏出。` |

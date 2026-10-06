@@ -2798,3 +2798,35 @@ Cross 复用已接受的 LongShot 商业空间舞台，使用实际 Carrier / Ru
 用户接受修正后的传中空间语义，要求结果动作更易看清，并仅在权威事实支持时演出具体拦截者。审计确认 Cross 的 High/Low 只有 aggregate Goal/Miss，没有防守 actor 或具体拦截／扑救机制；原叙事中的 Marker/Helper performer 是稳定事件身份选出的表现演绎，不能驱动因果动作。本轮维持中性防守失败球路，不新增 actor 权威或安全 DTO。
 
 Cross Outcome 从 0.85s 改为 1.20s 动作加 0.30s 最终画面停留；Goal 和 Miss 都先到接应区域，再分别中性延续进球或偏离，门内终点和原继续流程不变。Setup、Intent、Formula、LongShot 时序及已接受阵营／锚点不变；修正 resolved Low 重建时应立即使用 Low 几何，skip 保留最终球位。未来具体 actor 演出必须由真正的结构化权威因果支持，不从叙事字符串、角色或数值补造。继续同一未提交 8.23B，USER PIE 验收结果速度、短停留和重复观看体验。
+
+### Stage 8.24A — LongShot 教学复用前生产表现打磨
+
+在已提交 Cross 的基础上，远射方法选择增加默认 Direct 施压／瞄准循环，Dead Corner 通过门角目标、弯曲瞄准、弱化 Marker 关系形成不同语义。两种预览共享持久场景，150ms hover/focus 切换不提交玩法、不掷骰。门将移近门口，保留实际身份及 Formula-active 区分；共享草地大幅降低明暗条带振幅，保留纹理与夜场层次。
+
+Direct 仍是射门对防守 + 固定 3，激活 GK 站位 ×0.5；进攻 1–2 直接射偏。Dead Corner 仍按原顺序双骰程序结果判定。权威未提供 Block/Save actor；普通 Direct 防守胜仅允许真实 Formula Marker 的非因果施压移动与附近球路偏离，不表现明确触球或 GK 接球。现有“完成抢断”叙事超出该因果事实，因此仅远射 Direct 改成“施压”，并同步 canonical narrative 表。没有新增权威结果、安全字段或玩法规则。
+
+远射 Outcome 由 0.80s 改为 1.15s 动作 + 0.30s 短停留；ImmediateMiss 的射手失误语义、Dead Corner 最终曲线、原强制骰子揭示和继续门控保留。resolved Dead Corner 重建立即恢复门角几何；skip 保留最终球位和姿态。Cross 玩法／锚点／时序不变。最小验证覆盖方法预览、storyboard、原 Direct／Dead Corner、叙事矩阵及一条 Cross 回归，并用一场 Local PIE 核验实际分支。仍需 USER PIE，之后才可另开 Guided Match 接入阶段；本阶段不修改教程或建立专用场景副本。
+
+#### Final USER PIE follow-up — 同一未提交 8.24A
+
+用户要求加强远射选择页层级与禁区视角，收紧参与者间距，并把死角指向真实左上内角。选择／结算沿用同一紧凑构图，避免布局跳变；死角预览与 Goal 共用修正目标，Miss 保留门外终点与程序语义。Direct 文案增强为「防守干扰奏效」，权威仍未支持「抢断成功」。
+
+新增可复用、无比分权威的 Goal Celebration，仅在 LongShot 到达既有 ResultHold 揭示边界后播放：薄荷扫带、中文「进球！」、轻暗背景，1.50s 自动结束且可加速。Outcome 1.15s + 0.30s、骰子揭示、比分／结果门控均保留；不接入 Cross、Guided Match 或其他战术。移除常驻加速提示而保留点击／空格。继续同一个未来提交 `Stage 8.24A: polish LongShot Tactical Scene`，工程验证不能替代本轮 USER PIE 的构图、庆祝强度和重复观看验收。
+
+#### LongShot 草地与场线连续性 follow-up（2026-10-06）
+
+用户授权直接修复实机草皮色调、场线以及上下分层。根因是独立空间草皮在槽位底部淡出／裁切，下方露出另一张背景草地。远射现改用同一片草地延伸至操作区背后，镜像采样消除拼缝，以连续光照压低前景噪声，调整为较清晰的深绿与柔和修剪带；场线增强并保持完整连接。此项更新远射此前极低条纹参数，Cross 原参数与裁切保持。
+
+Theater 用明确的场景后层／操作前层保证延伸绘制不遮盖按钮，原槽位尺寸、按钮位置和点击范围保持。当前文案、球员锚点、球门／球路、1.15s + 0.30s Outcome、庆祝、权威事实与揭示门控均不改动。验证限于增量构建、直接相关空间／Theater 检查和 Local PIE，不扩大规则或联网回归；实际颜色、场线和衔接仍为 USER PIE 验收项。详见[空间表现合同](UI/Tactical_Scene_Spatial_Presentation_Contract.md)。
+
+#### 进球参考图对齐 follow-up（2026-10-06）
+
+用户上传实机后明确授权工程内修正进球标题与装饰。审计确认当前普通 UI 粗体与平面折线色块不能还原参考图的粗斜字形和曲线材质，故将庆祝绘制改为独立 Black 字重、斜体与紧凑标点、带渐变／羽化的曲线飘带和局部柔光，并取消整片硬边矩形遮罩。新增上游 Noto Sans SC Black OTF，沿用 SIL OFL 与现有 UFS 字体打包规则，不改变全局字体或主题。用户给定的薄荷色事件参考图是本次局部视觉依据。
+
+仅修改庆祝绘制及 editor automation 的单 Goal 选项；生产生命周期、披露、比分、继续与 skip 语义保持。验证限于两个直接相关空间合同、一次自然 Local Goal 流程和实际渲染检查；不扩大网络／玩法全量回归。继续同一未提交 8.24A，视觉相似度与运动体验由 USER PIE 验收；详见[空间表现合同](UI/Tactical_Scene_Spatial_Presentation_Contract.md)。
+
+#### 球门围合与掷骰区布局 follow-up（2026-10-06）
+
+用户反馈连续球场的下沿白线进入信息区、球门背后过于空旷，以及掷骰 CTA 靠近底部。保留已接受的连续草皮，单独移除远射下沿边界并淡出靠近信息区的场线；用既有观众纹理及透视广告牌补足球门后围合。方法选择布局不动，Setup／Intent／FormulaHold 信息栈上移 24 个设计单位，并补偿容器底部留白以保持缩放和球场几何稳定。Outcome／ResultHold 保留既有位置，避免卡片挡住未进球落点。Cross、自有庆祝、叙事和所有玩法／披露合同不变。
+
+只修改局部表现、既有 PIE 夹具与本合同文档，继续同一未提交 Stage 8.24A。验证范围为增量 Editor 构建、方法／Cross 预览 focused 检查和宽屏真实 Local PIE；不扩展玩法或网络全量回归。用户验收围合、信息区洁净度与掷骰垂直平衡后再手动提交；不开始 Guided Match 或 ThroughBall。

@@ -889,6 +889,14 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 	auto* Subtitle=Text(Tree,TEXT("TheaterSubtitle"),19,Quiet); Subtitle->SetJustification(ETextJustify::Center); Top->AddChildToVerticalBox(Subtitle)->SetPadding(FMargin(0,8));
 	auto* TopBounds=Bounds(Tree,Top,0,178); TopBounds->Rename(TEXT("TheaterTopBounds"),&Tree);
 	Body->AddChildToVerticalBox(TopBounds)->SetPadding(FMargin(0,16,0,0));
+	// Explicit overlay ordering lets the pitch continue under the controls without
+	// sharing their paint layers. Both columns retain the original vertical layout.
+	auto* Stage=Tree.ConstructWidget<UOverlay>(); Stage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	Body->AddChildToVerticalBox(Stage)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	auto* SceneColumn=Tree.ConstructWidget<UVerticalBox>(); SceneColumn->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	auto* SceneSlot=Stage->AddChildToOverlay(SceneColumn); SceneSlot->SetHorizontalAlignment(HAlign_Fill); SceneSlot->SetVerticalAlignment(VAlign_Fill);
+	auto* ControlColumn=Tree.ConstructWidget<UVerticalBox>(); ControlColumn->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	auto* ControlSlot=Stage->AddChildToOverlay(ControlColumn); ControlSlot->SetHorizontalAlignment(HAlign_Fill); ControlSlot->SetVerticalAlignment(VAlign_Fill);
 	// LongShot's persistent pitch has its own allocation. Formula / pair / CTA
 	// content below may fit independently without zooming or moving the field.
 	auto* Spatial=Tree.ConstructWidget<UNativeWidgetHost>(UNativeWidgetHost::StaticClass(),TEXT("TacticalScene"));
@@ -897,10 +905,13 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 	auto* SpatialFit=Fit(Tree,SpatialBounds,HAlign_Center);
 	auto* SpatialLane=Bounds(Tree,SpatialFit,1600,360); SpatialLane->Rename(TEXT("TheaterSpatialLane"),&Tree);
 	SpatialLane->SetVisibility(ESlateVisibility::Collapsed);
-	Body->AddChildToVerticalBox(SpatialLane)->SetHorizontalAlignment(HAlign_Center);
+	SceneColumn->AddChildToVerticalBox(SpatialLane)->SetHorizontalAlignment(HAlign_Center);
+	auto* SpatialReserve=Tree.ConstructWidget<USizeBox>(USizeBox::StaticClass(),TEXT("TheaterSpatialReserve"));
+	SpatialReserve->SetHeightOverride(360); SpatialReserve->SetVisibility(ESlateVisibility::Collapsed);
+	ControlColumn->AddChildToVerticalBox(SpatialReserve);
 	auto* Center=Tree.ConstructWidget<UOverlay>();
 	auto* CenterBounds=Bounds(Tree,Center,0); CenterBounds->Rename(TEXT("TheaterCenterBounds"),&Tree);
-	Body->AddChildToVerticalBox(CenterBounds)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	ControlColumn->AddChildToVerticalBox(CenterBounds)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 	auto* Composition=Tree.ConstructWidget<UVerticalBox>();
 	auto* CompositionFit=Tree.ConstructWidget<UScaleBox>(UScaleBox::StaticClass(),TEXT("TheaterCompositionFit"));
 	CompositionFit->SetStretchDirection(EStretchDirection::DownOnly); CompositionFit->AddChild(Composition);

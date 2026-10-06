@@ -91,9 +91,12 @@ bool FSceneFactsTest::RunTest(const FString&)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSceneStoryboardTest,"FMCodex.LocalPlay.TacticalScene.LongShotStoryboard",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
 bool FSceneStoryboardTest::RunTest(const FString&)
 {
+ for(auto Method:{EMethod::Direct,EMethod::DeadCorner}) for(bool Keeper:{false,true})
  for(auto Outcome:{EMatchPlayResolutionDecisionOutcome::Goal,EMatchPlayResolutionDecisionOutcome::Miss,EMatchPlayResolutionDecisionOutcome::ImmediateMiss})
  {
-  auto M=SceneFixture(false,EInitialTurnOrderPlayer::PlayerA);auto& V=M.LongShotResolution.Formula;
+  if(Method==EMethod::DeadCorner && Outcome==EMatchPlayResolutionDecisionOutcome::ImmediateMiss)continue;
+  auto M=SceneFixture(Keeper,EInitialTurnOrderPlayer::PlayerA);auto& V=M.LongShotResolution.Formula;
+  if(Method==EMethod::DeadCorner)M.LongShotResolution.Stage=EFMCodexUMGLongShotStage::DeadCorner;
   FState S;S.Sync(Project(M.LongShotResolution,M.Header,true));
   TestTrue(TEXT("Setup starts once"),S.Phase==EPhase::Setup);
   S.Tick(SetupSeconds*.5f);S.Sync(Project(M.LongShotResolution,M.Header,true));TestEqual(TEXT("Repeated view does not reset"),S.Elapsed,SetupSeconds*.5f);
@@ -104,21 +107,53 @@ bool FSceneStoryboardTest::RunTest(const FString&)
   S.Sync(Project(M.LongShotResolution,M.Header,true));
   TestEqual(TEXT("Defense reveal links to marker"),S.Facts.Highlight,EMatchPlayResolutionParticipantRole::Marker);
   const auto* GK=S.Facts.Participants.FindByPredicate([](const auto& P){return P.Role==EMatchPlayResolutionParticipantRole::Goalkeeper;});
-  TestTrue(TEXT("Visual-only GK excluded from formula emphasis"),GK && !GK->bFormulaActive);
+  TestTrue(TEXT("GK Formula role is independent of spatial presence"),GK && GK->bFormulaActive==(Keeper && Method==EMethod::Direct));
   V.NarrativeHeadline=TEXT("已授权的远射结果");
   V.SpatialOutcome=Outcome;V.bNarrativeAvailable=true;V.bDiceRevealVisible=true;
+  M.LongShotResolution.bNarrativeAvailable=true;M.LongShotResolution.bDiceRevealVisible=true;
   S.Sync(Project(M.LongShotResolution,M.Header,true));TestTrue(TEXT("Disclosed server result does not leak through active reel"),S.Facts.Outcome==EOutcome::None);
-  V.bDiceRevealVisible=false;S.Sync(Project(M.LongShotResolution,M.Header,true));
+  V.bDiceRevealVisible=false;M.LongShotResolution.bDiceRevealVisible=false;S.Sync(Project(M.LongShotResolution,M.Header,true));
   TestTrue(TEXT("Outcome follows formula"),S.Phase==EPhase::Outcome);
   TestTrue(TEXT("Typed decision maps without arithmetic"),S.Facts.Outcome==(Outcome==EMatchPlayResolutionDecisionOutcome::Goal?EOutcome::Goal:Outcome==EMatchPlayResolutionDecisionOutcome::Miss?EOutcome::DefensiveSuccess:EOutcome::ImmediateMiss));
   auto Gated=V;S.Gate(Gated);TestFalse(TEXT("Terminal text waits for ball"),Gated.bNarrativeAvailable);
   TestEqual(TEXT("Formula values unchanged"),Gated.AttackRow.FinalValue,V.AttackRow.FinalValue);
-  S.Skip();TestTrue(TEXT("Outcome skip finishes locally"),S.Phase==EPhase::ResultHold);
-  for(auto Method:{EMethod::Direct,EMethod::DeadCorner})
-   TestEqual(TEXT("Goal safely inside mouth; misses clearly outside"),IsInsideGoal(OutcomeTarget(S.Facts.Outcome,Method)),Outcome==EMatchPlayResolutionDecisionOutcome::Goal);
+  const bool Pressure=Method==EMethod::Direct && Outcome==EMatchPlayResolutionDecisionOutcome::Miss;
+  TestEqual(TEXT("Only normal Direct defensive win illustrates Formula Marker pressure"),HasLongShotDefensivePressure(S),Pressure);
+  S.Tick(OutcomeActionSeconds*.6f);
+  const auto Marker=LongShotParticipantAnchor(S,EMatchPlayResolutionParticipantRole::Marker);
+  TestEqual(TEXT("ImmediateMiss and DeadCorner never gain defensive motion"),Marker.Equals(MarkerAnchor),!Pressure);
+  if(Pressure)
+  {
+   TestTrue(TEXT("Marker closes upward toward lane"),Marker.Y<MarkerAnchor.Y-30);
+   TestTrue(TEXT("Pressured delivery has no hard portrait contact"),(LongShotOutcomeBall(S,LongShotPressureArrival)-Marker).Size()>50);
+  }
+  auto NoMarker=S;NoMarker.Facts.Participants.RemoveAll([](const auto& P){return P.Role==EMatchPlayResolutionParticipantRole::Marker;});
+  TestFalse(TEXT("Missing actual Marker never creates pressure actor"),HasLongShotDefensivePressure(NoMarker));
+  S.Tick(OutcomeActionSeconds*.4f+.001f);
+  TestTrue(TEXT("Action ends in visual hold before ResultHold"),S.Phase==EPhase::Outcome && S.IsOutcomeVisualHold());
+  const auto End=LongShotOutcomeBall(S,1.f);
+  TestEqual(TEXT("Goal safely inside mouth; misses clearly outside"),IsInsideGoal(End),Outcome==EMatchPlayResolutionDecisionOutcome::Goal);
+  TestTrue(TEXT("GK never acquires unsupported ball control"),(End-KeeperAnchor).Size()>45);
+  S.Tick(OutcomeHoldSeconds*.5f);
+  TestTrue(TEXT("Final ball and participant remain still"),S.IsOutcomeVisualHold() && LongShotOutcomeBall(S,1.f).Equals(End)
+   && LongShotParticipantAnchor(S,EMatchPlayResolutionParticipantRole::Marker).Equals(Marker));
+  auto HoldGate=V;S.Gate(HoldGate);TestFalse(TEXT("Visual hold still conceals terminal headline/CTA"),HoldGate.bNarrativeAvailable || HoldGate.bCanContinue);
+  S.Tick(OutcomeHoldSeconds*.5f+.001f);TestEqual(TEXT("Natural hold hands off to result"),S.Phase,EPhase::ResultHold);
   auto Final=V;S.Gate(Final);TestEqual(TEXT("Final narrative is original authoritative text"),Final.NarrativeHeadline,V.NarrativeHeadline);
   S.Sync(Project(M.LongShotResolution,M.Header,true));TestTrue(TEXT("Duplicate result does not replay"),S.Phase==EPhase::ResultHold);
   FState Reopened;Reopened.Sync(Project(M.LongShotResolution,M.Header,true));TestTrue(TEXT("Reconstructed resolved state snaps"),Reopened.Phase==EPhase::ResultHold);
+  TestTrue(TEXT("Rebuild has correct route/participant/ball immediately"),Reopened.CornerBlend==(Method==EMethod::DeadCorner?1.f:0.f)
+   && LongShotOutcomeBall(Reopened,1.f).Equals(End) && LongShotParticipantAnchor(Reopened,EMatchPlayResolutionParticipantRole::Marker).Equals(Marker));
+  auto Accelerated=S;Accelerated.Celebration.Reset();Accelerated.Phase=EPhase::Outcome;Accelerated.Elapsed=.2f;Accelerated.Skip();
+  TestTrue(TEXT("Skip retains final pose and endpoint"),Accelerated.Phase==EPhase::ResultHold && LongShotOutcomeBall(Accelerated,1.f).Equals(End)
+   && LongShotParticipantAnchor(Accelerated,EMatchPlayResolutionParticipantRole::Marker).Equals(Marker));
+  if(Method==EMethod::DeadCorner)
+  {
+   const FVector2D Start=CarrierAnchor+FVector2D(48,21),Control(760,40);
+   const auto Accepted=FMath::Lerp(FMath::Lerp(Start,Control,.5f),FMath::Lerp(Control,End,.5f),.5f);
+   TestTrue(TEXT("DeadCorner accepted midflight geometry preserved"),LongShotOutcomeBall(S,.5f).Equals(Accepted));
+  }
+  S.Celebration.Skip();
   TestFalse(TEXT("Result skip does not continue gameplay"),S.Skip());
  }
  return true;
@@ -135,9 +170,19 @@ bool FSceneMethodTest::RunTest(const FString&)
  auto M=FFMCodexLocalMatchUMGPresentationBuilder::Build(V,FFMCodexLocalMatchResolutionFeedback(),FString());
  FState S;S.Sync(Project(M.LongShotResolution,M.Header,true));
  TestEqual(TEXT("Method choice opens persistent scene"),S.Phase,EPhase::Preview);
+ TestEqual(TEXT("Default intent is Direct"),S.PreviewMethod,EMethod::Direct);
+ const auto MarkerBefore=LongShotParticipantAnchor(S,EMatchPlayResolutionParticipantRole::Marker);
+ S.Tick(LongShotPreviewCycleSeconds*.5f);
+ TestTrue(TEXT("Default Direct preview moves actual Marker without a result"),!LongShotParticipantAnchor(S,EMatchPlayResolutionParticipantRole::Marker).Equals(MarkerBefore));
+ const auto DirectControl=LongShotAimControl(S);
+ TestTrue(TEXT("GK is closer to mouth and forward of goal ground line"),KeeperAnchor.X>1100 && KeeperAnchor.X<GoalAnchor.X && KeeperAnchor.Y+32<159+(KeeperAnchor.X-1092)*96/178);
  TestFalse(TEXT("Preview does not block actual method selection"),S.IsAnimating());
  S.Preview(EMethod::DeadCorner);S.Tick(.15f);
  TestEqual(TEXT("Corner hover/focus transitions in 150ms"),S.CornerBlend,1.f);
+ TestTrue(TEXT("DeadCorner targets a distinct upper corner inside the mouth"),IsInsideGoal(CornerAnchor)
+  && CornerAnchor.X<GoalAnchor.X && CornerAnchor.Y<GoalAnchor.Y && (CornerAnchor-GoalAnchor).Size()>60);
+ TestTrue(TEXT("Corner suppresses Marker pressure movement"),LongShotParticipantAnchor(S,EMatchPlayResolutionParticipantRole::Marker).Equals(MarkerAnchor));
+ TestTrue(TEXT("Corner aim lifts away from normal shooting lane"),LongShotAimControl(S).Y<DirectControl.Y-80);
  S.Sync(Project(M.LongShotResolution,M.Header,true));
  TestEqual(TEXT("Repeated view retains hovered method"),S.PreviewMethod,EMethod::DeadCorner);
  S.Preview(EMethod::Direct);S.Tick(.15f);TestEqual(TEXT("Direct preview returns to normal target"),S.CornerBlend,0.f);
@@ -177,6 +222,52 @@ bool FSceneMethodTest::RunTest(const FString&)
  V.ResolutionFacts.ErrorMessage=TEXT("CardId must not be None.");
  const auto Invalid=FFMCodexLocalMatchUMGPresentationBuilder::Build(V,FFMCodexLocalMatchResolutionFeedback(),FString());
  TestFalse(TEXT("Failed authority projection must not be masked by intent or category"),Invalid.LongShotResolution.bVisible);
+ return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSceneCelebrationTest,"FMCodex.LocalPlay.TacticalScene.LongShotGoalCelebration",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FSceneCelebrationTest::RunTest(const FString&)
+{
+ for(auto Method:{EMethod::Direct,EMethod::DeadCorner,EMethod::CrossHigh})
+ for(auto Outcome:{EOutcome::Goal,EOutcome::ImmediateMiss,EOutcome::DefensiveSuccess})
+ {
+  FFacts F;F.bActive=true;F.AttackSequence=41;F.Method=Method;
+  FState S;S.Sync(F);S.Tick(S.PhaseSeconds());S.Tick(S.PhaseSeconds());
+  TestFalse(TEXT("No celebration while waiting for authority/reel"),S.Celebration.IsActive());
+  F.Outcome=Outcome;S.Sync(F);
+  S.Tick(S.PhaseSeconds()-.01f);
+  TestFalse(TEXT("Even known Goal cannot celebrate during hidden Outcome"),S.Celebration.IsActive());
+  FFMCodexUMGInlineFormulaSurfaceViewModel V;V.bNarrativeAvailable=true;V.AttackRow.FinalValue=12;
+  auto Hidden=V;S.Gate(Hidden);TestFalse(TEXT("Existing disclosure gate still owns hidden result"),Hidden.bNarrativeAvailable);
+  S.Tick(.02f);
+  const bool Expected=Outcome==EOutcome::Goal && !IsCross(Method);
+  TestEqual(TEXT("Only disclosed LongShot Goal celebrates"),S.Celebration.IsActive(),Expected);
+  TestEqual(TEXT("Celebration starts at original ResultHold boundary"),S.Phase,EPhase::ResultHold);
+  S.Gate(V);TestTrue(TEXT("Celebration adds no new result/score gate"),V.bNarrativeAvailable);
+  TestEqual(TEXT("Celebration cannot change Formula values"),V.AttackRow.FinalValue,12.f);
+  const float Elapsed=S.Celebration.Elapsed;S.Sync(F);
+  TestEqual(TEXT("Duplicate facts never restart celebration"),S.Celebration.Elapsed,Elapsed);
+  if(Expected)
+  {
+   auto Skipped=S;TestTrue(TEXT("Skip consumes celebration only"),Skipped.Skip());
+   TestFalse(TEXT("Skip leaves no stuck overlay"),Skipped.Celebration.IsActive());
+   TestFalse(TEXT("Repeated skip cannot continue gameplay"),Skipped.Skip());
+   S.Tick(FMCodexGoalCelebration::Duration);
+   TestFalse(TEXT("Celebration exits without input"),S.Celebration.IsActive());
+   TestFalse(TEXT("Same result cannot replay completed celebration"),S.Celebration.Start(true));
+  }
+  FState Reopened;Reopened.Sync(F);
+  TestFalse(TEXT("Resolved rebuild does not replay Goal celebration"),Reopened.Celebration.IsActive());
+  F.AttackSequence++;F.Outcome=EOutcome::None;S.Sync(F);
+  TestFalse(TEXT("New action clears consumed celebration identity"),S.Celebration.bConsumed);
+  S.Sync(FFacts{});TestFalse(TEXT("Leaving surface clears celebration"),S.Celebration.IsActive());
+ }
+ // The celebration has no score input/output. The projection reads an immutable header.
+ auto M=SceneFixture(false,EInitialTurnOrderPlayer::PlayerA);M.Header.ScoreLabel=TEXT("2 - 1");
+ M.LongShotResolution.Formula.SpatialOutcome=EMatchPlayResolutionDecisionOutcome::Goal;
+ M.LongShotResolution.Formula.bNarrativeAvailable=true;M.LongShotResolution.Formula.bDiceRevealVisible=true;
+ const auto HiddenGoal=Project(M.LongShotResolution,M.Header,true);
+ TestEqual(TEXT("Reel gate strips Goal before spatial/celebration consumption"),HiddenGoal.Outcome,EOutcome::None);
+ TestEqual(TEXT("Safe projection never changes score"),M.Header.ScoreLabel,FString(TEXT("2 - 1")));
  return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSceneRhythmTest,"FMCodex.LocalPlay.TacticalScene.LongShotRhythmContinuity",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
