@@ -1442,8 +1442,12 @@ struct FMCODEX_API FFMCodexUMGInlineFormulaSurfaceViewModel
 {
 	GENERATED_BODY()
 
-	/** Disclosed LongShot Direct decision; visual consumers still obey the reveal gate. */
+	/** Authoritative terminal outcome; visual consumers still obey the reveal gate. */
 	UPROPERTY() EMatchPlayResolutionDecisionOutcome SpatialOutcome = EMatchPlayResolutionDecisionOutcome::None;
+	/** Cross preview identity is public; it is never the route-roll result. */
+	UPROPERTY() EMatchPlayElectiveBranchIntent SpatialCrossIntent = EMatchPlayElectiveBranchIntent::None;
+	/** Roster identity only, separate from Formula participation. */
+	UPROPERTY() FFMCodexUMGInlineFormulaParticipantViewModel SpatialGoalkeeper;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Inline Formula")

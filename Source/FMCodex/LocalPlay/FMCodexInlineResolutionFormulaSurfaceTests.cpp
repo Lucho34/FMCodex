@@ -698,6 +698,9 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 	{
 		Screen->TakeWidget();
 		Screen->RefreshFromPresentation(Pending);
+		TestFalse(TEXT("Cross spatial setup defers the Formula CTA"),
+			Screen->GetInlineFormulaSurface()->GetPresentation().PrimaryAction.bVisible);
+		while (Screen->GetTacticalScene().IsAnimating()) Screen->SkipTacticalScene();
 		TestTrue(TEXT("Pitch-owned surface replaces only legacy overlay"),
 			Screen->GetWidgetFromName(TEXT("PitchPresentationLayers")) != nullptr
 				&& Screen->GetInlineFormulaSurface() != nullptr
@@ -706,6 +709,7 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 					== ESlateVisibility::Collapsed
 				&& !Screen->IsLegacyResolutionOverlayVisible());
 		Screen->RefreshFromPresentation(UnsupportedPresentation);
+		while (Screen->GetTacticalScene().IsAnimating()) Screen->SkipTacticalScene();
 		TestTrue(TEXT("Cross Low pending formula owns the only rendered CTA"),
 			Screen->GetInlineFormulaSurface() != nullptr
 				&& Screen->GetInlineFormulaSurface()->GetPresentation().bVisible
@@ -715,10 +719,12 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 					== ESlateVisibility::Collapsed
 				&& !Screen->IsLegacyResolutionOverlayVisible());
 		Screen->RefreshFromPresentation(OneRollPresentation);
+		while (Screen->GetTacticalScene().IsAnimating()) Screen->SkipTacticalScene();
 		TestTrue(TEXT("Cross High defense has no lower duplicate"),
 			Screen->GetInteractionPanel()->GetVisibility()
 				== ESlateVisibility::Collapsed);
 		Screen->RefreshFromPresentation(LowDefensePending);
+		while (Screen->GetTacticalScene().IsAnimating()) Screen->SkipTacticalScene();
 		TestTrue(TEXT("Cross Low defense also has no lower duplicate"),
 			Screen->GetInteractionPanel()->GetVisibility()
 				== ESlateVisibility::Collapsed);

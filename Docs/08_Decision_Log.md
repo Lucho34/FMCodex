@@ -2778,3 +2778,23 @@ LongShot 空间场景扩至方法 hover/focus 预览和 Dead Corner 双骰流程
 用户要求保留“直接射门／射向死角”的按钮与文案，集中改善空间演出。球场从下方内容的自动缩放中分离，避免方法选择、Formula、双骰和结果切换时整体缩放／位移；预览到执行不再重复消失／淡入。压低草皮、球网与光圈噪声，出球加入旋转、远近缩放与短尾迹，实际路线只随球经过显现。
 
 本条将空间 Setup / Intent / Outcome 预算由 0.5 / 0.75 / 0.9 秒改为 0.18 / 0.24 / 0.80 秒，合计减少 0.93 秒；真实 elapsed 跨相邻空间阶段保留余量，不跨越原 Formula / Roll 等待。既有骰子节奏、玩法、权威披露、结果映射、比分与继续门控不变；只在已披露 Goal 到达时轻量回应网面。不引入扑救、封堵或中柱事件，仍需 USER PIE 验收。详细合同见 [空间表现](UI/Tactical_Scene_Spatial_Presentation_Contract.md)。
+
+### Stage 8.23B Cross High / Low Tactical Scene
+
+Cross 复用已接受的 LongShot 商业空间舞台，使用实际 Carrier / Runner / Marker / 可选 Helper 与守方 roster GK。空间身份与 Formula 参与分开；未激活 GK 仅弱化显示，不贡献公式，不假造缺失 Helper。High 用高弧落点与双人短距离占位表达争抢，Low 用更长前插、加速和后方追赶表达速度；150ms hover/focus 过渡不提交 intent 或消费 RNG。
+
+预览只表达已选意图；原路线骰可能翻转 High/Low，实际路线按现有显示门控揭示后进入对应 Setup 0.50s / Intent 0.80s，再等待原 Roll / Formula，最后 Outcome 0.85s。Goal/Miss 只投影已完成 Cross Formula 的 typed terminal fact，进球落于门内，失败中性未完成传中；没有推导头球、扑救、解围或触球因果。沿用顶部原叙事、紧凑 2v2 摘要、原数值解释、比分／结果／CTA 门控、单阶段加速和 resolved 重建不重播。
+
+现有规则保持：High 为传球／力量对防守／力量，Low 为传球／速度对防守／速度，双方两项系数均 0.5；防守固定 +2，适用 GK 制空／反应 ×0.5 在平均之外。Trait 映射和系数前 S/A/B +3/+2/+1 均不改变。无 CoreRules、RNG、eligibility、network authority 或玩家内容修改。三个 focused、少量直接 affected、必要 UHT 与 Development Editor/Game 增量构建，加一条同 world Local PIE 是验证范围；不机械升级 full suites。USER PIE 仍决定高低球辨识度、密度、节奏及商业观感。详细边界见 [空间表现合同](UI/Tactical_Scene_Spatial_Presentation_Contract.md)。
+
+### Stage 8.23B USER PIE：传中空间语义与阵营辨识修正
+
+用户实测认为初版高／低传中都像直塞，持球点不够宽，攻守身份不够醒目。继续同一未提交 Stage：高球改为远侧边路传向禁区共同落点，两名接应／协防角色短距离汇聚；低球采用更深边路的倒三角回传，接应从禁区入口加速、协防从球门侧回收。Cross 固定「边路 → 禁区」，未来 ThroughBall 保留「中路／肋部 → 防线身后」，不在本轮实现。
+
+共享头像环、姓名牌边缘与角色牌底色使用既有可配置 Side accent；姓名保持近白，门将维持防守身份及 Formula-active 区分。预览和结果共用修正几何；球场家族、时序、Goal/Miss、权威角色、Formula、Traits、RNG 和继续流程不变。最小验证为三个 Cross 合同及一个共享样式关联的 LongShot storyboard、必要增量构建和一次同场 Local PIE；USER PIE 再次验收通过后才收尾整个 8.23B，不拆分 polish commit。
+
+### Stage 8.23B USER PIE：Outcome 可读性
+
+用户接受修正后的传中空间语义，要求结果动作更易看清，并仅在权威事实支持时演出具体拦截者。审计确认 Cross 的 High/Low 只有 aggregate Goal/Miss，没有防守 actor 或具体拦截／扑救机制；原叙事中的 Marker/Helper performer 是稳定事件身份选出的表现演绎，不能驱动因果动作。本轮维持中性防守失败球路，不新增 actor 权威或安全 DTO。
+
+Cross Outcome 从 0.85s 改为 1.20s 动作加 0.30s 最终画面停留；Goal 和 Miss 都先到接应区域，再分别中性延续进球或偏离，门内终点和原继续流程不变。Setup、Intent、Formula、LongShot 时序及已接受阵营／锚点不变；修正 resolved Low 重建时应立即使用 Low 几何，skip 保留最终球位。未来具体 actor 演出必须由真正的结构化权威因果支持，不从叙事字符串、角色或数值补造。继续同一未提交 8.23B，USER PIE 验收结果速度、短停留和重复观看体验。

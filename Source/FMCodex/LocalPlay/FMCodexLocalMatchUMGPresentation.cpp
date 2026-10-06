@@ -727,7 +727,7 @@ namespace FMCodexLocalMatchUMGPresentation
 		{
 			if (!CardId.IsNone()) Row.Participants.Add({
 				FFMCodexPlayerUIPresentationText::ResolutionParticipantRole(Role).ToString(),
-				PlayerFacingName(View, Row.Side, CardId) });
+				PlayerFacingName(View, Row.Side, CardId), CardId, Role });
 		};
 		auto& A = Surface.AttackRow; auto& D = Surface.DefenseRow;
 		A.Side = Attack; D.Side = Defense;
@@ -2058,6 +2058,9 @@ namespace FMCodexLocalMatchUMGPresentation
 				&& PrimaryAction.bAvailable;
 		if (bNarrativeReady)
 		{
+			if (bResolvedCross)
+				Result.SpatialOutcome = Contest->ResolvedResult.bIsGoal
+					? EMatchPlayResolutionDecisionOutcome::Goal : EMatchPlayResolutionDecisionOutcome::Miss;
 			if (bResolvedCross || (bResolvedElectiveDirect && !bElectiveDirectImmediateMiss)
 				|| bResolvedThroughBallFeet || bResolvedThroughBallDirect
 				|| (bResolvedThroughBallBehind && !bBehindOutOfPlay))
@@ -3929,6 +3932,20 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		|| Result.InlineFormula.ContestId == TEXT("Cross.Route"))
 	{
 		ProjectCrossSetupParticipants(InteractionView, Result.InlineFormula);
+	}
+	if (Result.InlineFormula.ContestId == TEXT("Cross.Setup")
+		|| Result.InlineFormula.ContestId == TEXT("Cross.Route")
+		|| Result.InlineFormula.ContestId == TEXT("Cross.High")
+		|| Result.InlineFormula.ContestId == TEXT("Cross.Low"))
+	{
+		Result.InlineFormula.SpatialCrossIntent = InteractionView.ElectiveBranchIntent;
+		const auto Defense = Result.InlineFormula.DefenseRow.Side;
+		const auto& Roster = Defense == EInitialTurnOrderPlayer::PlayerA
+			? InteractionView.PlayerACardRoster : InteractionView.PlayerBCardRoster;
+		if (const auto* Keeper = Roster.FindByPredicate([](const auto& Card) { return Card.bGoalkeeper; }))
+			Result.InlineFormula.SpatialGoalkeeper = { TEXT("门将"),
+				PlayerFacingName(InteractionView, Defense, Keeper->CardId), Keeper->CardId,
+				EMatchPlayResolutionParticipantRole::Goalkeeper };
 	}
 	Result.ThroughBallResolution = BuildThroughBallSurface(
 		InteractionView,

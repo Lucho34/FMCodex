@@ -120,6 +120,15 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 	Modes.Low->Set(Fallback?0:1,ECVF_SetByCode);
 	Modes.Theater->Set(0,ECVF_SetByCode); Modes.Formula->Set(0,ECVF_SetByCode);
 	FUIFixture F(Parameters.StartsWith(TEXT("LowB")) || Fallback,false);
+	// Spatial beats are local; this synchronous test explicitly skips them after
+	// the canonical reel has settled. The separate PIE test observes real timing.
+	auto Settle=[&]()
+	{
+		F.Settle();
+		for(auto* PC:{F.A,F.B})
+			while(PC->GetPlayerMatchScreen()->GetTacticalScene().IsAnimating())
+				PC->GetPlayerMatchScreen()->SkipTacticalScene();
+	};
 	const bool BFirst=Parameters.StartsWith(TEXT("LowB"));
 	const bool Ready=WithGK ? F.ReachSkill(
 		FName(BFirst?TEXT("Prototype.ManchesterCity.JeremyDoku"):TEXT("Prototype.Arsenal.BukayoSaka")),
@@ -135,7 +144,7 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 	for (auto* W:{S,D})
 	{
 		TestTrue(TEXT("Both viewers enter immediately after accepted Skill"),Visible(W,TEXT("ResolutionTheater")));
-		TestFalse(TEXT("LongShot spatial lane cannot alter Cross layout"),Visible(W,TEXT("TheaterSpatialLane")));
+		TestTrue(TEXT("Cross now shares the persistent spatial lane"),Visible(W,TEXT("TheaterSpatialLane")));
 		TestEqual(TEXT("Field stays painted but board input is suppressed"),W->GetWidgetFromName(TEXT("MatchShellViewportFit"))->GetVisibility(),ESlateVisibility::HitTestInvisible);
 		TestEqual(TEXT("Entry does not predict route"),Label(W,TEXT("TheaterTitle")),FString(TEXT("传中")));
 		TestFalse(TEXT("No invented pre-route formula"),Visible(W,TEXT("TheaterAttackValue")));
@@ -230,7 +239,7 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("Only landed route permits tactical title"),Label(W,TEXT("TheaterTitle")),FString(High?TEXT("高球传中"):TEXT("低球传中")));
 		}
 	}
-	F.Settle();
+	Settle();
 	if (!Fallback) for (auto* W:{S,D}) CheckKeeper(W);
 	if (Fallback)
 	{
@@ -288,6 +297,7 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 		if (Compare<2) TestEqual(TEXT("Fallback obeys existing FormulaV2 scope"),S->GetInlineFormulaSurface()->IsBroadcastPrototypeVisible(),High && Compare==1);
 	}
 	F.Entropy->Word=5;
+	Settle(); // Re-entering Theater from DEV fallback starts a fresh spatial beat.
 	CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue")))->OnClicked.Broadcast();
 	TestEqual(TEXT("Attack uses original typed command"),F.Backend(Actor).Last.IntentKind,High?Kind::CrossHighAttackRoll:Kind::CrossLowAttackRoll);
 	S->PauseInlineFormulaRevealTimerForTesting(); S->AdvanceInlineFormulaRevealForTesting(.4f);
@@ -326,7 +336,7 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Final RHS returns to full opacity without new hold"),RHS->GetRenderOpacity(),1.f);
 	};
 	CheckFinalFade(S,TEXT("TheaterAttack"));
-	F.Settle();
+	Settle();
 	TestEqual(TEXT("Revealed operand is the authoritative attack D6"),Label(S,TEXT("TheaterAttackRollValue")),FString(TEXT("6")));
 	TestEqual(TEXT("Resolved total is projected without arithmetic"),Label(S,TEXT("TheaterAttackFinalNumber")),S->GetInlineFormulaSurface()->GetPresentation().AttackRow.DisplayedResultLabel);
 	TestEqual(TEXT("Disclosed Attack label is final"),Label(S,TEXT("TheaterAttackValueLabel")),FString(TEXT("最终值")));
@@ -351,7 +361,7 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 		Label(S,TEXT("TheaterAttackActive"))==TEXT("获胜") || Label(S,TEXT("TheaterDefenseActive"))==TEXT("获胜"));
 	CheckFinalFade(D,TEXT("TheaterDefense"));
 	TestEqual(TEXT("Resolved Attack stays fully readable during Defense fade"),D->GetWidgetFromName(TEXT("TheaterAttackResultColumn"))->GetRenderOpacity(),1.f);
-	F.Settle();
+	Settle();
 	for (auto* W:{S,D})
 	{
 		TestTrue(TEXT("Outcome remains inside theater"),Visible(W,TEXT("TheaterOutcome")));

@@ -5256,9 +5256,13 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		BuildDisplayedThroughBallResolution();
 	FFMCodexUMGLongShotResolutionViewModel DisplayedLongShot =
 		BuildDisplayedLongShotResolution();
-	TacticalScene.Sync(FMCodexTacticalScene::Project(DisplayedLongShot,Presentation.Header,
-		FMCodexResolutionTheaterPrototype::IsEnabled() && !Presentation.Resolution.bRejected
-		&& !(MatchController && MatchController->GetGuidedLesson1())));
+	const bool bSpatialAllowed = FMCodexResolutionTheaterPrototype::IsEnabled()
+		&& !Presentation.Resolution.bRejected && !(MatchController && MatchController->GetGuidedLesson1());
+	auto SpatialFacts = FMCodexTacticalScene::Project(DisplayedLongShot, Presentation.Header, bSpatialAllowed);
+	if (!SpatialFacts.bActive)
+		SpatialFacts = FMCodexTacticalScene::ProjectCross(DisplayedInlineFormula, Presentation.Header,
+			bSpatialAllowed && FMCodexResolutionTheaterPrototype::WantsTheater(Presentation, DisplayedInlineFormula));
+	TacticalScene.Sync(SpatialFacts);
 	TacticalScene.Gate(DisplayedInlineFormula);
 	TacticalScene.Gate(DisplayedLongShot);
 	// Ownership follows the current InteractionView-derived production surface,

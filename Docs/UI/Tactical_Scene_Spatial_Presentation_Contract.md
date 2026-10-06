@@ -1,4 +1,4 @@
-# Tactical Scene Spatial Presentation — Stage 8.23A
+# Tactical Scene Spatial Presentation — Stage 8.23A–B
 
 本阶段覆盖 LongShot 的方法选择、Direct Shot 与 Dead Corner 商业空间表现。死角只消费有效安全事实，程序判定与属性公式分开。仍需 USER PIE 验收，不作为其他战术的已批准模板。此合同的商业化 follow-up 取代初版“只显示参与公式的门将”和“叙事放在公式下方”的视觉约定。
 
@@ -73,4 +73,64 @@ Outcome 内先短暂出球，再完成旋转、远近缩放与短尾迹，最后
 
 没有修改 gameplay / transport / security disclosure / RNG / persistence 合同，不因消费既有事实而重跑 CoreRules、Runtime、LocalPlay、NetworkPlay 全量。没有真实 Host/Remote Golden Path 要求；安全反射 DTO roundtrip 只证明字段传递，不冒充双进程实测。
 
-没有扩展 Cross、ThroughBall、定位球、Guided Match、3D／物理或 replay editor。后续战术接入须先获得本轮 USER PIE 视觉与节奏认可。
+8.23A 没有扩展其他战术。8.23B 的 Cross 扩展见下文；ThroughBall、定位球、Guided Match、3D／物理或 replay editor 继续延期。工程证据不替代 USER PIE 视觉与节奏认可。
+
+## Stage 8.23B — Cross High / Low
+
+本节将空间消费者扩至 Cross.Setup、Cross.Route、Cross.High、Cross.Low，取代上文“其他战术折叠空间槽”的 Cross 部分。沿用同一持久球场、头像缓存、球门／足球、顶部叙事、下层 Formula、比分／继续门控与单阶段加速。LongShot 的 0.18 / 0.24 / 0.80 秒预算与固定锚点不变。
+
+### 权威审计与安全投影
+
+生产 Cross 的 Carrier 与 Runner 属于进攻方，Marker 与可选 Helper 属于防守方。Runner 按 canonical Forward 区域等现有资格选择；Helper 缺席时没有替身。方法选择前的 CardId / typed Role 来自已公开的选人事实，路线确认后来自 Formula 行的实际参与者。姓名仍由集中式 PreferredDisplayName / DisplayName 映射提供。守方实际 roster GK 的空间身份另存于安全 DTO；Formula 行中存在的 GK 才获得公式强调，未激活者仅弱化显示，不加入任何数值或摘要贡献。
+
+| 分支 | 进攻属性项 | 防守属性项 | 激活 GK 的附加项 |
+|---|---|---|---|
+| High | Carrier 传球 ×0.5 + Runner 力量 ×0.5 | Marker 防守 ×0.5 + Helper 力量 ×0.5 + 固定 2 | 制空 ×0.5 |
+| Low | Carrier 传球 ×0.5 + Runner 速度 ×0.5 | Marker 防守 ×0.5 + Helper 速度 ×0.5 + 固定 2 | 反应 ×0.5 |
+
+沿用原独立攻防 D6、适用战术球员优势、快速压制及平局规则。Helper 缺席贡献 0，不改变分母；GK 附加项位于上述平均之外。特性只由实际参与角色触发：传中专家→Carrier 传球，高／低球接应→Runner 力量／速度，传中封堵→Marker 防守，高／低球协防→Helper 力量／速度；S/A/B 的 +3/+2/+1 在系数前应用。空间层不计算这些规则，也不显示浮动属性／特性标签。
+
+当前 Cross terminal 事实是 HighFormulaGoal/Miss、LowFormulaGoal/Miss，使用已完成 Formula 的 `ResolvedResult.bIsGoal`；进球者为原权威 Runner。UI 只复制 Goal/Miss，不从总值、D6、名字或叙事推断结果。安全事实与本地可见揭示分开：同一 DTO 仍经现有 Reel / Formula gate，未完成强制揭示时空间 outcome 保持 None。
+
+### 四角色空间与两种运动语言
+
+两方均左→右进攻，颜色跟随球员所属 Side，位置不是部署格的米制复现。Carrier 在左侧宽区，Marker 在其附近施压；Runner 与 Helper 在禁区入口形成另一组关系。GK 靠球门，不做没有事实支持的扑救动作。
+
+- High：Carrier 在远侧边线附近、禁区侧边外送出高弧；Runner 和 Helper 已处于禁区内落点两侧，以短距离汇聚到同一椭圆争抢区。Marker 就近压迫传中者。不是从中路送球到防线身后，也没有演绎头球。
+- Low：采用倒三角回传。Carrier 沿同一远侧边路更深推进到底线附近，低平球向后／内侧送至禁区中央；Runner 从禁区入口加速到达，Helper 从靠球门一侧回收封闭接应区。接应者位移更长，但不越过传中者追逐纵深空间。运动引导线随各自实际展示方向绘制。
+- Preview 中演示跑动趋近／回位，不移动足球、不表示成败。hover / focus 以 150ms 插值切换同一套角色锚点；持久节点不重建头像。原按钮点击才提交 typed intent。
+- 选择意图后等待原路线骰：1–4 保留所选意图、5–6 可能翻转。骰子未揭示期间仅表达已选意图；显示模型切换至实际 High/Low 后再开始对应演出，不根据未来 route fact 提前切换。
+
+### Cross 时序、结果与公式联系
+
+`Preview（含原路线骰）→ Setup 0.50s → Intent 0.80s → 原攻防 Roll / Formula → Outcome Action 1.20s + Visual Hold 0.30s → ResultHold / 原继续`。Outcome 由初版 0.85s 调整为合计 1.50s，详见下文可读性 follow-up。从预览进入 Setup 保留当前跑动位置；Intent 从该位置完成接应／追赶。足球在 Formula 完成前保持在 Carrier 身旁。真实 elapsed 跨相邻表现阶段保留余量，不跨越权威等待。
+
+进攻 Formula 阶段同时轻量强调实际 Carrier / Runner；防守阶段强调实际 Marker / Helper，以及 Formula-active GK。既有 Formula 负责按角色解释 Passing/Strength 或 Passing/Speed，以及 base + trait bonus，空间不重复数字。摘要维持进攻两角色、防守两角色加适用 GK，场地槽位始终固定。
+
+已披露 Goal 沿该路线送达接应区域，再以中性后续球路明确结束于门内；不声称具体触球部位。Miss 先进入争抢／接应区，再中性偏离进攻延续方向，不声称封堵、解围、门将扑救或中柱。高球仍保留高弧，低球仍低平；结果叙事继续使用原映射，其中确定性选出的防守叙事 performer 不是权威因果事实。Outcome 完成前隐藏结果标题、可见比分更新与终局 CTA。
+
+点击球场／球场焦点内空格仅结束当前一个空间阶段，不提交命令，不跳过攻防骰。重复 View 不重播；resolved 重建直接停 ResultHold。最多五个头像强引用，身份变化时才加载；Tick/Paint 不创建角色控件或加载资源，复用既有少量 Slate 几何绘制。
+
+### 验证范围
+
+三个 focused 合同：CrossSceneFactsAndIsolation、CrossRoutePreview、CrossStoryboardAndOutcome；最小 affected 包括 Cross Formula、Theater participant disclosure / 双 viewer lifecycle、LongShot storyboard / DeadCorner sequential reveal。新增 reflected DTO 字段需要 UHT；共享 cpp 同时编入 Editor / Game，两个 Development target 做增量验证。一次实际 Local PIE 在同一 world 连续完成 High、Low、加速及 Direct 快速回归，使用 canonical 选人和服务器 DEV provider，不直接写状态或强制 winner。
+
+没有改变 CoreRules / Formula、角色资格、Trait、RNG、GK activation、score/scorer、transport、replication disclosure 或持久化合同；不新增网络动画权威。无需广泛 full suites 或另一条 Host/Remote Golden Path。自动化和工程截图只证明对应技术合同，商业视觉、密度、反复观看节奏与高低球可辨识性仍需 USER PIE。
+
+### USER PIE 空间语义与阵营辨识 follow-up
+
+用户指出初版看起来像高／低直塞。本修正锁定 Cross 为「边路起点 → 禁区内传递」；未来 ThroughBall 保留「中路／肋部起点 → 防线身后纵深」，本轮不实现 ThroughBall。高球争抢落点与低球倒三角回传使用不同的持球深度、接应点和协防方向；预览、正式 Intent 与结果球路共用这些锚点。球场和球门几何、150ms 预览插值、Setup / Intent / Outcome 预算及结果门控不变。
+
+阵营识别复用 Match Shell 配置的实际 Side accent，不硬编码 A/B 颜色。共享头像环略加粗，姓名牌使用阵营边框和细顶边，角色牌使用低饱和阵营底色／边线；姓名与角色文字仍保持高对比近白。防守门将保留同侧身份，未参与 Formula 时降低强调。球路继续使用既有 mint 语义色，施压、争抢和回收线跟随实际参与者阵营色。Formula-linked emphasis 继续独立于身份颜色。
+
+本 follow-up 只调整空间锚点、运动引导和共享 token 外观，不改变安全 DTO、角色选择或任何玩法事实。复用三个 Cross focused 测试并补空间语义／可配置阵营色检查，因共享 token 外观变化仅追加一个 LongShot storyboard；必要增量 Editor/Game、同场 Local PIE 和 diff 检查，不扩大 Formula 或网络回归。最终仍由用户在不阅读标签／Formula 的情况下判断传中语义、高低球差异与攻守身份。
+
+### Outcome 可读性 follow-up
+
+当前 High / Low 的 authoritative terminal 只有 HighFormulaGoal/Miss、LowFormulaGoal/Miss，Formula 的 winner / bIsGoal，以及实际参与者；GoalHistory 的 scorer 为 Runner。没有具体防守 actor、拦截／解围机制或 GK save 身份。`TacticalResolutionNarrativePresentation` 中的 DefensivePerformer 明确属于表现演绎，由稳定事件身份在 Marker / Helper 间选择，不能转成因果事实。当前分类仅为 Goal 和 generic defense success；未新增 actor DTO，也不解析叙事文字或从 Formula 数值推断 actor。
+
+两路线共用 Outcome Action 1.20s、Final Visual Hold 0.30s。动作预算的前 90% 完成球路，最后 10% 为到达反馈；随后保持最终球位／参与者位置至原 ResultHold。球先完成传中，再接 Goal 的中性射向门内延续，或 generic Miss 的接应区偏离；不指定任一防守球员触球。门将始终保留原空间／Formula-active 合同。Setup、Intent、原骰子／Formula 节奏和 LongShot 的 0.80s Outcome 均不变。
+
+未来只有既有结构化权威事实明确给出防守 actor 时，才允许低球由该人切入传球线、高球由该人争抢空中球路；机制明确但 actor 不明时仍不能任意指派。当前没有这些事实，因此不实现具体拦截、扑救、封堵或解围演出；这不是用叙事姓名补齐的缺口。
+
+最终停留仍属于本地 Outcome，不新增 gameplay state／CTA，不提前显示比分或结果。点击／空格直接到最终空间状态并进入原 ResultHold，不掷骰或继续玩法。resolved 重建立即恢复正确 High/Low 最终几何，不先显示 High 再插值到 Low，也不重播动作。focused 验证中性事实隔离、阶段停留、接应区／终点、skip 与重建；实际同场 Local PIE 覆盖高球防守成功、低球防守成功和 Cross Goal，仍需用户判断速度、停留与重复观看舒适度。
