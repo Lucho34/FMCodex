@@ -3169,8 +3169,12 @@ AFMCodexLocalMatchHostGameMode::AdvanceAfterTerminal(
 #if !UE_BUILD_SHIPPING
 bool AFMCodexLocalMatchHostGameMode::StartGuidedLesson1()
 {
-	if (!InitializeLesson1Runtime(false)) return false;
-	GuidedLesson1 = MakeUnique<FFMCodexGuidedLesson1>();
+ auto Candidate=MakeUnique<FFMCodexGuidedLesson1>();
+ if(!Candidate->IsContentReady())
+ { UE_LOG(LogTemp,Error,TEXT("Tutorial launch rejected: %s"),*Candidate->GetContentError()); return false; }
+ if (!InitializeLesson1Runtime(false)) return false;
+ GuidedLesson1=MoveTemp(Candidate);
+ UE_LOG(LogTemp,Display,TEXT("GUIDED_CONTENT source=%s sha256=%s lesson=Lesson01 schema=1"),*FFMCodexGuidedMatchContent::RuntimePath(),*GuidedLesson1->ContentSourceHash());
 	return true;
 }
 

@@ -142,7 +142,7 @@ bool FLessonFlowTest::RunTest(const FString&)
 	TestFalse(TEXT("Rewind waits for visible result"),L->GetStep()==EFMCodexLesson1Step::Rewind);
 	F.Observe();
 	TestEqual(TEXT("Failure gets a clean production hold first"),L->GetStep(),EFMCodexLesson1Step::FailurePause);
-	F.Observe(true,Lesson::FailureFollowupDelay);
+	F.Observe(true,L->Timing(TEXT("FailureFollowupDelay")));
 	if (!TestEqual(TEXT("One real contest"),F.View().ResolutionFacts.FormulaContests.Num(),1)) return false;
 	const auto First=F.View().ResolutionFacts.FormulaContests[0];
 	TestEqual(TEXT("First authoritative attack die"),First.ResolvedInput.Attacker.ComparePoint,5);
@@ -279,7 +279,7 @@ bool FLessonFocusTest::RunTest(const FString&)
 	TestEqual(TEXT("Focus is real TP control"),L.FocusTarget(),Focus::TacticPoint);
 	TestTrue(TEXT("Only requested roll allowed"),L.AllowsScreen(Roll));
 	TestFalse(TEXT("Unrelated deployment blocked"),L.AllowsScreen(Deploy));
-	FFMCodexLocalMatchInteractionView V; V.InteractionCategory=EFMCodexLocalMatchInteractionCategory::Deploy; V.ExpectedActingPlayer=Side::PlayerA;
+	FFMCodexLocalMatchInteractionView V; V.ActionPoint=3; V.InteractionCategory=EFMCodexLocalMatchInteractionCategory::Deploy; V.ExpectedActingPlayer=Side::PlayerA;
 	L.Update(V,true,.1f);
 	TestEqual(TEXT("TP concept has no active target"),L.FocusTarget(),Focus::None);
 	TestFalse(TEXT("Explanation blocks deployment"),L.AllowsScreen(Deploy));
@@ -289,9 +289,9 @@ bool FLessonFocusTest::RunTest(const FString&)
 	TestFalse(TEXT("Unrelated card inspection gated"),L.AllowsInspection(Lesson::Stones()));
 	TestFalse(TEXT("Inspection cannot submit gameplay"),L.AllowsScreen(Deploy));
 	L.InspectCard(Lesson::Gyokeres(),true);
-	TestEqual(TEXT("Hover target cleared on inspection"),L.FocusTarget(),Focus::None);
+	TestEqual(TEXT("Inspection targets the configured live Full Card skill row"),L.FocusTarget(),Focus::FullCardSkill);
 	TestEqual(TEXT("Skill before Shooting"),L.GetStep(),Step::SkillRangeExplanation);
-	TestEqual(TEXT("Skill phrase is deliberate, not separate substring rules"),L.ConceptKeywords()[0].ToString(),FString(TEXT("远射技能")));
+	TestTrue(TEXT("Skill phrase is deliberate, not separate substring rules"),L.ConceptKeywords().ContainsByPredicate([](const FText& T){return T.ToString()==TEXT("远射技能");}));
 	TestEqual(TEXT("Range explains current TP explicitly"),L.Instruction().ToString(),FString(TEXT("远射技能范围为 3–5。当前进攻战术点为 3，落在范围内，因此可以使用远射。")));
 	L.Primary();
 	TestEqual(TEXT("First pass skips standalone Shooting teaching"),L.GetStep(),Step::Deploy);
@@ -355,7 +355,7 @@ bool FLessonFocusTest::RunTest(const FString&)
 	L.Update(V,true,2.f); TestEqual(TEXT("First ready tick starts delay from zero"),L.GetStep(),Step::FailurePause);
 	Scene.Facts.Outcome=FMCodexTacticalScene::EOutcome::DefensiveSuccess; Scene.Phase=FMCodexTacticalScene::EPhase::ResultHold;
 	TestTrue(TEXT("Clean failure moment has no tutorial chrome"),L.YieldsToProduction(Scene,false,V.InteractionCategory));
-	L.Update(V,true,Lesson::FailureFollowupDelay-.1f); TestEqual(TEXT("No popup before extended elapsed hold"),L.GetStep(),Step::FailurePause);
+	L.Update(V,true,L.Timing(TEXT("FailureFollowupDelay"))-.1f); TestEqual(TEXT("No popup before extended elapsed hold"),L.GetStep(),Step::FailurePause);
 	L.Update(V,true,.11f); TestEqual(TEXT("Teaching follows 1.6 seconds of visible failure"),L.GetStep(),Step::Rewind);
 	TestEqual(TEXT("Rewind distinguishes skill and trait concisely"),L.EmphasizeKeywords(L.Instruction()).ToString(),FString(TEXT("哲凯赖什可以使用<concept>远射技能</>，但他没有<concept>远射特性</>。让我们换个人试试吧。")));
 	TestTrue(TEXT("No secondary rewind warning paragraph"),L.Explanation().IsEmpty());
@@ -382,7 +382,7 @@ bool FLessonFocusTest::RunTest(const FString&)
 	Lesson P; P.Primary();
 	V.InteractionCategory=EFMCodexLocalMatchInteractionCategory::Deploy; V.ExpectedActingPlayer=Side::PlayerB;
 	P.Update(V,true,0.f);
-	P.Update(V,true,Lesson::OpponentDeployAttention-.01f);
+	P.Update(V,true,L.Timing(TEXT("OpponentDeployAttention"))-.01f);
 	TestTrue(TEXT("Opponent source visibly focused before dispatch"),P.IsOpponentFocusVisible());
 	TestEqual(TEXT("Attention targets actual source"),P.OpponentTarget(),EFMCodexLesson1OpponentTarget::HandCard);
 	TestFalse(TEXT("Pre-action is not dispatch"),P.IsOpponentActionDue());
@@ -401,11 +401,11 @@ bool FLessonFocusTest::RunTest(const FString&)
 	V.InteractionCategory=EFMCodexLocalMatchInteractionCategory::SelectCarrier; V.ExpectedActingPlayer=Side::PlayerA;
 	P.Update(V,true,.3f); TestEqual(TEXT("Placed card settles before instruction changes"),P.GetStep(),Step::OpponentDeploy);
 	TestFalse(TEXT("No duplicate opponent dispatch while settling"),P.IsOpponentActionDue());
-	P.Update(V,true,Lesson::OpponentDestinationHold-.3f+.01f);
+	P.Update(V,true,L.Timing(TEXT("OpponentDestinationHold"))-.3f+.01f);
 	TestTrue(TEXT("Final board hold is a separate phase"),P.IsOpponentFinalHold());
 	TestFalse(TEXT("No extra arrow distracts from settled board"),P.IsOpponentFocusVisible());
 	TestFalse(TEXT("Final board hold cannot repeat command"),P.IsOpponentActionDue());
-	P.Update(V,true,Lesson::OpponentDeploySettledHold); TestEqual(TEXT("Next instruction only after destination and final hold"),P.GetStep(),Step::CarrierExplanation);
+	P.Update(V,true,L.Timing(TEXT("OpponentDeploySettledHold"))); TestEqual(TEXT("Next instruction only after destination and final hold"),P.GetStep(),Step::CarrierExplanation);
 	FFMCodexMatchScreenRequest Carrier; Carrier.Kind=Gesture::Carrier; Carrier.OptionId=Lesson::Gyokeres();
 	TestFalse(TEXT("Carrier concept still gates selection"),P.AllowsScreen(Carrier)); P.Primary();
 	TestEqual(TEXT("Exact approved carrier instruction"),P.Instruction().ToString(),FString(TEXT("点击场上的哲凯赖什，将他选中为本进攻回合的持球队员。")));
@@ -413,11 +413,11 @@ bool FLessonFocusTest::RunTest(const FString&)
 	Lesson Repeat; Repeat.EnterComparison(); Repeat.InspectCard(Lesson::Odegaard(),true); Repeat.Primary(); Repeat.Primary(); Repeat.Primary();
 	V.InteractionCategory=EFMCodexLocalMatchInteractionCategory::Deploy; V.ExpectedActingPlayer=Side::PlayerB;
 	Repeat.Update(V,true,0.f);
-	Repeat.Update(V,true,Lesson::OpponentDeployAttention*.80f+.01f);
+	Repeat.Update(V,true,L.Timing(TEXT("OpponentDeployAttention"))*.80f+.01f);
 	TestTrue(TEXT("Repeated deployment uses 80 percent attention pace"),Repeat.CanStartOpponentDeploymentMove());
 	Repeat.BeginOpponentDeploymentMove(); Repeat.CompleteOpponentDeploymentMove();
 	TestTrue(TEXT("Repeated deployment still requires visual arrival"),Repeat.IsOpponentActionDue());
-	TestTrue(TEXT("Repeated gesture retains full readable end hold"),FMath::IsNearlyEqual(Repeat.OpponentPostActionHold(),Lesson::OpponentDestinationHold*.80f+Lesson::OpponentDeploySettledHold));
+	TestTrue(TEXT("Repeated gesture retains full readable end hold"),FMath::IsNearlyEqual(Repeat.OpponentPostActionHold(),L.Timing(TEXT("OpponentDestinationHold"))*.80f+L.Timing(TEXT("OpponentDeploySettledHold"))));
 	Repeat.EnterComparison(); TestFalse(TEXT("Rewind clears moving proxy state"),Repeat.IsOpponentDeploymentMoving());
 	// Finish button wording is a whole phrase; generic deployment remains ordinary.
 	Lesson Finish; Finish.Primary();
@@ -441,7 +441,7 @@ bool FLessonFocusTest::RunTest(const FString&)
 		Opponent.OpponentActionSubmitted();
 		TestEqual(TEXT("Opponent result prose has no incidental dots"),Opponent.EmphasizeKeywords(Opponent.Instruction()).ToString(),Opponent.Instruction().ToString());
 		V.InteractionCategory=bFinish ? EFMCodexLocalMatchInteractionCategory::SelectCarrier : EFMCodexLocalMatchInteractionCategory::SelectSkill;
-		Opponent.Update(V,true,Lesson::OpponentSettledHold-.1f);
+		Opponent.Update(V,true,L.Timing(TEXT("OpponentSettledHold"))-.1f);
 		TestEqual(TEXT("Accepted action remains visible during end hold"),Opponent.GetStep(),bFinish ? Step::OpponentFinish : Step::OpponentMarker);
 		TestFalse(TEXT("Accepted opponent action cannot dispatch twice"),Opponent.IsOpponentActionDue());
 		Opponent.Update(V,true,.11f);

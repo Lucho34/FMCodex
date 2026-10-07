@@ -29,7 +29,6 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
 
-#define LOCTEXT_NAMESPACE "FMCodexLesson1Focus"
 namespace FMCodexLesson1Focus
 {
 FGlyphDots MeasureGlyphDots(const FString& Text, const FSlateFontInfo& Font, float Scale)
@@ -140,9 +139,9 @@ TArray<UWidget*> Targets(UFMCodexLocalMatchScreenWidget* S, const FFMCodexGuided
 	if (L.KeepsFullCardOpen() && S->IsDetailOverlayVisible())
 	{
 	 auto* Card=S->GetDetailOverlayCard();
-	 if (L.GetStep()==EFMCodexLesson1Step::ShootingExplanation) Add(Card->FindAttributePresentationWidget(TEXT("SHO")));
-	 if (L.GetStep()==EFMCodexLesson1Step::SkillRangeExplanation) Add(Card->FindSkillPresentationWidget(L.Skill()));
-	 if (L.GetStep()==EFMCodexLesson1Step::TraitExplanation) Add(Card->FindTraitPresentationWidget(TEXT("Trait.LongShotCarrier")));
+	 if (F==Focus::FullCardShooting) Add(Card->FindAttributePresentationWidget(TEXT("SHO")));
+	 if (F==Focus::FullCardSkill) Add(Card->FindSkillPresentationWidget(L.Skill()));
+	 if (F==Focus::FullCardTrait) Add(Card->FindTraitPresentationWidget(TEXT("Trait.LongShotCarrier")));
 	}
 	if (F == Focus::DirectShot) Add(S->GetWidgetFromName(TEXT("TheaterNearDirect")));
 	if (F == Focus::FormulaValue) Add(S->GetWidgetFromName(TEXT("TheaterAttackBaseHover")));
@@ -208,46 +207,6 @@ private:
 };
 
 // Display labels only. The existing lesson state machine still owns every transition.
-FText Heading(const FFMCodexGuidedLesson1& L)
-{
-	using Step=EFMCodexLesson1Step;
-	switch(L.GetStep())
-	{
-	case Step::Intro: return LOCTEXT("TitleIntro","进行一次远射");
-	case Step::TacticPointExplanation: return LOCTEXT("TitleTP","观察球员技能");
-	case Step::ShootingExplanation: return LOCTEXT("TitleShooting","观察射门属性");
-	case Step::TraitExplanation: return LOCTEXT("TitleTrait","远射专家 A");
-	case Step::SkillRangeExplanation: return LOCTEXT("TitleRange","远射 · 3–5");
-	case Step::FinishExplanation: return LOCTEXT("TitleFinish","球员已经就位");
-	case Step::CarrierExplanation: return LOCTEXT("TitleCarrier","选择持球队员");
-	case Step::SkillExplanation: return LOCTEXT("TitleSkill","选择远射战术");
-	case Step::DirectExplanation: return LOCTEXT("TitleDirect","直接射门");
-	case Step::FormulaExplanation: return LOCTEXT("TitleFormula","理解公式");
-	case Step::Rewind: return LOCTEXT("TitleReplay","换个人，再试一次");
-	case Step::Summary: return LOCTEXT("TitleSummary","选对球员，改变结果");
-	case Step::Complete: return LOCTEXT("TitleComplete","教学已完成");
-	default: return FText();
-	}
-}
-FText Category(const FFMCodexGuidedLesson1& L)
-{
-	using Step=EFMCodexLesson1Step;
-	switch(L.GetStep())
-	{
-	case Step::TacticPoint: return LOCTEXT("CategoryTP","进攻战术点");
-	case Step::InspectOdegaard: case Step::InspectGyokeres: return LOCTEXT("CategoryInspect","查看球员");
-	case Step::Deploy: return L.IsComparison()?LOCTEXT("CategoryCompare","比较球员"):LOCTEXT("CategoryDeploy","部署球员");
-	case Step::FinishDeployment: return LOCTEXT("CategoryFinish","结束部署");
-	case Step::Carrier: return LOCTEXT("CategoryCarrier","持球队员");
-	case Step::Skill: return LOCTEXT("CategorySkill","选择战术");
-	case Step::DirectShot: return LOCTEXT("CategoryMethod","选择方式");
-	case Step::FormulaHover: case Step::FormulaExplanation: return LOCTEXT("CategoryFormula","公式");
-	case Step::AttackRoll: return LOCTEXT("CategoryRoll","进攻判定");
-	case Step::ResultReveal: return LOCTEXT("CategoryResult","远射结果");
-	case Step::RewindTransition: return LOCTEXT("CategoryReplay","教学重演");
-	default: return LOCTEXT("CategoryOpponent","对手行动");
-	}
-}
 class SLessonFocus final : public SCompoundWidget
 {
 public:
@@ -417,8 +376,9 @@ public:
 			const float CenterX=(R.Left+R.Right)*.5f;
 			const bool bOpponent=L->IsOpponentPresenting();
 			const float ArrowRoom=bOpponent?96.f:48.f;
-			const bool PreferSide=L->IsOpponentPresenting() || L->FocusTarget()==EFMCodexLesson1Focus::HandCard
-				|| L->FocusTarget()==EFMCodexLesson1Focus::Carrier || L->FocusTarget()==EFMCodexLesson1Focus::Deployment;
+			const bool PreferSide=L->Presentation().Arrow==EFMCodexGuideArrow::Side || (L->Presentation().Arrow==EFMCodexGuideArrow::Auto && (L->IsOpponentPresenting() || L->FocusTarget()==EFMCodexLesson1Focus::HandCard
+				|| L->FocusTarget()==EFMCodexLesson1Focus::Carrier || L->FocusTarget()==EFMCodexLesson1Focus::Deployment));
+			if(L->Presentation().Arrow==EFMCodexGuideArrow::None) continue;
 			const bool Above=R.Top>ArrowRoom && !PreferSide;
 			const float Bob=3.f*Pulse;
 			TArray<FVector2D> Arrow;
@@ -450,12 +410,11 @@ public:
 				const FSlateRoundedBoxBrush Label(FVisuals::Color(15,37,56),5.f,Skin().Amber,1.f);
 				DrawBox(FSlateRect(Left,Top,Left+48,Top+28),&Label,FLinearColor::White,Layer+1);
 				FSlateDrawElement::MakeText(Out,Layer+2,G.ToPaintGeometry(FVector2D(48,28),FSlateLayoutTransform(FVector2D(Left+9,Top+5))),
-					LOCTEXT("OpponentPointer","对手"),FCoreStyle::GetDefaultFontStyle("Regular",12),ESlateDrawEffect::None,Skin().Quiet);
+					L->Label(TEXT("OpponentPointer")),FCoreStyle::GetDefaultFontStyle("Regular",12),ESlateDrawEffect::None,Skin().Quiet);
 			}
 			if(PointerCount==1 && Above && (L->FocusTarget()==EFMCodexLesson1Focus::TacticPoint || L->FocusTarget()==EFMCodexLesson1Focus::FinishDeployment))
 			{
-				const FString Copy=L->FocusTarget()==EFMCodexLesson1Focus::TacticPoint
-					? LOCTEXT("PointerTP","掷出本回合的战术点").ToString():LOCTEXT("PointerFinish","确认球员已经就位").ToString();
+				const FString Copy=L->PointerLabel().ToString();
 				const float W=300.f,H=52.f;
 				const float Left=FMath::Clamp(CenterX-W*.5f,16.f,static_cast<float>(Size.X)-W-16.f);
 				const FSlateRect Bubble(Left,R.Top-94,Left+W,R.Top-94+H);
@@ -512,7 +471,7 @@ private:
 			ProxyBox->SetContent(SNew(SScaleBox).Stretch(EStretch::ScaleToFit)[ProxyCard->TakeWidget()]);
 			MutedSource=Source; SourceOpacity=Source->GetRenderOpacity(); Source->SetRenderOpacity(0.f);
 			L->BeginOpponentDeploymentMove();
-			UE_LOG(LogTemp,Display,TEXT("LESSON1_PROXY begin comparison=%d duration=%.2f source=(%.1f,%.1f) destination=(%.1f,%.1f)"),L->IsComparison(),L->OpponentDeployMove*L->OpponentPace(),ProxyFrom.Left,ProxyFrom.Top,ProxyTo.Left,ProxyTo.Top);
+			UE_LOG(LogTemp,Display,TEXT("LESSON1_PROXY begin comparison=%d duration=%.2f source=(%.1f,%.1f) destination=(%.1f,%.1f)"),L->IsComparison(),L->Timing(TEXT("OpponentDeployMove"))*L->OpponentPace(),ProxyFrom.Left,ProxyFrom.Top,ProxyTo.Left,ProxyTo.Top);
 			return;
 		}
 		if(bProxyArrivalPainted)
@@ -525,7 +484,7 @@ private:
 			return;
 		}
 		ProxySeconds+=FMath::Max(0.f,Delta);
-		const float T=FMath::Clamp(ProxySeconds/(L->OpponentDeployMove*L->OpponentPace()),0.f,1.f);
+		const float T=FMath::Clamp(ProxySeconds/(L->Timing(TEXT("OpponentDeployMove"))*L->OpponentPace()),0.f,1.f);
 		const float Ease=T*T*(3.f-2.f*T);
 		ProxyRect=FSlateRect(FMath::Lerp(ProxyFrom.Left,ProxyTo.Left,Ease),FMath::Lerp(ProxyFrom.Top,ProxyTo.Top,Ease),
 			FMath::Lerp(ProxyFrom.Right,ProxyTo.Right,Ease),FMath::Lerp(ProxyFrom.Bottom,ProxyTo.Bottom,Ease));
@@ -595,28 +554,28 @@ private:
 		[SNew(SBorder).BorderImage(&Skin().Panel).Padding(28)
 			[SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight().Padding(0,0,0,16)
-			[SNew(STextBlock).Text(LOCTEXT("ExitTitle","退出教学？")).Font(FCoreStyle::GetDefaultFontStyle("Bold",26)).ColorAndOpacity(Skin().White)]
+			[SNew(STextBlock).Text_Lambda([this](){ return Lesson()?Lesson()->Label(TEXT("ExitTitle")):FText(); }).Font(FCoreStyle::GetDefaultFontStyle("Bold",26)).ColorAndOpacity(Skin().White)]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0,0,0,24)
-			[SNew(STextBlock).Text(LOCTEXT("ExitBody","退出后将结束当前教学流程。")).Font(FCoreStyle::GetDefaultFontStyle("Regular",18)).ColorAndOpacity(Skin().Quiet)]
+			[SNew(STextBlock).Text_Lambda([this](){ return Lesson()?Lesson()->Label(TEXT("ExitBody")):FText(); }).Font(FCoreStyle::GetDefaultFontStyle("Regular",18)).ColorAndOpacity(Skin().Quiet)]
 			+ SVerticalBox::Slot().AutoHeight()
 			[SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0,0,12,0)
 				[SAssignNew(ContinueTeachingButton,SButton).Tag(TEXT("LessonExitCancel")).ButtonStyle(&Skin().Primary)
 					.OnClicked_Lambda([this](){ if(Lesson()) Lesson()->CancelExitConfirmation(); return FReply::Handled(); })
-					[SNew(STextBlock).Text(LOCTEXT("Stay","继续教学")).Font(FCoreStyle::GetDefaultFontStyle("Bold",18)).ColorAndOpacity(FVisuals::Color(4,30,39))]]
+					[SNew(STextBlock).Text_Lambda([this](){ return Lesson()?Lesson()->Label(TEXT("ExitCancel")):FText(); }).Font(FCoreStyle::GetDefaultFontStyle("Bold",18)).ColorAndOpacity(FVisuals::Color(4,30,39))]]
 				+ SHorizontalBox::Slot().AutoWidth()
 				[SNew(SButton).Tag(TEXT("LessonExitConfirm")).ButtonStyle(&Skin().Utility).ContentPadding(16)
 					.OnClicked_Lambda([this](){ if(Lesson() && Lesson()->ConfirmExit()) Controller->ExitGuidedLesson1(); return FReply::Handled(); })
-					[SNew(STextBlock).Text(LOCTEXT("Leave","退出教学")).Font(FCoreStyle::GetDefaultFontStyle("Regular",16)).ColorAndOpacity(Skin().Quiet)]]
+					[SNew(STextBlock).Text_Lambda([this](){ return Lesson()?Lesson()->Label(TEXT("ExitConfirm")):FText(); }).Font(FCoreStyle::GetDefaultFontStyle("Regular",16)).ColorAndOpacity(Skin().Quiet)]]
 			]
 		]];
 	}
 	TSharedRef<SWidget> ExitButton()
 	{
-		return SNew(SButton).Tag(TEXT("LessonExit")).ButtonStyle(&Skin().Utility).ContentPadding(FMargin(12,8))
+		return SNew(SButton).Tag(TEXT("LessonExit")).Visibility_Lambda([this](){ return Lesson() && Lesson()->Presentation().bShowExit?EVisibility::Visible:EVisibility::Collapsed; }).ButtonStyle(&Skin().Utility).ContentPadding(FMargin(12,8))
 			.IsEnabled_Lambda([this](){ return Lesson() && !Confirming(); })
 			.OnClicked_Lambda([this](){ if(Lesson()) Lesson()->RequestExitConfirmation(); return FReply::Handled().SetUserFocus(ContinueTeachingButton.ToSharedRef()); })
-			[SNew(STextBlock).Text(LOCTEXT("Exit","退出教学")).Font(FCoreStyle::GetDefaultFontStyle("Regular",12)).ColorAndOpacity(Skin().Quiet)];
+			[SNew(STextBlock).Text_Lambda([this](){ return Lesson()?Lesson()->Label(TEXT("ExitConfirm")):FText(); }).Font(FCoreStyle::GetDefaultFontStyle("Regular",12)).ColorAndOpacity(Skin().Quiet)];
 	}
 	TSharedRef<SWidget> TeachingText(TAttribute<FText> Copy, const FTextBlockStyle& TextStyle,
 		EFMCodexLesson1CopySurface Surface=EFMCodexLesson1CopySurface::Body, bool bWrap=true)
@@ -658,13 +617,12 @@ private:
 				+ SVerticalBox::Slot().AutoHeight().Padding(0,0,0,18)
 				[SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
-					[SNew(STextBlock).Text_Lambda([this](){ return Lesson() && Lesson()->IsComparison()
-						?LOCTEXT("EyebrowCompare","教学 · 换个人试试"):LOCTEXT("Eyebrow","教学 · 进攻入门"); })
+					[SNew(STextBlock).Text_Lambda([this](){ return Lesson()?Lesson()->Eyebrow():FText(); })
 						.Font(FCoreStyle::GetDefaultFontStyle("Regular",16)).ColorAndOpacity(Skin().Quiet)]
 					+ SHorizontalBox::Slot().AutoWidth()[ExitButton()]
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0,0,0,18)
-				[TeachingText(TAttribute<FText>::CreateLambda([this](){ return Lesson()?Heading(*Lesson()):FText(); }),Skin().HeadingText,EFMCodexLesson1CopySurface::Heading)]
+				[TeachingText(TAttribute<FText>::CreateLambda([this](){ return Lesson()?Lesson()->Heading():FText(); }),Skin().HeadingText,EFMCodexLesson1CopySurface::Heading)]
 				+ SVerticalBox::Slot().AutoHeight()
 				[TeachingText(TAttribute<FText>::CreateLambda([this](){ return Lesson()?Lesson()->Instruction():FText(); }),Skin().BodyText)]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0,14,0,0)
@@ -674,7 +632,7 @@ private:
 				+ SVerticalBox::Slot().AutoHeight().Padding(0,24,0,20)[RuleLine()]
 				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
 				[
-					SNew(SButton).Tag(TEXT("LessonExplanationContinue")).ButtonStyle(&Skin().Primary)
+					SNew(SButton).Tag(TEXT("LessonExplanationContinue")).Visibility_Lambda([this](){ return Lesson() && !Lesson()->PrimaryLabel().IsEmpty()?EVisibility::Visible:EVisibility::Collapsed; }).ButtonStyle(&Skin().Primary)
 					.OnClicked_Lambda([this](){ if(Controller.IsValid()) Controller->GuidedLesson1Primary(); return FReply::Handled(); })
 					[
 						SNew(SHorizontalBox)
@@ -697,13 +655,18 @@ private:
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0,0,12,0)
-				[TeachingText(TAttribute<FText>::CreateLambda([this](){ return Lesson()?Category(*Lesson()):FText(); }),Skin().CategoryText,EFMCodexLesson1CopySurface::Section,false)]
+				[TeachingText(TAttribute<FText>::CreateLambda([this](){ return Lesson()?Lesson()->Heading():FText(); }),Skin().CategoryText,EFMCodexLesson1CopySurface::Section,false)]
 				+ SHorizontalBox::Slot().AutoWidth().Padding(0,2,12,2)
 				[SNew(SBox).WidthOverride(1.f)
 					[SNew(SBorder).Padding(0).BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush")).BorderBackgroundColor(Skin().Amber)]]
 				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
 				[TeachingText(TAttribute<FText>::CreateLambda([this](){ return Lesson()?Lesson()->Instruction():FText(); }),Skin().ActionText)]
 			]
+            + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
+            [SNew(SButton).ButtonStyle(&Skin().Primary).ContentPadding(16)
+             .Visibility_Lambda([this](){ return Lesson() && !Lesson()->PrimaryLabel().IsEmpty()?EVisibility::Visible:EVisibility::Collapsed; })
+             .OnClicked_Lambda([this](){ if(Controller.IsValid()) Controller->GuidedLesson1Primary(); return FReply::Handled(); })
+             [SNew(STextBlock).Text_Lambda([this](){ return Lesson()?Lesson()->PrimaryLabel():FText(); }).ColorAndOpacity(FVisuals::Color(4,30,39))]]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0,10,0,0)
 			[SNew(SBox).Visibility_Lambda([this](){ return Lesson() && !Lesson()->Explanation().IsEmpty()?EVisibility::HitTestInvisible:EVisibility::Collapsed; })
 				[TeachingText(TAttribute<FText>::CreateLambda([this](){ return Lesson()?Lesson()->Explanation():FText(); }),Skin().SmallText,EFMCodexLesson1CopySurface::Secondary)]]
@@ -726,5 +689,4 @@ private:
 };
 TSharedRef<SWidget> Build(AFMCodexLocalMatchPlayerController* C) { return SNew(SLessonFocus,C); }
 }
-#undef LOCTEXT_NAMESPACE
 #endif

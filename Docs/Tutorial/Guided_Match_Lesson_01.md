@@ -1,5 +1,18 @@
 # Guided Match Lesson 1 — 第一次进攻：找到适合远射的球员
 
+## Stage 8.25A — canonical 内容源（当前维护合同）
+
+`ContentSource/Tutorial/FMCodex_Guided_Match.xlsx` 是教学文案／表现配置的唯一可编辑来源；`Scripts/ImportGuidedMatchContent.py --write` 验证并生成受版本控制的 `Content/Data/CanonicalGuidedMatchContent.json`，再由 `FFMCodexGuidedMatchContent` 只读加载，供 `FFMCodexGuidedLesson1` 与原 `SLessonFocus` 消费。沿用球员内容的 XLSX→标准库 Python→Content/Data JSON→fail-closed 模型约定，教学 schema 独立为 1。
+
+文案、标题／栏目、CTA、逐字点的精确 span、语义目标、两种既有 surface、箭头偏好、退出显示和教学等待时间均已迁移。维护方法、全部字段／TargetId／typed placeholders、emphasis occurrence 与时间单位见 [内容维护说明](Guided_Match_Lesson_01_Copy_Script.md)。旧 Markdown 文案表已撤销权威，不再要求改 C++ 字符串。
+
+每次启动重新加载 canonical JSON；丢失、版本不匹配、未知键、缺失必需步骤或非法数据时在变更比赛前明确拒绝 launch，无旧文案 fallback。标题／正文用已校验模板绑定现有 preferred display name、射门、技能范围、特性名称和 live TP／Formula base；不执行表达式、不重新计算 Formula。
+
+Stage 8.24B 已接受的呈现与两次进攻流程保持。C++ 继续拥有状态／推进、手牌及参与者、input gating、typed actions、固定 TP3／5／3、checkpoint、终局和退出；配置只能描述当前步骤。原 Full Card 几何、逐字点绘制、对手代理曲线与真实落位、生产揭示／庆祝均复用。下文历史数值／文案是行为背景，维护时以工作簿为准，不能当作另一个内容源。
+
+本阶段验证预算：1 项 Python 源验证，2 项 C++ 内容等价／绑定检查，原 `FlowAndCheckpoint`，1 次增量 Development Editor build，1 条真实 `FullFlow` PIE 与 `git diff --check`。不触及规则、玩家源、Network authority 或全局生命周期，省略 broad suites／Host-Remote／Game／Shipping／cook。**USER PIE REQUIRED**：确认迁移后文案、逐字点、焦点、节奏和流程无变化。
+
+
 ## Stage 8.24B — Final Interaction Polish（当前表现合同）
 
 本节替代 Pass 1／2、Final Visual-System 与 Copy & Pacing 的相关表现参数；下节 v1 的生产所有权保持，旧教学顺序以本节为准。仍是同一未提交 Stage，工程 PIE 不代替 USER PIE。逐步文案与强调规则以 [Lesson 1 Copy Script](Guided_Match_Lesson_01_Copy_Script.md) 为维护依据；它是文档，不是运行时内容系统。

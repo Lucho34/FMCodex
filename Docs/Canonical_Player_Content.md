@@ -21,6 +21,10 @@ ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx
 
 `Content/Data/CanonicalPlayerContent.json` is generated output. Do not edit it by hand. Packaging stages `Content/Data` as UFS content so the same validated JSON is available to editor and packaged runtime builds. Loading and validation are fail-closed: invalid or partial data does not publish a partial catalog.
 
+## Guided Match content consumer
+
+Stage 8.25A follows this source/import policy for tutorial presentation only: `ContentSource/Tutorial/FMCodex_Guided_Match.xlsx` → `Scripts/ImportGuidedMatchContent.py` → committed `Content/Data/CanonicalGuidedMatchContent.json`. It reuses this importer's standard-library OOXML reader, deterministic provenance, whole-input validation and atomic publish philosophy. Tutorial schema 1 is independent of player schema 4; no player source, generated player data, loader or balance changes. See [tutorial authoring](Tutorial/Guided_Match_Lesson_01_Copy_Script.md).
+
 ## Identity and ordering
 
 - `PlayerKey` is the stable technical identity and becomes the runtime `CardId`. It is supplied by the import config, not inferred from a mutable name or serial.

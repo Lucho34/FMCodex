@@ -1,78 +1,69 @@
-# Guided Lesson 1 — 文案与强调脚本
+# Guided Match 教学内容维护
 
-Stage 8.24B 当前文案维护表；与 [Lesson 1 当前合同](Guided_Match_Lesson_01.md) 配套。修改文案时同步本表、`FMCodexGuidedLesson1.cpp` 的 Instruction／Explanation／ConceptKeywords，以及必要的 focused 断言。标题／栏目在 `FMCodexGuidedLesson1Focus.cpp` 的 Heading／Category。本文不被运行时加载，不新增内容引擎。
+**唯一可编辑内容源：`ContentSource/Tutorial/FMCodex_Guided_Match.xlsx`。**
 
-## 强调规则
+本文件自 Stage 8.25A 起是导入／维护说明，旧文案表已经迁移，不再是另一份文案真值。当前行为合同见 [Lesson 1](Guided_Match_Lesson_01.md)。C++ 只保留状态与语义绑定，不保留旧正文 fallback。生成的 `Content/Data/CanonicalGuidedMatchContent.json` 必须与工作簿一起由用户手动提交，禁止手工改 JSON。
 
-- 表中 H 是白色弹窗标题，B 是白色正文；栏目均为蓝色，无点。未列出的短语不加点。每个已列短语仅标记该表面首次出现，重叠时完整长短语优先；不为同句其它出现或泛称自动补点。
-- 蓝色眉题“教学 · 进攻入门／教学 · 换个人试试”、栏目、次级小字、操作反馈均无点。CTA 保持现有按钮样式，无点。
-- 短语中每个可见汉字／字母／数字一颗点，空格与标点无点；按当前字体测量 advance 与点径，保留原逐字渲染和 Slate 换行。
-- “结束部署”只在 FinishExplanation／FinishDeployment 的正文中强调；尾句“结束本次部署”的泛称不强调。对手操作提示不重复讲授这个关键词。
-- 首轮跳过独立 ShootingExplanation。首轮公式仍按明确文案要求说明当前射门 4 的来源；第二轮再用真实 SHO 行讲授“直接射门使用射门属性”。
+## 编辑与导入
 
-## 步骤脚本
+1. 用 Excel 修改所需单元格。保留表头和稳定 ID，使用字面值，不写 Excel 公式、脚本、函数名或坐标。
+2. 从仓库根目录运行 `python Scripts/ImportGuidedMatchContent.py --write`。需要 Python 3，无 Office、第三方 Python 包或 UE importer 依赖。
+3. 查看生成 JSON diff，再运行 `python Scripts/ImportGuidedMatchContent.py --check`。校验失败不会替换已生成文件。
+4. 在 Local Development 中重新启动 `fm.Tutorial.Lesson1`，每次启动重新读取 JSON。仅修改已有文案／配置不需要编译 C++。
 
-“／”表示明确换行；“首／次”指第一次进攻／重演后的比较轮。目标是既有语义绑定，不是屏幕坐标。未指定目标的解释弹窗不额外画焦点。
+## Schema 1
 
-| Step ID / 轮次 | 标题或蓝色栏目 | 正文 | 点字短语 | 明确排除 | 高亮目标 | 推进／计时 |
-|---|---|---|---|---|---|---|
-| Intro | 进行一次远射 | 先掷出本回合的进攻战术点。 | H：远射；B：进攻战术点 | 眉题、CTA | 无 | 开始操作 |
-| TacticPoint | 进攻战术点（栏目） | 掷出本回合的进攻战术点。 | B：进攻战术点 | 蓝色栏目 | TacticPoint | 真实掷 TP，生产 reveal |
-| TacticPointExplanation / 首 | 观察球员技能 | 本回合进攻战术点为 3。鼠标移动至本方球员区哲凯赖什处悬停，查看技能。 | H：技能；B：进攻战术点、技能 | 球员名、数值 | 无 | 继续 |
-| InspectGyokeres / 首 | 查看球员（栏目） | 鼠标移动至本方球员区哲凯赖什处悬停，查看技能。 | B：技能 | 蓝色栏目、球员名 | HandCard：Gyokeres | 实际 Full Card 可见 |
-| SkillRangeExplanation / 两轮 | 远射 · 3–5 | 远射技能范围为 3–5。当前进攻战术点为 3，落在范围内，因此可以使用远射。 | H：远射；B：远射技能、进攻战术点 | 末尾远射、数字与标点 | Full Card：Canonical.Skill.LongShot.3.5 | 继续；首轮→Deploy，比较轮→ShootingExplanation |
-| Deploy / 首 | 部署球员（栏目） | 部署球员，点住鼠标左键将哲凯赖什拖到高亮位置。 | B：部署球员 | 蓝色栏目、球员名 | Gyokeres 手牌 + Demo.Slot.NearB.03 | 真实拖放 |
-| OpponentDeploy / 两轮 | 对手行动（栏目） | 命令前：对手准备部署斯通斯。命令后：斯通斯已部署到高亮位置。 | 无 | 全部操作叙述 | Stones 手牌→移动代理→Demo.Slot.NearB.04→无 | 见下方节奏表 |
-| FinishExplanation / 首 | 球员已经就位 | 斯通斯已上场。此次远射只需一名进攻球员，可以结束部署。 | B：结束部署 | 标题、远射、泛称部署 | 无 | 继续 |
-| FinishDeployment / 两轮 | 结束部署（栏目） | 点击“结束部署”，结束本次部署。 | B：结束部署 | 栏目、尾句部署 | FinishDeployment | 真实结束部署按钮 |
-| OpponentFinish / 首 | 对手行动（栏目） | 命令前：对手正在结束部署。命令后：对手已结束部署。 | 无 | 所有部署提及 | Player B Header 状态区域 | 见节奏表 |
-| OpponentFinish / 次 | 对手行动（栏目） | 命令前：对手正在结束部署。命令后：对手已结束部署。 | 无 | 所有部署提及 | 同上 | 见节奏表 |
-| CarrierExplanation / 首 | 选择持球队员 | 点击场上的哲凯赖什，将他选中为本进攻回合的持球队员。 | H／B：持球队员 | 球员名 | 无 | 继续 |
-| Carrier / 两轮 | 持球队员（栏目） | 首：点击场上的哲凯赖什，将他选中为本进攻回合的持球队员。次：点击场上的厄德高，将他选中为本进攻回合的持球队员。 | B：持球队员 | 栏目、球员名 | 当前 Attacker 场上卡 | 真实选择 |
-| OpponentMarker / 两轮 | 对手行动（栏目） | 命令前：对手选择斯通斯作为盯人球员。命令后：斯通斯已成为本回合的盯人球员。 | 无 | 盯人等操作叙述 | Stones 场上卡 | 见节奏表 |
-| SkillExplanation / 首 | 选择远射战术 | 哲凯赖什当前可用的进攻技能是远射。接下来点击左下角“远射”。 | H／B：远射 | 技能、第二次远射 | 无 | 继续 |
-| Skill / 两轮 | 选择战术（栏目） | 点击左下角的“远射” | B：远射 | 栏目、引号 | Skill：Canonical.Skill.LongShot.3.5 | 真实选择 |
-| DirectExplanation / 首 | 直接射门 | 进攻分支下有具体说明，这次请选择‘直接射门’。 | H／B：直接射门 | 引号、其它叙述 | 无 | 继续 |
-| DirectShot / 两轮 | 选择方式（栏目） | 选择“直接射门” | B：直接射门 | 栏目、引号 | DirectShot | 真实生产方法按钮 |
-| FormulaHover / 首 | 公式（栏目） | 将鼠标悬停在进攻公式的数字 4 上，查看属性值的来源。 | B：属性值 | 栏目、正文公式、数字 | TheaterAttackBaseHover | 生产 FormulaHold + reveal ready；真实 native tooltip 打开 |
-| FormulaExplanation / 首 | 理解公式 | 悬停属性值，可查看它的来源。／公式总值由属性值与掷骰值相加得到。／本次属性值仅来自哲凯赖什的射门 4。 | H：公式；B：属性值、公式总值、掷骰值 | 后续属性值、射门、数字 | TheaterAttackBaseHover | 统一 ModalPanel；继续后才允许掷骰 |
-| AttackRoll / 两轮 | 进攻判定（栏目） | 点击“进攻方掷远射点数”。 | 无 | 已教过的动作名称 | AttackRoll | 真实生产 CTA |
-| OpponentDefense / 两轮 | 对手行动（栏目） | 对手正在进行防守判定。 | 无 | 所有操作叙述 | 无 | 起手后交还生产 Reel／Scene |
-| ResultReveal / 两轮 | 远射结果（栏目） | 看看这次远射的结果。 | 无 | 全部 | 无 | 教学让出生产表现 |
-| FailurePause / 首 | 不显示教学 | 无 | 无 | 全部 | 无 | disclosed Direct ResultHold 后干净画面 1.60s |
-| Rewind / 首 | 换个人，再试一次 | 哲凯赖什可以使用远射技能，但他没有远射特性。让我们换个人试试吧。 | B：远射技能、远射特性 | 标题、球员名 | 无 | 统一 ModalPanel；让时间倒流，换个人试试 |
-| RewindTransition | 教学重演 | 教学重演 | 无 | 全部 | 无 | 0.70s；原预定义 checkpoint |
-| InspectOdegaard / 次 | 查看球员（栏目） | 鼠标移动至本方球员区厄德高处悬停，查看技能。 | B：技能 | 栏目、球员名 | HandCard：Odegaard | 实际 Full Card 可见→SkillRangeExplanation |
-| ShootingExplanation / 仅次 | 观察射门属性 | 厄德高的射门也是 4。这是直接射门所使用的基础属性。 | H：射门；B：射门、直接射门 | 4、泛称属性 | Full Card：SHO | 继续→TraitExplanation |
-| TraitExplanation / 仅次 | 远射专家 A | 厄德高拥有「远射专家 A」。直接远射时，这项特性提供射门 +2。 | H：远射专家 A；B：远射专家 A、特性、射门 | 空格、标点、+2 | Full Card：Trait.LongShotCarrier | 继续→Deploy |
-| Deploy / 次，初始 | 比较球员（栏目） | 两人的射门都是 4。选择更适合远射的球员。 | B：射门 | 栏目、远射、数字 | Odegaard 手牌 + Demo.Slot.NearB.03 | 真实拖放 |
-| Deploy / 次，提示1 | 比较球员（栏目） | 打开球员卡，看看“特性”。 | B：特性 | 栏目、引号 | 同上 | 等待 12s |
-| Deploy / 次，提示2 | 比较球员（栏目） | “远射专家”可以提高直接远射时的射门能力。 | B：远射专家 | 栏目、后文射门 | 同上 | 等待 25s |
-| Summary / 次 | 选对球员，改变结果 | 相同的射门属性和骰点下，适合战术的特性改变了结果。／先考虑战术，再选择适合它的球员。 | B：射门、特性 | 标题、其它叙述 | 无 | 生产 Goal、自然庆祝结束后；完成教学 |
-| Complete | 教学已完成 | 教学已完成。你已体验如何选择适合战术的球员。 | 无 | 全部 | 无 | 返回普通对局 |
-
-## 次级文本与反馈（全部不加点）
-
-| 用途 | 文案 | 备注 |
+| Sheet | 列 | 用途 |
 |---|---|---|
-| Deploy / 次，蓝色说明 | 这一次，厄德高也可以上场。这是本课新增的选择；悬停卡牌查看特性。 | 小字，始终无点 |
-| Summary，蓝色说明 | 本次对照中，远射专家 A 提供了射门 +2。正式比赛中，结果仍会受到骰点和对手配置影响。 | 小字，始终无点 |
-| Rewind，蓝色说明 | 无 | 删除原正式比赛不可撤销提示段落；不改变重演范围 |
-| 尝试比较轮部署 Gyokeres | 哲凯赖什的射门也是 4，但没有远射加成。再看看另一名球员的特性。 | 反馈 6s，拒绝提交，不消耗进攻 |
-| 其它不可用操作 | 本课暂不练习这项操作，请按当前提示继续。 | 反馈 6s |
-| 预期外首次进球／比较轮失败 | 教学条件与预期不同，请退出教学并检查场景配置。 | 不冒充预期结果 |
+| Lessons | LessonId, SchemaVersion, Enabled, TitleCN, ComparisonTitleCN, Notes | 元数据与两轮眉题 |
+| Steps | LessonId, StepId, SurfaceType, TitleCN, BodyCN, SecondaryCN, CTA_CN, FocusTargetId, ArrowPlacement, ShowExit, PointerCN, Notes | 标题或蓝色栏目、正文、小字、CTA、语义目标和表现选项 |
+| Emphasis | LessonId, StepId, Field, MatchText, Occurrence, Style | 精确强调位置 |
+| Timings | LessonId, TimingId, Value, Notes | 教学秒数与 ComparisonPace 倍率 |
+| Labels | LessonId, LabelId, TextCN, Notes | 退出确认、反馈、侧栏、对手与进度标签 |
 
-对手指示只有一个，琥珀箭头旁小标签为“对手”，无关键词点；接受后跟随真实目标，棋盘最终停留、生产动画、退出／重演时清除。技能范围弹窗使用 Full Card 右侧剩余空间、向球场中心靠拢并略低于中线的布局，不覆盖卡面。攻骰结束至防守期间不显示旧 AttackRoll 条或解释弹窗。
+当前只提供 `Lesson01`。`StepId` 是代码查询键；`.Comparison`、`.Hint1`、`.Hint2`、`.After`、`.Unexpected` 是既有代码状态选择的呈现变体，不是可执行分支。新增 lesson 可增加相同 schema 的数据行，但仍须单独实现／授权相应 orchestration，写一行不会启动课程。schema 改动须同步 generator、C++ loader、focused 合同和版本号；不复用 player schema。
 
-## 对手节奏
+两种 surface 是 `ExplanationPanel` 和 `CompactActionBar`。需要继续的解释步骤必须保留 CTA，允许使用现有解释面板或带继续按钮的紧凑条。需要真实生产操作的步骤必须使用 CompactActionBar，不可用模态面板挡住目标。CTA 文案可编辑，行为不由数据指定。
 
-计时使用教学 elapsed time（移动使用真实 Slate Delta）；只有接受的原 typed action 才进入落位／结果停留，submitted 状态防止重复提交。不延长生产动画，不改变权威动作顺序。
+## 强调：只改哪段，不改怎样画
 
-| 动作 | 首轮 | 比较轮 | 结束后 |
-|---|---|---|---|
-| 部署 | 来源注意 0.75s → 代理移动 0.80s → 已绘制抵达 → 原命令 → 真实目标高亮 1.05s → 干净棋盘 1.20s；约 3.80s | 注意／移动／目标高亮 × 0.80，干净棋盘仍 1.20s；约 3.28s | 下一教学说明 |
-| 结束部署 | 0.70s + 0.50s → 命令 → 结果停留 1.10s；总 2.30s | 命令前 × 0.80，结果停留仍 1.10s；总 2.06s | Carrier |
-| 盯人 | 0.70s + 0.75s → 命令 → 结果停留 1.10s；总 2.55s | 命令前 × 0.80，结果停留仍 1.10s；总 2.26s | Skill |
-| 防守判定 | 起手 0.65s | 起手 0.52s | 生产 Reel／Formula／Outcome 接管，教学不另叠停留 |
+`Field` 仅支持白色 `TitleCN`／`BodyCN`；蓝色栏目、小字、眉题、CTA、反馈不加点。`Style` 仅为 `PerGlyphDots`。
 
-失败到回溯的 1.60s 从当前 AttackSequence 的生产 Direct ResultHold 可见、原 reveal gate 解除、无活动庆祝后开始；不从 raw authoritative outcome 开始计时。重演后的 5／3、9 对 10／11 对 10、score/scorer、GK 和网络边界均不属于本表可修改内容。
+例如 `FinishDeployment` 的正文是“点击‘结束部署’，结束本次部署。”：填写 `MatchText=结束部署`、`Occurrence=1`，只强调第一次完整短语。尾句的“部署”没有对应行，因而不加点。Occurrence 从 1 开始，按同一字段内不重叠的完整匹配计数；同词第二次要加点必须明确写 2。找不到短语、重复／交叠的强调范围一律报错，不按最长词自动修复。
+
+强调先在模板中确定，再插入动态值。要强调动态特性名称，MatchText 填整个 `{LongShot.TraitName}`；不能切开变量。数据没有 glyph 坐标、点径或字宽。现有 Slate inline decorator、FontMeasure、每字白点及标点过滤仍负责渲染。
+
+## 动态值
+
+| 白名单变量 | 只读来源 |
+|---|---|
+| Carrier.DisplayName / Carrier.Shooting | 当前代码指定进攻球员的 canonical 目录 |
+| FirstCarrier.DisplayName / FirstCarrier.Shooting | 首轮球员 canonical 目录 |
+| ComparisonCarrier.DisplayName / ComparisonCarrier.Shooting | 对照球员 canonical 目录 |
+| Marker.DisplayName | 代码指定盯人球员的 preferred display name |
+| CurrentAttackTP | 当前 Local viewer-safe InteractionView.ActionPoint |
+| LongShot.SkillMin / LongShot.SkillMax | 当前球员 canonical SkillAssignment 的真实范围 |
+| LongShot.TraitName | 现有生产特性显示名与 canonical rank |
+| Formula.AttackBaseValue | 已投影 Formula AttackRow.KnownNonRollSubtotal；不重新相加 |
+
+用 `{变量名}` 原样填写。未知变量、拼错字段、缺少绑定会报错，绝不把花括号原文或旧文案当 fallback。TP 在掷点前不可用，Formula 值只能用于已有 Formula 的步骤；全局标签只允许静态绑定。
+
+说明中的固定“射门 +2”仍是本课既定 A 特性的规则教学文本，不是数值配置，也不参与计算。规则教学措辞改变仍需核对 canonical rules；本阶段不建立规则文本自动生成器。原场景启动校验继续要求双方射门 4、指定技能／特性、TP3 与固定骰，数据不决定这些条件。球员数据与规则发生变化后，场景不满足要求会明确拒绝启动，不能仅改文案绕过。
+
+## 语义目标与箭头
+
+允许目标：`None`、`Button.TacticalPoint`、`PlayerHand.Carrier`、`Deployment.Carrier`、`Button.EndDeployment`、`Field.Carrier`、`Button.LongShot`、`Theater.DirectShot`、`Formula.AttackBaseValue`、`Button.AttackRoll`、`FullCard.Skill.LongShot`、`FullCard.Attribute.SHO`、`FullCard.Trait.LongShotCarrier`、`Opponent.Deployment`、`Header.Opponent`、`Field.Marker`。
+
+loader 将 TargetId 映射到教学专属 enum；原 resolver 再取得真实控件和实时 Slate 几何。Opponent.Deployment 根据既有呈现阶段指向来源卡、移动代理或真实落位卡；末尾干净停留清除箭头。配置不选择 gameplay participants，不搜索中文、不猜控件名、不包含坐标。ArrowPlacement 只支持 Auto／Above／Side／None，实际可用空间与防遮挡仍由 renderer 处理。ShowExit 不能覆盖生产动画期间的既有让出规则。
+
+## 教学时间
+
+Timings 配置源注意、代理移动、目标强调、结束停留、防守起手、失败后讲解、重演等待、提示递进和反馈存续。除 ComparisonPace 为倍率外，单位均为秒。保留已接受的首轮 0.75／0.80／1.05／1.20 与比较前段 ×0.80、失败 1.60；具体可编辑数值以工作簿为准。
+
+校验要求有限非负值，普通项 0–60；移动时长 0.05–10，倍率 0.05–2；两级提示时间必须递增。计时只消费真实 elapsed time。生产 Reel、Formula reveal、Tactical Scene、Outcome、Goal Celebration、score disclosure 均不读取这些参数。
+
+## 校验与失败
+
+Python 复用球员 importer 的标准库 OOXML reader；整份源通过验证后原子替换输出。相同源字节产生相同 JSON，含源 basename 与 SHA256，无生成时间戳。`--input`／`--output` 可指定显式路径；`--check` 不写文件。
+
+C++ 同样验证 schema、字段类型、唯一性、完整 Lesson01 绑定、surface／target／arrow、timing、placeholder 和 emphasis；失败不发布半份模型。Host 在改变当前 runtime 前加载候选内容，缺失／错误时记录具体错误并拒绝 launch。数据读取使用已有 Content/Data UFS 路径；runtime 不读 Excel，不依赖 Python 或 Office。

@@ -110,6 +110,12 @@ public:
 		auto* L=C->GetGuidedLesson1();
 		auto* S=C->GetPlayerMatchScreen();
 		if(!T->TestNotNull(TEXT("Development console entered lesson"),L)) return true;
+		if(!bCanonicalChecked)
+		{
+			T->TestTrue(TEXT("Real PIE consumes validated canonical tutorial content"),L->IsContentReady() && L->ContentSourceHash().Len()==64);
+			T->AddInfo(TEXT("GUIDED_CONTENT runtime sha256=")+L->ContentSourceHash());
+			bCanonicalChecked=true;
+		}
 		if (!bExitCancelChecked && L->GetStep()==EFMCodexLesson1Step::Intro && Now-Changed>1.4)
 		{
 			if (ExitPhase==0)
@@ -175,10 +181,10 @@ public:
 				T->TestTrue(TEXT("Opponent source visible for deliberate selection"),OpponentDeployed[Attempt]-OpponentBegan[Attempt]>=1.1);
 				// Each boundary is observed at the next automation tick; allow the measured
 				// sampling gap rather than a threshold tied to a previous pacing constant.
-				const double DestinationMinimum=FFMCodexGuidedLesson1::OpponentDestinationHold*L->OpponentPace()-2.*OpponentSampleGap[Attempt];
+				const double DestinationMinimum=L->Timing(TEXT("OpponentDestinationHold"))*L->OpponentPace()-2.*OpponentSampleGap[Attempt];
 				T->TestTrue(TEXT("Opponent destination remains visible"),OpponentSettled[Attempt]-OpponentDeployed[Attempt]>=DestinationMinimum);
-				T->TestTrue(TEXT("Full board hold precedes next instruction in both attempts"),Now-OpponentSettled[Attempt]>=FFMCodexGuidedLesson1::OpponentDeploySettledHold-2.*OpponentSampleGap[Attempt]);
-				T->TestTrue(TEXT("Both attempts visibly travel before command acceptance"),OpponentMoving[Attempt]>0 && OpponentDeployed[Attempt]-OpponentMoving[Attempt]>=FFMCodexGuidedLesson1::OpponentDeployMove*L->OpponentPace()-2.*OpponentSampleGap[Attempt]);
+				T->TestTrue(TEXT("Full board hold precedes next instruction in both attempts"),Now-OpponentSettled[Attempt]>=L->Timing(TEXT("OpponentDeploySettledHold"))-2.*OpponentSampleGap[Attempt]);
+				T->TestTrue(TEXT("Both attempts visibly travel before command acceptance"),OpponentMoving[Attempt]>0 && OpponentDeployed[Attempt]-OpponentMoving[Attempt]>=L->Timing(TEXT("OpponentDeployMove"))*L->OpponentPace()-2.*OpponentSampleGap[Attempt]);
 				T->AddInfo(FString::Printf(TEXT("GUIDED_OPPONENT_DEPLOY attempt=%d source=%.2fs destination=%.2fs settle=%.2fs total=%.2fs"),Attempt+1,
 					OpponentDeployed[Attempt]-OpponentBegan[Attempt],OpponentSettled[Attempt]-OpponentDeployed[Attempt],Now-OpponentSettled[Attempt],Now-OpponentBegan[Attempt]));
 			}
@@ -228,7 +234,7 @@ public:
 		if (L->GetStep()==EFMCodexLesson1Step::Rewind && FailurePopupAt==0)
 		{
 			FailurePopupAt=Now;
-			T->TestTrue(TEXT("Popup transition follows extended disclosed failure hold"),FailureVisibleAt>0 && FailurePopupAt-FailureVisibleAt>=FFMCodexGuidedLesson1::FailureFollowupDelay-.1);
+			T->TestTrue(TEXT("Popup transition follows extended disclosed failure hold"),FailureVisibleAt>0 && FailurePopupAt-FailureVisibleAt>=L->Timing(TEXT("FailureFollowupDelay"))-.1);
 			T->AddInfo(FString::Printf(TEXT("GUIDED_FAILURE_FOLLOWUP_DELAY %.2fs"),FailurePopupAt-FailureVisibleAt));
 		}
 		if(Scene.IsAnimating() || Scene.Celebration.IsActive())
@@ -408,7 +414,7 @@ public:
 			T->TestEqual(TEXT("Visible continue permits attack instruction"),L->GetStep(),Step::AttackRoll); break;
 		}
 		case Step::Rewind:
-			T->TestTrue(TEXT("Follow-up waited for extended visible failure hold"),FailureVisibleAt>0 && Now-FailureVisibleAt>=FFMCodexGuidedLesson1::FailureFollowupDelay-.1);
+			T->TestTrue(TEXT("Follow-up waited for extended visible failure hold"),FailureVisibleAt>0 && Now-FailureVisibleAt>=L->Timing(TEXT("FailureFollowupDelay"))-.1);
 			T->TestTrue(TEXT("Rewind uses only the concise main explanation"),L->Explanation().IsEmpty());
 			T->TestTrue(TEXT("Clean failure moment captured before popup"),bFailureCaptured);
 			T->TestTrue(TEXT("First production Outcome was observed"),bFirstOutcome);
@@ -522,18 +528,18 @@ private:
 	}
 	void Capture(const TCHAR* Name)
 	{
-		// This pass captures only changed presentation contracts, within the one full flow.
+		// Two representative migration views; behavioral assertions cover the rest.
 		const FString N(Name);
-		if(N!=TEXT("06_SkillRangeInspection.png") && !N.StartsWith(TEXT("09_Opponent")) && !N.StartsWith(TEXT("10_"))
-			&& N!=TEXT("14_PostAttackHandoff.png") && N!=TEXT("NormalHoverFailure.png")) return;
+		if(N!=TEXT("01_Intro.png") && N!=TEXT("13_FormulaSourceTeaching.png") && N!=TEXT("NormalHoverFailure.png")) return;
 		auto Window=GEditor->PlayWorld->GetGameViewport()->GetWindow();
 		TArray<FColor> Pixels; FIntVector Size = FIntVector::ZeroValue;
 		if(!Window || !FSlateApplication::Get().TakeScreenshot(Window->GetContent(),Pixels,Size)) { T->AddError(TEXT("PIE capture unavailable")); return; }
-		const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_24B_Interaction/PIERepair"); IFileManager::Get().MakeDirectory(*Dir,true);
+		const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_25A/PIE"); IFileManager::Get().MakeDirectory(*Dir,true);
 		TArray64<uint8> PNG; FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
 		T->TestTrue(TEXT("Actual lesson window captured"),FFileHelper::SaveArrayToFile(PNG,*(Dir/Name)));
 	}
 	FAutomationTestBase* T;
+	bool bCanonicalChecked=false;
 	double Started=FPlatformTime::Seconds(),Changed=0;
 	double NormalHoverSentAt=0;
 	TWeakObjectPtr<UFMCodexPlayerCardWidget> NormalHoverCard;

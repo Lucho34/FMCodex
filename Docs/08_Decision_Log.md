@@ -2889,3 +2889,12 @@ Lesson1 取消生产 Tactical Scene 排除，直接复用原安全投影、Metho
 单一琥珀箭头加小“对手”标签依操作切换：部署来源→代理→真实场上卡→清除；结束部署指向真实 Player B 状态区（无伪按钮）；选盯人指向实际场上斯通斯。退出、确认、重演、生产动画让出时清理／隐藏。持球提示改为“点击场上的哲凯赖什，将他选中为本进攻回合的持球队员。”，比较轮替换球员名。逐字点、公式 hover/tooltip、1.60s 失败后续、5／3、9 对 10／11 对 10、score/scorer、GK、Network 与球员数据保持。
 
 验证限 FocusModeAndGating、一次增量 Development Editor build、一次 FullFlow 真实 PIE 和 diff 检查；仅具体编译／测试／运行缺陷允许补跑，工程证据不能代替 USER PIE。当前 [教学合同](Tutorial/Guided_Match_Lesson_01.md) 与 [文案脚本](Tutorial/Guided_Match_Lesson_01_Copy_Script.md) 为本轮维护入口，不开始下一 Stage。
+
+
+### Stage 8.25A — Guided Match canonical content source
+
+Lesson01 的已接受内容迁入版本控制的 `ContentSource/Tutorial/FMCodex_Guided_Match.xlsx`。标准库 Python importer 复用球员 OOXML reader，强校验后原子生成 `Content/Data/CanonicalGuidedMatchContent.json`；C++ 只读 loader 再验证完整模型。沿用 Content/Data UFS，runtime 无 Excel／Python 依赖；独立 schema 1，源 SHA256 与确定性输出共同标识来源。旧 copy script 改为导入维护说明，不保留竞争文案源或硬编码 fallback。
+
+Steps 按稳定 ID 查询；配置只拥有文案、CTA、精确强调 span、已注册语义目标、既有面板／动作条、箭头偏好、退出显示和教学计时。Emphasis 按字段、完整短语及显式 occurrence 在模板插值前定位，重叠／缺失直接报错；逐字白点仍由既有 FontMeasure 渲染。动态变量白名单读取 canonical 玩家资料和当前 safe View 的 TP／Formula 基础值，未知／缺失绑定拒绝；不做表达式或 Formula 计算。固定特性规则说明不是计算配置，场景前置校验继续保护既定条件。
+
+原状态推进、等待生产揭示、输入门控、真实对手 typed command、5／3、9 对 10／11 对 10、rewind、Goal／score／scorer、GK 与 Network 均不变。启动先校验候选内容再创建教学 runtime；失败保留现有对局并记录具体错误。仅 Lesson1，无 Lesson2、脚本语言、localization 扩展或教学框架重写。最小验证为源校验、迁移等价、配置绑定、原 FlowAndCheckpoint、一次增量 Editor build 和一次 FullFlow PIE；表现等价仍须 USER PIE，staging/commit 留给用户。

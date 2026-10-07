@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #if !UE_BUILD_SHIPPING
 #include "FMCodexMatchScreenBackend.h"
+#include "FMCodexGuidedMatchContent.h"
 #include "FMCodexTacticalScene.h"
 #include "FMCodexLocalMatchInteractionView.h"
 #include "../MatchPlayRuntime/MatchPlayHostPort.h"
@@ -17,10 +18,7 @@ enum class EFMCodexLesson1Step : uint8
 	ResultReveal, FailurePause, Rewind, RewindTransition, Summary, Complete
 };
 
-enum class EFMCodexLesson1Focus : uint8
-{
-	None, TacticPoint, HandCard, Deployment, FinishDeployment, Carrier, Skill, DirectShot, FormulaValue, AttackRoll
-};
+using EFMCodexLesson1Focus = EFMCodexGuideTarget;
 
 enum class EFMCodexLesson1CopySurface : uint8
 {
@@ -32,6 +30,18 @@ enum class EFMCodexLesson1OpponentTarget : uint8 { None, HandCard, MovingCard, F
 class FMCODEX_API FFMCodexGuidedLesson1 final
 {
 public:
+	FFMCodexGuidedLesson1();
+	explicit FFMCodexGuidedLesson1(TSharedPtr<const FFMCodexGuidedMatchContent> InContent);
+	bool IsContentReady() const { return Content.IsValid() && ContentError.IsEmpty(); }
+	const FString& GetContentError() const { return ContentError; }
+	FString ContentStepId() const;
+	const FFMCodexGuideStepPresentation& Presentation() const;
+	FText Heading() const;
+	FText Label(const TCHAR* Key) const;
+	FText Eyebrow() const;
+	FText PointerLabel() const;
+	float Timing(const TCHAR* Key) const;
+	const FString& ContentSourceHash() const { return Content->SourceHash(); }
 	static FName Gyokeres();
 	static FName Odegaard();
 	static FName Stones();
@@ -58,18 +68,8 @@ public:
 	void CompleteOpponentDeploymentMove();
 	bool IsOpponentDeploymentMoving() const { return Step==EFMCodexLesson1Step::OpponentDeploy && bOpponentMoveStarted && !bOpponentSubmitted; }
 	void OpponentActionSubmitted();
-	float OpponentPace() const { return bComparison ? .80f : 1.f; }
+	float OpponentPace() const { return bComparison ? Timing(TEXT("ComparisonPace")) : 1.f; }
 	float OpponentPostActionHold() const;
-	static constexpr float OpponentPreAction = .70f;
-	static constexpr float OpponentDeployAttention = .75f;
-	static constexpr float OpponentDeployMove = .80f;
-	static constexpr float OpponentDeploySettledHold = 1.20f;
-	static constexpr float OpponentChoiceFocus = .75f;
-	static constexpr float OpponentFinishFocus = .50f;
-	static constexpr float OpponentDestinationHold = 1.05f;
-	static constexpr float OpponentSettledHold = 1.10f;
-	static constexpr float OpponentDefenseLead = .65f;
-	static constexpr float FailureFollowupDelay = 1.60f;
 	TArray<FText> ConceptKeywords(EFMCodexLesson1CopySurface Surface = EFMCodexLesson1CopySurface::Body) const;
 	FText EmphasizeKeywords(const FText& Copy, EFMCodexLesson1CopySurface Surface = EFMCodexLesson1CopySurface::Body) const;
 	bool InspectFormula(bool bProductionTooltipVisible);
@@ -97,6 +97,15 @@ public:
 	/** Scoped by the Local controller only while dispatching the fixed opponent gesture. */
 	bool bDispatchingOpponent = false;
 private:
+	bool RequiresAcknowledgement() const;
+	void BindStaticContent();
+	TMap<EFMCodexGuideVariable,FString> Bindings() const;
+	FText Resolve(const FString& Template) const;
+	TSharedPtr<const FFMCodexGuidedMatchContent> Content;
+	mutable FString ContentError;
+	TMap<EFMCodexGuideVariable,FString> StaticBindings;
+	TOptional<int32> CurrentTP;
+	TOptional<float> DisplayedAttackBase;
 	void SetStep(EFMCodexLesson1Step NewStep);
 	EFMCodexLesson1Step Step = EFMCodexLesson1Step::Intro;
 	bool bComparison = false;

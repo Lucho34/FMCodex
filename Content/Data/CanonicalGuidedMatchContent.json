@@ -1,0 +1,1051 @@
+{
+  "schemaVersion": 1,
+  "sourceWorkbook": "FMCodex_Guided_Match.xlsx",
+  "sourceWorkbookSha256": "d537c66c637ece38cb84640820302f13d9def8c8cf2d96f55476e58b8961f547",
+  "lessons": [
+    {
+      "LessonId": "Lesson01",
+      "SchemaVersion": 1,
+      "Enabled": true,
+      "TitleCN": "教学 · 进攻入门",
+      "ComparisonTitleCN": "教学 · 换个人试试",
+      "Notes": "Stage 8.24B 已接受文案迁移；逻辑由 C++ 持有"
+    }
+  ],
+  "steps": [
+    {
+      "LessonId": "Lesson01",
+      "StepId": "AttackRoll",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "进攻判定",
+      "BodyCN": "点击“进攻方掷远射点数”。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Button.AttackRoll",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Carrier",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "持球队员",
+      "BodyCN": "点击场上的{Carrier.DisplayName}，将他选中为本进攻回合的持球队员。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Field.Carrier",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "CarrierExplanation",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "选择持球队员",
+      "BodyCN": "点击场上的{FirstCarrier.DisplayName}，将他选中为本进攻回合的持球队员。",
+      "SecondaryCN": "",
+      "CTA_CN": "继续",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Complete",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "教学已完成",
+      "BodyCN": "教学已完成。你已体验如何选择适合战术的球员。",
+      "SecondaryCN": "",
+      "CTA_CN": "返回普通对局",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Deploy",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "部署球员",
+      "BodyCN": "部署球员，点住鼠标左键将{FirstCarrier.DisplayName}拖到高亮位置。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Deployment.Carrier",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Deploy.Comparison",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "比较球员",
+      "BodyCN": "两人的射门都是 {Carrier.Shooting}。选择更适合远射的球员。",
+      "SecondaryCN": "这一次，{ComparisonCarrier.DisplayName}也可以上场。这是本课新增的选择；悬停卡牌查看特性。",
+      "CTA_CN": "",
+      "FocusTargetId": "Deployment.Carrier",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Deploy.Hint1",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "比较球员",
+      "BodyCN": "打开球员卡，看看“特性”。",
+      "SecondaryCN": "这一次，{ComparisonCarrier.DisplayName}也可以上场。这是本课新增的选择；悬停卡牌查看特性。",
+      "CTA_CN": "",
+      "FocusTargetId": "Deployment.Carrier",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Deploy.Hint2",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "比较球员",
+      "BodyCN": "“远射专家”可以提高直接远射时的射门能力。",
+      "SecondaryCN": "这一次，{ComparisonCarrier.DisplayName}也可以上场。这是本课新增的选择；悬停卡牌查看特性。",
+      "CTA_CN": "",
+      "FocusTargetId": "Deployment.Carrier",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "DirectExplanation",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "直接射门",
+      "BodyCN": "进攻分支下有具体说明，这次请选择‘直接射门’。",
+      "SecondaryCN": "",
+      "CTA_CN": "继续",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "DirectShot",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "选择方式",
+      "BodyCN": "选择“直接射门”",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Theater.DirectShot",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FailurePause",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "对手行动",
+      "BodyCN": "",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FinishDeployment",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "结束部署",
+      "BodyCN": "点击“结束部署”，结束本次部署。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Button.EndDeployment",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "确认球员已经就位",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FinishExplanation",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "球员已经就位",
+      "BodyCN": "{Marker.DisplayName}已上场。此次远射只需一名进攻球员，可以结束部署。",
+      "SecondaryCN": "",
+      "CTA_CN": "继续",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FormulaExplanation",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "理解公式",
+      "BodyCN": "悬停属性值，可查看它的来源。\n公式总值由属性值与掷骰值相加得到。\n本次属性值仅来自{FirstCarrier.DisplayName}的射门 {Carrier.Shooting}。",
+      "SecondaryCN": "",
+      "CTA_CN": "继续",
+      "FocusTargetId": "Formula.AttackBaseValue",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FormulaHover",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "公式",
+      "BodyCN": "将鼠标悬停在进攻公式的数字 {Formula.AttackBaseValue} 上，查看属性值的来源。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Formula.AttackBaseValue",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "InspectGyokeres",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "查看球员",
+      "BodyCN": "鼠标移动至本方球员区{FirstCarrier.DisplayName}处悬停，查看技能。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "PlayerHand.Carrier",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "InspectOdegaard",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "查看球员",
+      "BodyCN": "鼠标移动至本方球员区{ComparisonCarrier.DisplayName}处悬停，查看技能。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "PlayerHand.Carrier",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Intro",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "进行一次远射",
+      "BodyCN": "先掷出本回合的进攻战术点。",
+      "SecondaryCN": "",
+      "CTA_CN": "开始操作",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "OpponentDefense",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "对手行动",
+      "BodyCN": "对手正在进行防守判定。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "OpponentDeploy",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "对手行动",
+      "BodyCN": "对手准备部署{Marker.DisplayName}。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Opponent.Deployment",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "OpponentDeploy.After",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "对手行动",
+      "BodyCN": "{Marker.DisplayName}已部署到高亮位置。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Opponent.Deployment",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "OpponentFinish",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "对手行动",
+      "BodyCN": "对手正在结束部署。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Header.Opponent",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "OpponentFinish.After",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "对手行动",
+      "BodyCN": "对手已结束部署。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Header.Opponent",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "OpponentMarker",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "对手行动",
+      "BodyCN": "对手选择{Marker.DisplayName}作为盯人球员。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Field.Marker",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "OpponentMarker.After",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "对手行动",
+      "BodyCN": "{Marker.DisplayName}已成为本回合的盯人球员。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Field.Marker",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "ResultReveal",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "远射结果",
+      "BodyCN": "看看这次远射的结果。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Rewind",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "换个人，再试一次",
+      "BodyCN": "{FirstCarrier.DisplayName}可以使用远射技能，但他没有远射特性。让我们换个人试试吧。",
+      "SecondaryCN": "",
+      "CTA_CN": "让时间倒流，换个人试试",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Rewind.Unexpected",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "换个人，再试一次",
+      "BodyCN": "教学条件与预期不同，请退出教学并检查场景配置。",
+      "SecondaryCN": "",
+      "CTA_CN": "让时间倒流，换个人试试",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "RewindTransition",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "教学重演",
+      "BodyCN": "教学重演",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "ShootingExplanation",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "观察射门属性",
+      "BodyCN": "{ComparisonCarrier.DisplayName}的射门也是 {ComparisonCarrier.Shooting}。这是直接射门所使用的基础属性。",
+      "SecondaryCN": "",
+      "CTA_CN": "继续",
+      "FocusTargetId": "FullCard.Attribute.SHO",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Skill",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "选择战术",
+      "BodyCN": "点击左下角的“远射”",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Button.LongShot",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "SkillExplanation",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "选择远射战术",
+      "BodyCN": "{FirstCarrier.DisplayName}当前可用的进攻技能是远射。接下来点击左下角“远射”。",
+      "SecondaryCN": "",
+      "CTA_CN": "继续",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "SkillRangeExplanation",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "远射 · {LongShot.SkillMin}–{LongShot.SkillMax}",
+      "BodyCN": "远射技能范围为 {LongShot.SkillMin}–{LongShot.SkillMax}。当前进攻战术点为 {CurrentAttackTP}，落在范围内，因此可以使用远射。",
+      "SecondaryCN": "",
+      "CTA_CN": "继续",
+      "FocusTargetId": "FullCard.Skill.LongShot",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Summary",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "选对球员，改变结果",
+      "BodyCN": "相同的射门属性和骰点下，适合战术的特性改变了结果。\n先考虑战术，再选择适合它的球员。",
+      "SecondaryCN": "本次对照中，{LongShot.TraitName} 提供了射门 +2。正式比赛中，结果仍会受到骰点和对手配置影响。",
+      "CTA_CN": "完成教学",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Summary.Unexpected",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "选对球员，改变结果",
+      "BodyCN": "教学条件与预期不同，请退出教学并检查场景配置。",
+      "SecondaryCN": "本次对照中，{LongShot.TraitName} 提供了射门 +2。正式比赛中，结果仍会受到骰点和对手配置影响。",
+      "CTA_CN": "完成教学",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "TacticPoint",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "进攻战术点",
+      "BodyCN": "掷出本回合的进攻战术点。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Button.TacticalPoint",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "掷出本回合的战术点",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "TacticPointExplanation",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "观察球员技能",
+      "BodyCN": "本回合进攻战术点为 {CurrentAttackTP}。鼠标移动至本方球员区{FirstCarrier.DisplayName}处悬停，查看技能。",
+      "SecondaryCN": "",
+      "CTA_CN": "继续",
+      "FocusTargetId": "None",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "TraitExplanation",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "{LongShot.TraitName}",
+      "BodyCN": "{ComparisonCarrier.DisplayName}拥有「{LongShot.TraitName}」。直接远射时，这项特性提供射门 +2。",
+      "SecondaryCN": "",
+      "CTA_CN": "继续",
+      "FocusTargetId": "FullCard.Trait.LongShotCarrier",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": ""
+    }
+  ],
+  "emphasis": [
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Carrier",
+      "Field": "BodyCN",
+      "MatchText": "持球队员",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "CarrierExplanation",
+      "Field": "BodyCN",
+      "MatchText": "持球队员",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "CarrierExplanation",
+      "Field": "TitleCN",
+      "MatchText": "持球队员",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Deploy",
+      "Field": "BodyCN",
+      "MatchText": "部署球员",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Deploy.Comparison",
+      "Field": "BodyCN",
+      "MatchText": "射门",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Deploy.Hint1",
+      "Field": "BodyCN",
+      "MatchText": "特性",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Deploy.Hint2",
+      "Field": "BodyCN",
+      "MatchText": "远射专家",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "DirectExplanation",
+      "Field": "BodyCN",
+      "MatchText": "直接射门",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "DirectExplanation",
+      "Field": "TitleCN",
+      "MatchText": "直接射门",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "DirectShot",
+      "Field": "BodyCN",
+      "MatchText": "直接射门",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FinishDeployment",
+      "Field": "BodyCN",
+      "MatchText": "结束部署",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FinishExplanation",
+      "Field": "BodyCN",
+      "MatchText": "结束部署",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FormulaExplanation",
+      "Field": "BodyCN",
+      "MatchText": "公式总值",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FormulaExplanation",
+      "Field": "BodyCN",
+      "MatchText": "属性值",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FormulaExplanation",
+      "Field": "BodyCN",
+      "MatchText": "掷骰值",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FormulaExplanation",
+      "Field": "TitleCN",
+      "MatchText": "公式",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FormulaHover",
+      "Field": "BodyCN",
+      "MatchText": "属性值",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "InspectGyokeres",
+      "Field": "BodyCN",
+      "MatchText": "技能",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "InspectOdegaard",
+      "Field": "BodyCN",
+      "MatchText": "技能",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Intro",
+      "Field": "BodyCN",
+      "MatchText": "进攻战术点",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Intro",
+      "Field": "TitleCN",
+      "MatchText": "远射",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Rewind",
+      "Field": "BodyCN",
+      "MatchText": "远射技能",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Rewind",
+      "Field": "BodyCN",
+      "MatchText": "远射特性",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "ShootingExplanation",
+      "Field": "BodyCN",
+      "MatchText": "射门",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "ShootingExplanation",
+      "Field": "BodyCN",
+      "MatchText": "直接射门",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "ShootingExplanation",
+      "Field": "TitleCN",
+      "MatchText": "射门",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Skill",
+      "Field": "BodyCN",
+      "MatchText": "远射",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "SkillExplanation",
+      "Field": "BodyCN",
+      "MatchText": "远射",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "SkillExplanation",
+      "Field": "TitleCN",
+      "MatchText": "远射",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "SkillRangeExplanation",
+      "Field": "BodyCN",
+      "MatchText": "进攻战术点",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "SkillRangeExplanation",
+      "Field": "BodyCN",
+      "MatchText": "远射技能",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "SkillRangeExplanation",
+      "Field": "TitleCN",
+      "MatchText": "远射",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Summary",
+      "Field": "BodyCN",
+      "MatchText": "射门",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "Summary",
+      "Field": "BodyCN",
+      "MatchText": "特性",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "TacticPoint",
+      "Field": "BodyCN",
+      "MatchText": "进攻战术点",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "TacticPointExplanation",
+      "Field": "BodyCN",
+      "MatchText": "技能",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "TacticPointExplanation",
+      "Field": "BodyCN",
+      "MatchText": "进攻战术点",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "TraitExplanation",
+      "Field": "BodyCN",
+      "MatchText": "{LongShot.TraitName}",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "TraitExplanation",
+      "Field": "BodyCN",
+      "MatchText": "射门",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "TraitExplanation",
+      "Field": "BodyCN",
+      "MatchText": "特性",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "TraitExplanation",
+      "Field": "TitleCN",
+      "MatchText": "{LongShot.TraitName}",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    }
+  ],
+  "timings": [
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "ComparisonPace",
+      "Value": 0.8,
+      "Notes": "无单位；比较轮动作前段倍率，末尾完整停留"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "FailureFollowupDelay",
+      "Value": 1.6,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "FeedbackDuration",
+      "Value": 6,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "HintFirstDelay",
+      "Value": 12,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "HintSecondDelay",
+      "Value": 25,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "OpponentChoiceFocus",
+      "Value": 0.75,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "OpponentDefenseLead",
+      "Value": 0.65,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "OpponentDeployAttention",
+      "Value": 0.75,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "OpponentDeployMove",
+      "Value": 0.8,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "OpponentDeploySettledHold",
+      "Value": 1.2,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "OpponentDestinationHold",
+      "Value": 1.05,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "OpponentFinishFocus",
+      "Value": 0.5,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "OpponentPreAction",
+      "Value": 0.7,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "OpponentSettledHold",
+      "Value": 1.1,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "RewindDelay",
+      "Value": 0.7,
+      "Notes": "秒；仅教学表现，不控制生产揭示"
+    }
+  ],
+  "labels": [
+    {
+      "LessonId": "Lesson01",
+      "LabelId": "DeploymentTarget",
+      "TextCN": "部署到此处",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "LabelId": "ExitBody",
+      "TextCN": "退出后将结束当前教学流程。",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "LabelId": "ExitCancel",
+      "TextCN": "继续教学",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "LabelId": "ExitConfirm",
+      "TextCN": "退出教学",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "LabelId": "ExitTitle",
+      "TextCN": "退出教学？",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "LabelId": "FeedbackCompare",
+      "TextCN": "{FirstCarrier.DisplayName}的射门也是 {FirstCarrier.Shooting}，但没有远射加成。再看看另一名球员的特性。",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "LabelId": "FeedbackUnavailable",
+      "TextCN": "本课暂不练习这项操作，请按当前提示继续。",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "LabelId": "LocalRack",
+      "TextCN": "阿森纳 · 本课选择",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "LabelId": "OpponentPointer",
+      "TextCN": "对手",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "LabelId": "OpponentRack",
+      "TextCN": "曼城 · 教学对手",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "LabelId": "ProgressComparison",
+      "TextCN": "教学 · 换个人试试",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "LabelId": "ProgressFirst",
+      "TextCN": "教学 · 第一次进攻",
+      "Notes": ""
+    },
+    {
+      "LessonId": "Lesson01",
+      "LabelId": "UnavailableChoice",
+      "TextCN": "本课暂不练习",
+      "Notes": ""
+    }
+  ]
+}
