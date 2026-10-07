@@ -16,18 +16,27 @@ FName FFMCodexGuidedLesson1::Skill() { return TEXT("Canonical.Skill.LongShot.3.5
 void FFMCodexGuidedLesson1::SetStep(StepType NewStep)
 {
 	if (Step == NewStep) return;
+	bOpponentMoveStarted = false; bOpponentMoveArrived = false;
+	bExitConfirmation = false; bOpponentSubmitted = false; OpponentSettledSeconds = 0.f;
 	Step = NewStep; StepSeconds = 0; HintLevel = 0; Feedback = FText();
 	UE_LOG(LogTemp, Display, TEXT("LESSON1 attempt=%d step=%d"), bComparison ? 2 : 1, static_cast<int32>(Step));
 }
 
 bool FFMCodexGuidedLesson1::Update(const FFMCodexLocalMatchInteractionView& V, bool bRevealReady, float DeltaSeconds)
 {
+	if (bExitConfirmation) return false;
+	if (bOpponentSubmitted && Step != StepType::OpponentDefense)
+	{
+		OpponentSettledSeconds += FMath::Max(0.f, DeltaSeconds);
+		if (OpponentSettledSeconds < OpponentPostActionHold()) return false;
+	}
 	const auto Previous = Step;
 	const int32 PreviousHint = HintLevel;
 	StepSeconds += FMath::Max(0.f, DeltaSeconds);
 	FeedbackSeconds = FMath::Max(0.f, FeedbackSeconds - DeltaSeconds);
 	if (FeedbackSeconds == 0.f) Feedback = FText();
-	if (IsExplanationMode() || Step == StepType::InspectGyokeres || Step == StepType::RewindTransition) return false;
+	if (Step == StepType::FormulaHover || Step == StepType::FormulaExplanation) return false;
+	if (IsExplanationMode() || Step == StepType::InspectGyokeres || Step == StepType::InspectOdegaard || Step == StepType::RewindTransition) return false;
 	if (!bRevealReady)
 	{
 		if (V.bTerminalPendingAdvance) SetStep(StepType::ResultReveal);
@@ -38,10 +47,14 @@ bool FFMCodexGuidedLesson1::Update(const FFMCodexLocalMatchInteractionView& V, b
 		for (const auto& Contest : V.ResolutionFacts.FormulaContests)
 		{
 			if (!Contest.bHasResolvedFormula) continue;
-			ResolvedComparison = FText::Format(LOCTEXT("Totals", "进攻 {0}，防守 {1}。"),
-				FText::AsNumber(Contest.AttackRow.FinalValue), FText::AsNumber(Contest.DefenseRow.FinalValue));
 			bResolvedGoal = Contest.ResolvedResult.Winner == EFormulaWinner::Attacker;
-			SetStep(bComparison ? StepType::Summary : StepType::Rewind);
+			if (!bComparison && !bResolvedGoal)
+			{
+				// Start only after the disclosed production result reached its ready boundary.
+				if (Step != StepType::FailurePause) SetStep(StepType::FailurePause);
+				else if (StepSeconds >= FailureFollowupDelay) SetStep(StepType::Rewind);
+			}
+			else SetStep(bComparison ? StepType::Summary : StepType::Rewind);
 			break;
 		}
 	}
@@ -73,7 +86,7 @@ bool FFMCodexGuidedLesson1::Update(const FFMCodexLocalMatchInteractionView& V, b
 	case Category::SelectLongShotBranch:
 	case Category::SelectBranchIntent:
 		if (Step != StepType::DirectShot) SetStep(bComparison ? StepType::DirectShot : StepType::DirectExplanation); break;
-	case Category::RollLongShotDirectAttack: SetStep(StepType::AttackRoll); break;
+	case Category::RollLongShotDirectAttack: SetStep(!bComparison && !bFormulaInspected ? StepType::FormulaHover : StepType::AttackRoll); break;
 	case Category::RollLongShotDirectDefense: SetStep(StepType::OpponentDefense); break;
 	default: break;
 	}
@@ -84,27 +97,81 @@ bool FFMCodexGuidedLesson1::Update(const FFMCodexLocalMatchInteractionView& V, b
 
 void FFMCodexGuidedLesson1::Primary()
 {
+	if (bExitConfirmation) return;
 	if (Step == StepType::Intro) SetStep(StepType::TacticPoint);
 	else if (Step == StepType::TacticPointExplanation) SetStep(StepType::InspectGyokeres);
-	else if (Step == StepType::SkillRangeExplanation) SetStep(StepType::Deploy);
+	else if (Step == StepType::SkillRangeExplanation) SetStep(bComparison ? StepType::ShootingExplanation : StepType::Deploy);
+	else if (Step == StepType::ShootingExplanation) SetStep(StepType::TraitExplanation);
+	else if (Step == StepType::TraitExplanation) SetStep(StepType::Deploy);
 	else if (Step == StepType::FinishExplanation) SetStep(StepType::FinishDeployment);
 	else if (Step == StepType::CarrierExplanation) SetStep(StepType::Carrier);
 	else if (Step == StepType::SkillExplanation) SetStep(StepType::Skill);
+	else if (Step == StepType::FormulaExplanation) SetStep(StepType::AttackRoll);
 	else if (Step == StepType::DirectExplanation) SetStep(StepType::DirectShot);
 	else if (Step == StepType::Rewind) SetStep(StepType::RewindTransition);
 	else if (Step == StepType::Summary) SetStep(StepType::Complete);
 }
 void FFMCodexGuidedLesson1::EnterComparison()
 {
-	bComparison = true; bDispatchingOpponent = false; ResolvedComparison = FText();
-	SetStep(StepType::Deploy);
+	bComparison = true; bDispatchingOpponent = false; bResolvedGoal = false; bFormulaInspected = false;
+	bExitConfirmation = false; bOpponentSubmitted = false; OpponentSettledSeconds = 0.f;
+	FeedbackSeconds = 0; Feedback = FText();
+	SetStep(StepType::InspectOdegaard);
 }
 bool FFMCodexGuidedLesson1::IsCheckpointDue() const { return Step == StepType::RewindTransition && StepSeconds >= .7f; }
+bool FFMCodexGuidedLesson1::IsOpponentPresenting() const
+{
+	return Step == StepType::OpponentDeploy || Step == StepType::OpponentFinish
+		|| Step == StepType::OpponentMarker || Step == StepType::OpponentDefense;
+}
 bool FFMCodexGuidedLesson1::IsOpponentActionDue() const
 {
-	return StepSeconds >= (bComparison ? .6f : 1.6f) &&
-		(Step == StepType::OpponentDeploy || Step == StepType::OpponentFinish
-			|| Step == StepType::OpponentMarker || Step == StepType::OpponentDefense);
+	if (!IsOpponentPresenting() || bOpponentSubmitted || bExitConfirmation) return false;
+	if (Step == StepType::OpponentDeploy) return bOpponentMoveArrived;
+	const float Lead = Step == StepType::OpponentDefense ? OpponentDefenseLead
+		: OpponentPreAction + (Step == StepType::OpponentFinish ? OpponentFinishFocus : OpponentChoiceFocus);
+	return StepSeconds >= Lead * OpponentPace();
+}
+float FFMCodexGuidedLesson1::OpponentPostActionHold() const
+{
+	// Repeated gestures are slightly quicker; preserve the full readable end hold.
+	return Step==StepType::OpponentDeploy ? OpponentDestinationHold*OpponentPace()+OpponentDeploySettledHold : OpponentSettledHold;
+}
+bool FFMCodexGuidedLesson1::CanStartOpponentDeploymentMove() const
+{
+	return Step==StepType::OpponentDeploy && !bOpponentMoveStarted && !bOpponentSubmitted && !bExitConfirmation
+		&& StepSeconds>=OpponentDeployAttention*OpponentPace();
+}
+void FFMCodexGuidedLesson1::BeginOpponentDeploymentMove()
+{
+	if (CanStartOpponentDeploymentMove()) bOpponentMoveStarted=true;
+}
+void FFMCodexGuidedLesson1::CompleteOpponentDeploymentMove()
+{
+	// The local Slate proxy reports visual arrival, never a gameplay result.
+	if (IsOpponentDeploymentMoving() && !bExitConfirmation) bOpponentMoveArrived=true;
+}
+EFMCodexLesson1OpponentTarget FFMCodexGuidedLesson1::OpponentTarget() const
+{
+	using Target=EFMCodexLesson1OpponentTarget;
+	if (!IsOpponentFocusVisible()) return Target::None;
+	if (Step==StepType::OpponentFinish) return Target::SideStatus;
+	if (Step==StepType::OpponentDeploy && !bOpponentSubmitted)
+		return bOpponentMoveStarted ? Target::MovingCard : Target::HandCard;
+	return Target::FieldCard;
+}
+bool FFMCodexGuidedLesson1::IsOpponentFinalHold() const
+{
+	return Step==StepType::OpponentDeploy && bOpponentSubmitted && OpponentSettledSeconds>=OpponentDestinationHold*OpponentPace();
+}
+bool FFMCodexGuidedLesson1::IsOpponentFocusVisible() const
+{
+	// Attention and selection keep the source visible; destination is the sole target after acceptance.
+	return IsOpponentPresenting() && Step!=StepType::OpponentDefense && !IsOpponentFinalHold();
+}
+void FFMCodexGuidedLesson1::OpponentActionSubmitted()
+{
+	if (IsOpponentPresenting()) { bOpponentSubmitted = true; OpponentSettledSeconds = 0.f; }
 }
 FFMCodexMatchScreenRequest FFMCodexGuidedLesson1::OpponentAction() const
 {
@@ -118,6 +185,7 @@ FFMCodexMatchScreenRequest FFMCodexGuidedLesson1::OpponentAction() const
 
 bool FFMCodexGuidedLesson1::AllowsScreen(const FFMCodexMatchScreenRequest& R) const
 {
+	if (bExitConfirmation) return false;
 	if (bDispatchingOpponent)
 	{
 		const auto Expected = OpponentAction();
@@ -212,7 +280,8 @@ void FFMCodexGuidedLesson1::ApplyPresentation(FFMCodexUMGMatchScreenViewModel& P
 			}
 		}
 	// The lesson owns terminal progression; keep all production result facts/timers.
-	const bool bPlayerRoll = Step == StepType::AttackRoll;
+	const bool bPlayerRoll = Step == StepType::AttackRoll
+		&& P.Interaction.Category == EFMCodexUMGInteractionCategory::RollLongShotDirectAttack;
 	P.Interaction.PrimaryAction.bAvailable &= bPlayerRoll;
 	P.Interaction.bCanContinue &= bPlayerRoll;
 	P.LongShotResolution.PrimaryAction.Action.bAvailable &= bPlayerRoll;
@@ -224,9 +293,87 @@ void FFMCodexGuidedLesson1::ApplyPresentation(FFMCodexUMGMatchScreenViewModel& P
 	P.Resolution.bCanContinue = false;
 }
 
+TArray<FText> FFMCodexGuidedLesson1::ConceptKeywords(EFMCodexLesson1CopySurface Surface) const
+{
+	using SurfaceType = EFMCodexLesson1CopySurface;
+	// Copy/emphasis script: Docs/Tutorial/Guided_Match_Lesson_01_Copy_Script.md.
+	// Blue labels and secondary copy never carry teaching emphasis.
+	if (Surface==SurfaceType::Section || Surface==SurfaceType::Secondary) return {};
+	const FText TP=LOCTEXT("ConceptTP","进攻战术点"), LongShot=LOCTEXT("ConceptLongShot","远射"),
+		SkillWord=LOCTEXT("ConceptSkill","技能"), Shooting=LOCTEXT("ConceptShooting","射门"),
+		Finish=LOCTEXT("ConceptFinish","结束部署"), Trait=LOCTEXT("ConceptTrait","特性"),
+		Expert=LOCTEXT("ConceptExpert","远射专家 A"), Carrier=LOCTEXT("ConceptCarrier","持球队员"),
+		Direct=LOCTEXT("ConceptDirect","直接射门"), Formula=LOCTEXT("ConceptFormula","公式"),
+		Attribute=LOCTEXT("ConceptAttribute","属性值");
+	if (Surface==SurfaceType::Heading)
+	{
+		switch (Step)
+		{
+		case StepType::Intro: case StepType::SkillRangeExplanation: case StepType::SkillExplanation: return {LongShot};
+		case StepType::TacticPointExplanation: return {SkillWord};
+		case StepType::ShootingExplanation: return {Shooting};
+		case StepType::TraitExplanation: return {Expert};
+		case StepType::CarrierExplanation: return {Carrier};
+		case StepType::DirectExplanation: return {Direct};
+		case StepType::FormulaExplanation: return {Formula};
+		default: return {};
+		}
+	}
+	if (!Feedback.IsEmpty()) return {};
+	switch (Step)
+	{
+	case StepType::Intro: case StepType::TacticPoint: return {TP};
+	case StepType::TacticPointExplanation: return {TP, SkillWord};
+	case StepType::InspectGyokeres: case StepType::InspectOdegaard: return {SkillWord};
+	case StepType::SkillRangeExplanation: return {LOCTEXT("ConceptLongShotSkill","远射技能"), TP};
+	case StepType::ShootingExplanation: return {Shooting, Direct};
+	case StepType::TraitExplanation: case StepType::Summary: return {Trait, Expert, Shooting};
+	case StepType::Deploy:
+		if (!bComparison) return {LOCTEXT("ConceptDeployPlayer","部署球员")};
+		if (HintLevel==2) return {LOCTEXT("ConceptExpertHint","远射专家")};
+		return HintLevel==1 ? TArray<FText>{Trait} : TArray<FText>{Shooting};
+	case StepType::FinishExplanation: case StepType::FinishDeployment: return {Finish};
+	case StepType::CarrierExplanation: case StepType::Carrier: return {Carrier};
+	case StepType::SkillExplanation: case StepType::Skill: return {LongShot};
+	case StepType::DirectExplanation: case StepType::DirectShot: return {Direct};
+	case StepType::FormulaHover: return {Attribute};
+	case StepType::FormulaExplanation:
+		return {LOCTEXT("ConceptFormulaTotal","公式总值"), Attribute, LOCTEXT("ConceptRollValue","掷骰值")};
+	case StepType::Rewind: return {LOCTEXT("ConceptLongShotSkill","远射技能"), LOCTEXT("ConceptLongShotTrait","远射特性")};
+	default: return {};
+	}
+}
+
+FText FFMCodexGuidedLesson1::EmphasizeKeywords(const FText& Copy, EFMCodexLesson1CopySurface Surface) const
+{
+	// Each approved phrase marks its first occurrence only, on its specified surface.
+	// Longest phrase wins overlaps; a generic word is never an implicit fallback.
+	TArray<FString> Words;
+	for (const auto& Word : ConceptKeywords(Surface)) Words.Add(Word.ToString());
+	Words.Sort([](const FString& A, const FString& B){ return A.Len() > B.Len(); });
+	const FString Source = Copy.ToString();
+	FString Result;
+	for (int32 I=0; I<Source.Len();)
+	{
+		const int32 Match=Words.IndexOfByPredicate([&](const FString& W){ return !W.IsEmpty() && Source.Mid(I,W.Len())==W; });
+		if (Match!=INDEX_NONE) { Result+=TEXT("<concept>")+Words[Match]+TEXT("</>"); I+=Words[Match].Len(); Words.RemoveAt(Match); }
+		else { Result.AppendChar(Source[I]); ++I; }
+	}
+	return FText::FromString(Result);
+}
+bool FFMCodexGuidedLesson1::IsFormulaTeaching() const
+{
+	return Step == StepType::FormulaHover || Step == StepType::FormulaExplanation;
+}
+bool FFMCodexGuidedLesson1::InspectFormula(bool bProductionTooltipVisible)
+{
+	if (bExitConfirmation || Step != StepType::FormulaHover || !bProductionTooltipVisible) return false;
+	bFormulaInspected=true; SetStep(StepType::FormulaExplanation); return true;
+}
+
 FText FFMCodexGuidedLesson1::ProgressLabel() const
 {
-	return bComparison ? LOCTEXT("Second", "第一课 · 换个人试试") : LOCTEXT("First", "第一课 · 第一次进攻");
+	return bComparison ? LOCTEXT("Second", "教学 · 换个人试试") : LOCTEXT("First", "教学 · 第一次进攻");
 }
 FText FFMCodexGuidedLesson1::Instruction() const
 {
@@ -234,43 +381,47 @@ FText FFMCodexGuidedLesson1::Instruction() const
 	switch (Step)
 	{
 	case StepType::Intro: return LOCTEXT("IntroLongShot", "先掷出本回合的进攻战术点。");
-	case StepType::TacticPointExplanation: return LOCTEXT("TPInspect", "本回合进攻战术点为 3。悬停哲凯赖什，查看技能。");
-	case StepType::InspectGyokeres: return LOCTEXT("Inspect", "悬停哲凯赖什，查看技能");
-	case StepType::SkillRangeExplanation: return LOCTEXT("SkillRange", "“远射 3–5”表示，当进攻战术点为 3、4 或 5 时，可以发动远射。");
+	case StepType::TacticPointExplanation: return LOCTEXT("TPInspect", "本回合进攻战术点为 3。鼠标移动至本方球员区哲凯赖什处悬停，查看技能。");
+	case StepType::InspectOdegaard: return LOCTEXT("InspectOdegaard", "鼠标移动至本方球员区厄德高处悬停，查看技能。");
+	case StepType::ShootingExplanation: return LOCTEXT("SameShooting", "厄德高的射门也是 4。这是直接射门所使用的基础属性。");
+	case StepType::TraitExplanation: return LOCTEXT("ExpertTeaching", "厄德高拥有「远射专家 A」。直接远射时，这项特性提供射门 +2。");
+	case StepType::InspectGyokeres: return LOCTEXT("Inspect", "鼠标移动至本方球员区哲凯赖什处悬停，查看技能。");
+	case StepType::SkillRangeExplanation: return LOCTEXT("SkillRange", "远射技能范围为 3–5。当前进攻战术点为 3，落在范围内，因此可以使用远射。");
 	case StepType::FinishExplanation: return LOCTEXT("FinishConcept", "斯通斯已上场。此次远射只需一名进攻球员，可以结束部署。");
-	case StepType::CarrierExplanation: return LOCTEXT("CarrierConcept", "点击场上的哲凯赖什，由他担任本回合持球队员。");
+	case StepType::CarrierExplanation: return LOCTEXT("CarrierConcept", "点击场上的哲凯赖什，将他选中为本进攻回合的持球队员。");
 	case StepType::SkillExplanation: return LOCTEXT("SkillConcept", "哲凯赖什当前可用的进攻技能是远射。接下来点击左下角“远射”。");
-	case StepType::DirectExplanation: return LOCTEXT("DirectConcept", "在下方查看说明，再选择“直接射门”。");
+	case StepType::DirectExplanation: return LOCTEXT("DirectConcept", "进攻分支下有具体说明，这次请选择‘直接射门’。");
 	case StepType::TacticPoint: return LOCTEXT("TP", "掷出本回合的进攻战术点。");
 	case StepType::Deploy:
-		if (!bComparison) return LOCTEXT("DeployFirst", "将哲凯赖什拖到高亮位置");
+		if (!bComparison) return LOCTEXT("DeployFirst", "部署球员，点住鼠标左键将哲凯赖什拖到高亮位置。");
 		if (HintLevel == 2) return LOCTEXT("Hint2", "“远射专家”可以提高直接远射时的射门能力。");
 		if (HintLevel == 1) return LOCTEXT("Hint1", "打开球员卡，看看“特性”。");
 		return LOCTEXT("Compare", "两人的射门都是 4。选择更适合远射的球员。");
-	case StepType::OpponentDeploy: return LOCTEXT("OpponentDeploy", "现在轮到对手部署。");
-	case StepType::FinishDeployment: return bComparison ? LOCTEXT("FinishShort", "球员已就位，点击“部署完毕”。") : LOCTEXT("Finish", "点击“部署完毕”，结束本次部署。");
-	case StepType::OpponentFinish: return bComparison ? LOCTEXT("OpponentFinishShort", "对手正在结束部署。") : LOCTEXT("OpponentFinish", "你已结束部署，对手仍可继续部署。双方都结束后，开始选择进攻角色。");
-	case StepType::Carrier: return bComparison ? LOCTEXT("CarrierSecond", "点击场上的厄德高，选择持球队员。") : LOCTEXT("CarrierFocus", "点击场上的哲凯赖什，选择持球队员。");
-	case StepType::OpponentMarker: return LOCTEXT("Marker", "斯通斯负责盯防。");
+	case StepType::OpponentDeploy: return bOpponentSubmitted ? LOCTEXT("OpponentPlaced", "斯通斯已部署到高亮位置。") : LOCTEXT("OpponentDeploy", "对手准备部署斯通斯。");
+	case StepType::FinishDeployment: return LOCTEXT("Finish", "点击“结束部署”，结束本次部署。");
+	case StepType::OpponentFinish: return bOpponentSubmitted ? LOCTEXT("FinishSettled", "对手已结束部署。") : LOCTEXT("OpponentFinishShort", "对手正在结束部署。");
+	case StepType::Carrier: return bComparison ? LOCTEXT("CarrierSecond", "点击场上的厄德高，将他选中为本进攻回合的持球队员。") : LOCTEXT("CarrierFocus", "点击场上的哲凯赖什，将他选中为本进攻回合的持球队员。");
+	case StepType::OpponentMarker: return bOpponentSubmitted ? LOCTEXT("MarkerSettled", "斯通斯已成为本回合的盯人球员。") : LOCTEXT("Marker", "对手选择斯通斯作为盯人球员。");
 	case StepType::Skill: return LOCTEXT("Skill", "点击左下角的“远射”");
 	case StepType::DirectShot: return LOCTEXT("Direct", "选择“直接射门”");
-	case StepType::AttackRoll: return LOCTEXT("AttackRoll", "点击进攻掷骰，完成远射判定");
+	case StepType::FormulaHover: return LOCTEXT("FormulaHover", "将鼠标悬停在进攻公式的数字 4 上，查看属性值的来源。");
+	case StepType::FormulaExplanation: return LOCTEXT("FormulaExplain", "悬停属性值，可查看它的来源。\n公式总值由属性值与掷骰值相加得到。\n本次属性值仅来自哲凯赖什的射门 4。");
+	case StepType::AttackRoll: return LOCTEXT("AttackRoll", "点击“进攻方掷远射点数”。");
 	case StepType::OpponentDefense: return LOCTEXT("DefenseRoll", "对手正在进行防守判定。");
 	case StepType::ResultReveal: return LOCTEXT("Reveal", "看看这次远射的结果。");
 	case StepType::Rewind: return bResolvedGoal
-		? FText::Format(LOCTEXT("UnexpectedGoal", "进球。{0}教学条件与预期不同，请退出教学并检查场景配置。"), ResolvedComparison)
-		: FText::Format(LOCTEXT("Miss", "未能进球\n{0}这次远射未能突破防守。"), ResolvedComparison);
+		? LOCTEXT("UnexpectedGoal", "教学条件与预期不同，请退出教学并检查场景配置。")
+		: LOCTEXT("FirstLesson", "哲凯赖什可以使用远射技能，但他没有远射特性。让我们换个人试试吧。");
 	case StepType::RewindTransition: return LOCTEXT("Replay", "教学重演");
 	case StepType::Summary: return bResolvedGoal
-		? FText::Format(LOCTEXT("Summary", "进球！{0}\n相同的战术和骰点，适合的球员改变了结果。\n先考虑战术，再选择适合它的球员。"), ResolvedComparison)
-		: FText::Format(LOCTEXT("UnexpectedMiss", "未能进球。{0}教学条件与预期不同，请退出教学并检查场景配置。"), ResolvedComparison);
-	case StepType::Complete: return LOCTEXT("Complete", "第一课已完成。你已体验如何选择适合战术的球员。");
+		? LOCTEXT("FitSummary", "相同的射门属性和骰点下，适合战术的特性改变了结果。\n先考虑战术，再选择适合它的球员。")
+		: LOCTEXT("UnexpectedMiss", "教学条件与预期不同，请退出教学并检查场景配置。");
+	case StepType::Complete: return LOCTEXT("Complete", "教学已完成。你已体验如何选择适合战术的球员。");
 	default: return FText();
 	}
 }
 FText FFMCodexGuidedLesson1::Explanation() const
 {
-	if (Step == StepType::Rewind) return LOCTEXT("RewindWarning", "教学模式会回到进攻开始前，并保留相同条件用于比较。正式比赛中，已经完成的进攻不能撤销。");
 	if (Step == StepType::Deploy && bComparison) return LOCTEXT("Unlock", "这一次，厄德高也可以上场。这是本课新增的选择；悬停卡牌查看特性。");
 	if (Step == StepType::Summary) return LOCTEXT("Limits", "本次对照中，远射专家 A 提供了射门 +2。正式比赛中，结果仍会受到骰点和对手配置影响。");
 	return FText();
@@ -278,9 +429,10 @@ FText FFMCodexGuidedLesson1::Explanation() const
 FText FFMCodexGuidedLesson1::PrimaryLabel() const
 {
 	if (Step == StepType::Intro) return LOCTEXT("StartAction", "开始操作");
+	if (Step == StepType::FormulaExplanation) return LOCTEXT("ContinueFormula", "继续");
 	if (IsExplanationMode() && Step != StepType::Rewind && Step != StepType::Summary && Step != StepType::Complete) return LOCTEXT("Continue", "继续");
 	if (Step == StepType::Rewind) return LOCTEXT("RewindCTA", "让时间倒流，换个人试试");
-	if (Step == StepType::Summary) return LOCTEXT("FinishCTA", "完成第一课");
+	if (Step == StepType::Summary) return LOCTEXT("FinishCTA", "完成教学");
 	if (Step == StepType::Complete) return LOCTEXT("Return", "返回普通对局");
 	return FText();
 }
@@ -288,9 +440,9 @@ bool FFMCodexGuidedLesson1::IsExplanationMode() const
 {
 	switch (Step)
 	{
-	case StepType::Intro: case StepType::TacticPointExplanation: case StepType::SkillRangeExplanation:
+	case StepType::Intro: case StepType::TacticPointExplanation: case StepType::ShootingExplanation: case StepType::SkillRangeExplanation: case StepType::TraitExplanation:
 	case StepType::FinishExplanation: case StepType::CarrierExplanation: case StepType::SkillExplanation:
-	case StepType::DirectExplanation: case StepType::Rewind: case StepType::Summary: case StepType::Complete: return true;
+	case StepType::DirectExplanation: case StepType::FormulaExplanation: case StepType::Rewind: case StepType::Summary: case StepType::Complete: return true;
 	default: return false;
 	}
 }
@@ -300,27 +452,56 @@ EFMCodexLesson1Focus FFMCodexGuidedLesson1::FocusTarget() const
 	switch (Step)
 	{
 	case StepType::TacticPoint: return F::TacticPoint;
-	case StepType::InspectGyokeres: return F::HandCard;
+	case StepType::InspectGyokeres: case StepType::InspectOdegaard: return F::HandCard;
 	case StepType::Deploy: return F::Deployment;
 	case StepType::FinishDeployment: return F::FinishDeployment;
 	case StepType::Carrier: return F::Carrier;
 	case StepType::Skill: return F::Skill;
 	case StepType::DirectShot: return F::DirectShot;
+	case StepType::FormulaHover: case StepType::FormulaExplanation: return F::FormulaValue;
 	case StepType::AttackRoll: return F::AttackRoll;
 	default: return F::None;
 	}
 }
 bool FFMCodexGuidedLesson1::InspectCard(FName CardId, bool bFullCardVisible)
 {
-	if (Step != StepType::InspectGyokeres || CardId != Gyokeres() || !bFullCardVisible) return false;
+	if (bExitConfirmation) return false;
+	if ((Step != StepType::InspectGyokeres && Step != StepType::InspectOdegaard) || CardId != Attacker() || !bFullCardVisible) return false;
 	SetStep(StepType::SkillRangeExplanation);
 	return true;
 }
 bool FFMCodexGuidedLesson1::AllowsInspection(FName CardId) const
 {
-	if (Step == StepType::InspectGyokeres || Step == StepType::SkillRangeExplanation) return CardId == Gyokeres();
+	if (Step == StepType::InspectGyokeres || Step == StepType::InspectOdegaard || KeepsFullCardOpen()) return CardId == Attacker();
 	if (Step == StepType::Deploy) return CardId == Gyokeres() || (bComparison && CardId == Odegaard());
 	return Step == StepType::Carrier && CardId == Attacker();
+}
+bool FFMCodexGuidedLesson1::KeepsFullCardOpen() const
+{
+ return Step == StepType::ShootingExplanation || Step == StepType::SkillRangeExplanation || Step == StepType::TraitExplanation;
+}
+bool FFMCodexGuidedLesson1::CanProgress(const FFMCodexLocalMatchInteractionView& View,
+ const FMCodexTacticalScene::FState& Scene, bool bRevealBlocked)
+{
+ if (bRevealBlocked || Scene.IsAnimating() || Scene.Celebration.IsActive()) return false;
+ if (!View.bTerminalPendingAdvance) return true;
+ // Observe the current disclosed production event, never totals, CTA availability or a delay.
+ return Scene.Facts.bActive && Scene.Facts.AttackSequence == View.AttackSequence
+  && Scene.Facts.Method == FMCodexTacticalScene::EMethod::Direct
+  && Scene.Facts.Outcome != FMCodexTacticalScene::EOutcome::None
+  && Scene.Phase == FMCodexTacticalScene::EPhase::ResultHold;
+}
+bool FFMCodexGuidedLesson1::YieldsToProduction(const FMCodexTacticalScene::FState& Scene, bool bRevealBlocked, Category CurrentAction) const
+{
+ if (bRevealBlocked || Scene.IsAnimating() || Scene.Celebration.IsActive()) return true;
+ if (Scene.Facts.bActive && Scene.Facts.Method==FMCodexTacticalScene::EMethod::Direct
+  && Scene.Facts.Outcome==FMCodexTacticalScene::EOutcome::None && Scene.Phase==FMCodexTacticalScene::EPhase::FormulaHold
+  // The reveal clock can finish before the lesson's next 0.1s observation. Do not
+  // reopen the stale AttackRoll strip/spotlight while the live action is defense.
+  && CurrentAction==Category::RollLongShotDirectAttack
+  && (IsFormulaTeaching() || Step==StepType::AttackRoll)) return false;
+ return Scene.Facts.bActive && !Scene.Facts.bMethodChoice
+  && Step != StepType::Rewind && Step != StepType::RewindTransition && Step != StepType::Summary && Step != StepType::Complete;
 }
 #undef LOCTEXT_NAMESPACE
 #endif

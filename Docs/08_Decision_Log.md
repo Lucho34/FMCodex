@@ -2830,3 +2830,62 @@ Theater 用明确的场景后层／操作前层保证延伸绘制不遮盖按钮
 用户反馈连续球场的下沿白线进入信息区、球门背后过于空旷，以及掷骰 CTA 靠近底部。保留已接受的连续草皮，单独移除远射下沿边界并淡出靠近信息区的场线；用既有观众纹理及透视广告牌补足球门后围合。方法选择布局不动，Setup／Intent／FormulaHold 信息栈上移 24 个设计单位，并补偿容器底部留白以保持缩放和球场几何稳定。Outcome／ResultHold 保留既有位置，避免卡片挡住未进球落点。Cross、自有庆祝、叙事和所有玩法／披露合同不变。
 
 只修改局部表现、既有 PIE 夹具与本合同文档，继续同一未提交 Stage 8.24A。验证范围为增量 Editor 构建、方法／Cross 预览 focused 检查和宽屏真实 Local PIE；不扩展玩法或网络全量回归。用户验收围合、信息区洁净度与掷骰垂直平衡后再手动提交；不开始 Guided Match 或 ThroughBall。
+
+
+### Stage 8.24B.2 — Guided Match production LongShot vertical slice v1
+
+Lesson1 取消生产 Tactical Scene 排除，直接复用原安全投影、Method Choice、预览、Reel／Formula、Outcome、比分揭示及 Goal Celebration。教学让出生产动作和庆祝，只在当前事件的空间 ResultHold、原 reveal gate 完成且庆祝不活动后重新解释；不使用独立结果延时，不修改生产动画／skip 语义，也不等待自己关闭的终局 CTA。
+
+两次教学保持哲凯赖什射门4、厄德高射门4／远射专家A，TP3及攻防5／3；由原权威 Formula 得到9对10与11对10。新增强制看卡步骤，生产 Full Card 提供按属性key、SkillId、TraitId查询当前行的只读锚点；教学不复制属性、公式或结果。回退仍重建预定义runtime并替换整个Screen，清除旧事件、场景、庆祝和hover。移除旧场景排除中的Shipping宏保护缺口，教学与DEV骰保持non-Shipping／Local。
+
+这是供 USER PIE 的完整 v1，不扩展其他战术或重写教程框架。验证限于四项教学focused、一项生产LongShot回归、必要增量Editor构建及一条真实完整教学PIE；视觉、遮罩、节奏和特性理解仍由用户验收。详见[Lesson1当前合同](Tutorial/Guided_Match_Lesson_01.md)。
+
+
+### Stage 8.24B — Guided Lesson 1 USER PIE Polish Pass 1
+
+延续同一未提交 8.24B，仅实现本轮用户反馈。教学用固定两颗琥珀小点标识明确讲授的概念，点数没有玩法意义；独立概念标签复用局部 helper，不改生产卡面与其他生产 UI。箭头／目标框同色，薄荷 CTA 保留。该教学局部色义由本轮用户明确指定，不改变 Match Flow 数值金色规范。
+
+标题改“教学”，Full Card 顺序改为技能→射门、比较轮再讲特性；悬停提示说明本方球员区，部署说明按住左键，按钮文案统一“结束部署”。提示条与退出组合最大800设计单位，依真实Header底部／球场中心定位；退出需二次确认，默认继续教学，取消不重建。生产动画期间隐藏整个教学chrome与退出，不暂停生产结算。
+
+对手部署／结束部署／盯人分别采用1.70／1.35／1.55秒的提示、真实目标高亮和已接受动作后的settled停留；防守起手0.50秒后完全交还生产揭示。两轮一致，保留命令顺序、原5／3与Trait数学；无新动画框架或教学skip。确认与短暂对手呈现状态随重演／会话清除。验证限两项focused、一次Editor增量与一次完整真实教学PIE；可读性与视觉仍待USER PIE，不继续本轮以外打磨。
+
+
+### Stage 8.24B — Guided Lesson 1 USER PIE Polish Pass 2
+
+用户纠正 Pass 1 的关键词表现：取消独立概念行和琥珀小点，改为正文／标题关键词正下方的固定白色两点，由 Slate 原生 inline decorator 排版。教学箭头／目标框仍为琥珀；退出使用无描边次级样式，中央弹窗出现时附着在弹窗标题行。目标框按真实卡面内容与属性／技能行收紧，不覆盖分区标题；不改生产 Full Card。
+
+首次 Direct 只在真实生产 FormulaHold 且 reveal gate 解除后加入数值 4 的悬停教学，必须实际打开原生产属性来源 tooltip，再解释属性值加掷骰值、点击继续后开放生产掷骰。动画、Reel、Outcome 与庆祝仍优先，第二轮不重复首次讲解。首次失败在当前事件已披露空间 ResultHold 后，额外保留约 1 秒干净结果画面再显示回溯弹窗；这是教学后续计时，不改生产结果揭示。
+
+对手原分阶段结构略放慢，部署／结束部署／盯人总等待为 2.25／1.85／2.10 秒，防守起手 0.65 秒；临时侧向箭头跟随真实目标，保留 accepted command 防重入。范围文案明确当前 TP 为 3，分支文案指向进攻分支下说明。Gyokeres 技能→射门、Odegaard 技能→射门→特性以及 5／3、9 对 10、11 对 10 不变。没有新教学框架、生产玩法或网络修改。验证限一项 focused、一条真实完整教学 PIE（兼 focused PIE）、必要增量 Editor build 和 diff 检查；具体编译／运行问题才补跑，视觉仍需 USER PIE。详见 [Lesson1 当前合同](Tutorial/Guided_Match_Lesson_01.md)。
+
+
+### Stage 8.24B — Guided Lesson 1 Final Visual-System Polish
+
+用户最新逐字参考明确替代 Pass 2 的整词固定两点：每个可见汉字／字母／数字各有一颗冷白点，空格／标点无点。小型教学 inline widget 使用与文本相同的 FontMeasure advance，按字体高度缩放点径；沿用原生段落换行，无独立概念行或通用文本框架。
+
+确认焦点偏移根因是 UWidget 缓存桌面几何与教学 OnPaint 窗口几何混用。现统一到桌面后转回 overlay local，目标通过实时可见 Slate 路径取得，包含 DPI／嵌套 transform；语义卡面／技能／SHO／特性行仍由生产控件提供。仅留每种目标小幅等边 padding，无位置补偿；无有效布局不画框，箭头从最终矩形选侧。
+
+首次对手部署采用注意 0.65s、选中 0.90s、真实命令、目标高亮 0.90s、干净棋盘 0.75s，约 3.20s；第二次同类动作 75% 时长。其余操作保持较短等待，生产动画不改。公式 hover 成功后的解释改用同一个 canonical ModalPanel，真实 Formula 保留在下方；点击继续回到紧凑动作条。退出附着当前容器、从不成为教学焦点。
+
+保留技能→射门→比较轮特性、实际 tooltip、失败约 1 秒干净画面、输入门控、重演隔离、5／3 与 9 对 10／11 对 10。只做教学表现层修正，无生产玩法／权威／网络改动。最小验证为 FocusModeAndGating、一次完整 FullFlow PIE、必要增量 Editor build 和 diff 检查；PIE 使用非零窗口原点，直接检验此次坐标根因。视觉与阅读节奏仍需 USER PIE。详见 [Lesson1 当前合同](Tutorial/Guided_Match_Lesson_01.md)。
+
+
+### Stage 8.24B — Guided Lesson 1 Copy & Pacing Follow-up
+
+同一未提交 Stage 的窄范围修正：首轮 Full Card 只讲远射技能范围，之后直接部署；重演后的厄德高检查才依次讲技能、射门与特性。用户同时明确要求首轮公式说明包含“本次进攻的属性值仅包含哲凯赖什的射门属性值 4”，故保留当前公式来源事实，但不恢复首轮独立射门课程。
+
+关键词按步骤及标题／正文分别指定完整短语，仅强调本表面的首次出现。蓝色栏目、眉题、次级说明和操作反馈不加点；结束部署两步只强调“结束部署”，不为尾句泛称补点。保留逐字 FontMeasure 绘点、空格／标点过滤、现有实际 Slate 几何与统一 ModalPanel。新增 [文案与强调脚本](Tutorial/Guided_Match_Lesson_01_Copy_Script.md) 作为维护表，不建立运行时内容引擎。
+
+对手动作结束后停留从 0.75s 增为 1.10s；比较轮仅缩短动作前段／目标观察到 85%，保留完整末尾停留。首次部署约 3.80s，比较轮约 3.395s；首次结束部署／盯人约 2.30s／2.55s。生产防守揭示照旧接管，不延长生产动画。首次已披露结果可见后到回溯弹窗延长至 1.60s；回溯改为技能与特性的简洁对照，去掉底部小字。权威、typed action 顺序与防重入、固定 5／3、9 对 10／11 对 10、比分、scorer、GK 均不改。
+
+验证预算仍是一项 FocusModeAndGating、一条真实完整 FullFlow PIE、必要增量 Editor build 与 diff 检查；不运行 broad suites。视觉与节奏仍需 USER PIE。当前合同和脚本优先于前文旧顺序／旧等待参数。
+
+### Stage 8.24B — Guided Lesson 1 Final Interaction Polish
+
+同一未提交 Stage，限定五项交互修正。攻骰生产 reveal ResultHold→Settled 与教学 0.1s 轮询之间存在旧 AttackRoll 短暂重显的窗口；教学可见性及玩家 roll CTA 同时检查当前 safe action，防守接管后不再显示旧条／暗层／箭头，不添加延迟或透明度掩盖。“远射 · 3–5”弹窗仅调整为真实 Full Card 右侧剩余区域向球场中心靠拢、略低于中线的布局，按容器和 desired size 限位。
+
+对手部署使用教学临时 HandMicro 代理，从真实手牌几何平滑移动到真实目标格，起飞时替代来源绘制，抵达画面绘制后才由 controller 提交一次原生产 typed command；真实落位由 View 决定，接受后撤代理。首轮注意／移动／目标强调／最终棋盘停留为 0.75／0.80／1.05／1.20 秒；比较轮前三段 ×0.80，末尾完整保留。无生产控件重挂、玩法状态写入或通用动画框架。
+
+单一琥珀箭头加小“对手”标签依操作切换：部署来源→代理→真实场上卡→清除；结束部署指向真实 Player B 状态区（无伪按钮）；选盯人指向实际场上斯通斯。退出、确认、重演、生产动画让出时清理／隐藏。持球提示改为“点击场上的哲凯赖什，将他选中为本进攻回合的持球队员。”，比较轮替换球员名。逐字点、公式 hover/tooltip、1.60s 失败后续、5／3、9 对 10／11 对 10、score/scorer、GK、Network 与球员数据保持。
+
+验证限 FocusModeAndGating、一次增量 Development Editor build、一次 FullFlow 真实 PIE 和 diff 检查；仅具体编译／测试／运行缺陷允许补跑，工程证据不能代替 USER PIE。当前 [教学合同](Tutorial/Guided_Match_Lesson_01.md) 与 [文案脚本](Tutorial/Guided_Match_Lesson_01_Copy_Script.md) 为本轮维护入口，不开始下一 Stage。

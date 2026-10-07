@@ -613,6 +613,19 @@ const FString& UFMCodexPlayerCardWidget::GetRenderedAttributeSummary() const
 	return RenderedAttributeSummary;
 }
 
+UWidget* UFMCodexPlayerCardWidget::FindAttributePresentationWidget(FName Key) const
+{
+ return AttributePresentationWidgets.FindRef(Key).Get();
+}
+UWidget* UFMCodexPlayerCardWidget::FindSkillPresentationWidget(FName Key) const
+{
+ return SkillPresentationWidgets.FindRef(Key).Get();
+}
+UWidget* UFMCodexPlayerCardWidget::FindTraitPresentationWidget(FName Key) const
+{
+ return TraitPresentationWidgets.FindRef(Key).Get();
+}
+
 int32 UFMCodexPlayerCardWidget::GetRenderedSkillCount() const
 {
 	return RenderedSkillTexts.Num();
@@ -2529,6 +2542,7 @@ void UFMCodexPlayerCardWidget::RefreshBiography()
 
 void UFMCodexPlayerCardWidget::RefreshSkills()
 {
+	SkillPresentationWidgets.Reset();
 	using namespace FMCodexPlayerCardWidget;
 	SkillList->ClearChildren();
 	RenderedSkillTexts.Reset();
@@ -2570,6 +2584,7 @@ void UFMCodexPlayerCardWidget::RefreshSkills()
 				FName(*FString::Printf(TEXT("FullCardSkillRow%d"), Index)),
 				FLinearColor::FromSRGBColor(FColor(0x08, 0x1A, 0x26)),
 				FMargin(5.0f, 3.0f));
+            if (!Skill.SkillId.IsNone()) SkillPresentationWidgets.Add(Skill.SkillId, RowSurface);
             if (bFullCardPilot)
             {
                 RowSurface->SetPadding(FMargin(4, 0));
@@ -2715,6 +2730,7 @@ void UFMCodexPlayerCardWidget::RefreshSkills()
 
 void UFMCodexPlayerCardWidget::RefreshAttributes()
 {
+	AttributePresentationWidgets.Reset();
 	using namespace FMCodexPlayerCardWidget;
 	AttributeGrid->ClearChildren();
 	RenderedAttributeTexts.Reset();
@@ -2803,6 +2819,7 @@ void UFMCodexPlayerCardWidget::RefreshAttributes()
 				FName(*FString::Printf(TEXT("AttributeCell%d"), Index)),
 				FLinearColor::FromSRGBColor(FColor(0x08, 0x1A, 0x26)),
 				FMargin(7, 0, 1, 0));
+            AttributePresentationWidgets.Add(FName(*Attribute.CanonicalLabel), StatCell);
             if (bFullCardPilot)
             {
                 StatCell->SetPadding(FMargin(7, 0, 1, 0));
@@ -2941,6 +2958,7 @@ int32 UFMCodexPlayerCardWidget::GetTraitRankVisualTier(const EPlayerTraitRank Ra
 
 void UFMCodexPlayerCardWidget::RefreshTraits()
 {
+	TraitPresentationWidgets.Reset();
     using namespace FMCodexPlayerCardWidget;
     TraitColumns->ClearChildren();
     const bool Detailed = PresentationMode == EFMCodexPlayerCardPresentationMode::InteractionChoice;
@@ -3005,6 +3023,7 @@ void UFMCodexPlayerCardWidget::RefreshTraits()
                 auto ValueFont=Value->GetFont(); ValueFont.Size=12; ValueFont.TypefaceFontName=TEXT("Bold"); Value->SetFont(ValueFont);
                 Badge->AddChild(Value); BadgeBounds->AddChild(Badge); Row->AddChildToHorizontalBox(BadgeBounds)->SetVerticalAlignment(VAlign_Center);
             }
+            TraitPresentationWidgets.Add(Data.Id, Surface);
             Surface->AddChild(Row); Bounds->AddChild(Surface);
             List->AddChildToVerticalBox(Bounds)->SetPadding(FMargin(0,2,0,0));
         }

@@ -169,18 +169,18 @@ public:
 		}
 		if (Step==3)
 		{
-			using Category=EFMCodexLocalMatchInteractionCategory;
+			using DirectPIECategory=EFMCodexLocalMatchInteractionCategory;
 			const auto& V=C->GetInteractionView();
 			switch (V.InteractionCategory)
 			{
-			case Category::SelectCarrier:S->RequestSubmitCarrier(Carrier);break;
-			case Category::SelectMarker:
+			case DirectPIECategory::SelectCarrier:S->RequestSubmitCarrier(Carrier);break;
+			case DirectPIECategory::SelectMarker:
 				if (!Test->TestFalse(TEXT("Legal Marker exists"),V.SelectionOptions.IsEmpty())) return true;
 				S->RequestSubmitMarker(V.SelectionOptions[0].Id);break;
-			case Category::SelectRunner:
-			case Category::SelectHelper:
+			case DirectPIECategory::SelectRunner:
+			case DirectPIECategory::SelectHelper:
 				if (V.bCanResolveNoLegalChoice) S->RequestResolveNoLegalSelection(); else S->RequestDeclineSelection();break;
-			case Category::SelectSkill:
+			case DirectPIECategory::SelectSkill:
 			{
 				const auto* Choice=S->GetPresentation().Interaction.SelectionChoices.FindByPredicate([](const auto& O){return O.SkillType==ESkillRuleType::LongShot && O.bEnabled;});
 				if (!Test->TestNotNull(TEXT("Reached genuine ordinary LongShot Tactical Choice"),Choice)) return true;

@@ -17,6 +17,8 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Text/STextBlock.h"
+#include "Widgets/SWindow.h"
+#include "Framework/Application/SlateApplication.h"
 
 #define LOCTEXT_NAMESPACE "FMCodexGuidedLesson1Entry"
 namespace
@@ -51,6 +53,7 @@ void AFMCodexLocalMatchPlayerController::RemoveGuidedLesson1Overlay()
 }
 void AFMCodexLocalMatchPlayerController::ResetGuidedLesson1Presentation()
 {
+	if (auto* L = GetGuidedLesson1()) L->CancelExitConfirmation();
 	CancelRecoveryNotificationDismiss(); ResetSetPieceDraft();
 	ResolutionFeedback = {}; LastDiagnostic = {};
 	// Replace the presentation session, including hover, drag, pending and reveal caches.
@@ -77,7 +80,7 @@ void AFMCodexLocalMatchPlayerController::StartGuidedLesson1()
 void AFMCodexLocalMatchPlayerController::GuidedLesson1Primary()
 {
 	auto* L = GetGuidedLesson1();
-	if (!L || (PlayerMatchScreen && PlayerMatchScreen->IsInlineFormulaRevealInputBlocked())) return;
+	if (!L || L->IsExitConfirmationOpen() || (PlayerMatchScreen && !FFMCodexGuidedLesson1::CanProgress(InteractionView, PlayerMatchScreen->GetTacticalScene(), PlayerMatchScreen->IsInlineFormulaRevealInputBlocked()))) return;
 	if (L->GetStep() == EFMCodexLesson1Step::Complete) { ExitGuidedLesson1(); return; }
 	L->Primary(); RefreshPlayerMatchScreen();
 }
@@ -92,11 +95,22 @@ void AFMCodexLocalMatchPlayerController::TickGuidedLesson1()
 	auto* L = GetGuidedLesson1();
 	if (!L || !PlayerMatchScreen) { RemoveGuidedLesson1Overlay(); return; }
 	const float Now = GetWorld()->GetTimeSeconds();
-	const bool bReady = !PlayerMatchScreen->IsInlineFormulaRevealInputBlocked();
+	const bool bReady = FFMCodexGuidedLesson1::CanProgress(InteractionView, PlayerMatchScreen->GetTacticalScene(), PlayerMatchScreen->IsInlineFormulaRevealInputBlocked());
 	const auto* Detail = PlayerMatchScreen->GetDetailOverlayCard();
 	const bool bInspected = bReady && Detail && L->InspectCard(Detail->GetPresentation().CardId,
-		PlayerMatchScreen->IsDetailOverlayVisible() && Detail->GetRenderedSkillCount() > 0);
-	const bool bChanged = L->Update(InteractionView, bReady, Now-GuidedLesson1LastTime) || bInspected;
+		PlayerMatchScreen->IsDetailOverlayVisible() && Detail->FindAttributePresentationWidget(TEXT("SHO")) && Detail->FindSkillPresentationWidget(L->Skill())
+		&& (!L->IsComparison() || Detail->FindTraitPresentationWidget(TEXT("Trait.LongShotCarrier"))));
+	bool bChanged = L->Update(InteractionView, bReady, Now-GuidedLesson1LastTime) || bInspected;
+	if (bReady && L->GetStep()==EFMCodexLesson1Step::FormulaHover
+		&& PlayerMatchScreen->GetTacticalScene().Phase==FMCodexTacticalScene::EPhase::FormulaHold)
+	{
+		if (auto* Value=PlayerMatchScreen->GetWidgetFromName(TEXT("TheaterAttackBaseHover")); Value && Value->IsHovered() && Value->GetToolTip())
+		{
+			const auto Tip=Value->GetToolTip()->GetCachedWidget();
+			const auto Window=Tip.IsValid()?FSlateApplication::Get().FindWidgetWindow(Tip.ToSharedRef()):TSharedPtr<SWindow>();
+			bChanged |= L->InspectFormula(Window.IsValid() && Window->IsVisible());
+		}
+	}
 	GuidedLesson1LastTime = Now;
 	if (L->IsCheckpointDue())
 	{
@@ -105,6 +119,8 @@ void AFMCodexLocalMatchPlayerController::TickGuidedLesson1()
 	}
 	if (bChanged) RefreshPlayerMatchScreen();
 	if (!bReady || !L->IsOpponentActionDue()) return;
+	const auto BeforeCategory = InteractionView.InteractionCategory;
+	const auto BeforePlacements = InteractionView.DeploymentPlacements.Num();
 	const auto Action = L->OpponentAction();
 	TGuardValue<bool> ScriptScope(L->bDispatchingOpponent, true);
 	switch (Action.Kind)
@@ -114,6 +130,14 @@ void AFMCodexLocalMatchPlayerController::TickGuidedLesson1()
 	case EFMCodexMatchScreenIntent::Marker: PlayerMatchScreen->RequestSubmitMarker(Action.OptionId); break;
 	case EFMCodexMatchScreenIntent::Continue: PlayerMatchScreen->RequestContinueResolution(); break;
 	default: break;
+	}
+	// Deployment waits for the lesson proxy's painted arrival. Only this original
+	// production command places a card; visual arrival never fabricates board state.
+	if (BeforeCategory != InteractionView.InteractionCategory || BeforePlacements != InteractionView.DeploymentPlacements.Num()
+		|| (Action.Kind == EFMCodexMatchScreenIntent::FinishDeployment && InteractionView.bPlayerBDeploymentFinished))
+	{
+		UE_LOG(LogTemp,Display,TEXT("LESSON1_OPPONENT accepted gesture=%d placements=%d->%d"),static_cast<int32>(Action.Kind),BeforePlacements,InteractionView.DeploymentPlacements.Num());
+		L->OpponentActionSubmitted(); RefreshPlayerMatchScreen();
 	}
 }
 #undef LOCTEXT_NAMESPACE

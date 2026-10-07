@@ -60,6 +60,10 @@ public:
 	EFMCodexPlayerCardPresentationMode GetPresentationMode() const;
 	const FString& GetRenderedAttributeSummary() const;
 	int32 GetRenderedSkillCount() const;
+	/** Read-only anchors for currently rendered Full Card rows; absent keys return null. */
+	UWidget* FindAttributePresentationWidget(FName AttributeKey) const;
+	UWidget* FindSkillPresentationWidget(FName SkillId) const;
+	UWidget* FindTraitPresentationWidget(FName TraitId) const;
 	int32 GetRenderedAttributeCount() const;
 	int32 GetRenderedStatusBadgeCount() const;
 	FText GetRenderedIdentityText() const;
@@ -142,6 +146,9 @@ protected:
 		const FPointerEvent& InMouseEvent) override;
 
 private:
+	TMap<FName, TWeakObjectPtr<UWidget>> AttributePresentationWidgets;
+	TMap<FName, TWeakObjectPtr<UWidget>> SkillPresentationWidgets;
+	TMap<FName, TWeakObjectPtr<UWidget>> TraitPresentationWidgets;
 	void BuildWidgetTree();
 	void RefreshVisuals();
 	void RefreshPresentationArt();

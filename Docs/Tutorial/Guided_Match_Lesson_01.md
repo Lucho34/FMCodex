@@ -1,5 +1,50 @@
 # Guided Match Lesson 1 — 第一次进攻：找到适合远射的球员
 
+## Stage 8.24B — Final Interaction Polish（当前表现合同）
+
+本节替代 Pass 1／2、Final Visual-System 与 Copy & Pacing 的相关表现参数；下节 v1 的生产所有权保持，旧教学顺序以本节为准。仍是同一未提交 Stage，工程 PIE 不代替 USER PIE。逐步文案与强调规则以 [Lesson 1 Copy Script](Guided_Match_Lesson_01_Copy_Script.md) 为维护依据；它是文档，不是运行时内容系统。
+
+- **关键词**：正文／标题真实关键词内，每个汉字或字母／数字各有一颗冷白圆点，空格和标点保留字距但不加点；没有独立关键词行。小型 `SGuideKeywordText` 沿用 Slate 原生 inline decorator，由同字体的逐字符 advance 测量中心，不使用整词宽度除以字数。直径为测量字体高度的 8.5%，下方间隔为 5.5%；随 Slate 几何一起缩放。原生段落控制换行／对齐，短关键词整体换行。圆点仅为教学强调，不表示数值。生产卡面不变。
+- **强调范围**：按 step 与 Heading／Body 分开列出完整短语，每个短语只标记本表面首次出现。蓝色栏目、眉题、次级小字与反馈文本无点。结束部署相关两步只强调完整“结束部署”，不自动标记尾句的泛称“部署”。保留上述逐字绘点与空格／标点规则。
+- **标题与顺序**：“教学 · 进攻入门”；首轮哲凯赖什只观察真实 Full Card 的远射技能范围，随后直接部署，不弹出独立射门属性讲解。重演后厄德高按技能 → 射门 → 特性讲授，说明直接射门使用射门属性。按 SkillId、SHO、TraitId 取真实行，不复制卡面或数值。
+- **文案**：技能范围使用“远射技能范围为 3–5。当前进攻战术点为 3，落在范围内，因此可以使用远射。”；分支说明使用“进攻分支下有具体说明，这次请选择‘直接射门’。”。其余保留本方球员区悬停、按住左键拖放及“结束部署”指引。
+- **目标框**：目标取当前可见 Slate 路径的实际桌面几何，教学 OnPaint 的窗口几何先转换到桌面，再通过 LocalToAbsolute／AbsoluteToLocal 转为教学局部矩形，包含布局、DPI 与 render transform。此前将桌面缓存几何和窗口 paint 几何混用，窗口非零位置会整体偏移；不得用偏移量修补。手牌／场上卡取真实可见内容，技能／SHO／特性按生产语义行查询。四角转换后等边留白：卡／按钮 3、Full Card 行 1、部署格／公式值 2 设计单位。未布局、隐藏或脱离可见路径时不画框。箭头由最终矩形和可用空间选侧，位于框外；Full Card 行不叠箭头。
+- **提示与退出**：普通横条仍依真实 Header 底部／球场中心定位，提示与退出组合最大 800 设计单位。退出为无描边的次级控件；中央教学弹窗出现时，退出归入该弹窗标题行，隐藏顶端副本。二次确认默认“继续教学”，取消保留同一 runtime／Screen／步骤。生产动画、Reel、Outcome 和庆祝期间教学全部让出。
+- **对手部署**：教学层创建临时 `UFMCodexPlayerCardWidget`，复制真实 Stones 手牌 presentation 并沿用 HandMicro 卡面，不重挂生产控件。以真实手牌内容和 DefenderSlot 的可见 Slate 桌面几何转为 overlay local，平滑直线移动；目标宽度收至实际格子，保持手牌比例。首轮来源注意 0.75s → 代理移动 0.80s → 已绘制抵达后由 Local controller 提交原 typed deployment 一次 → 真实场上卡强调 1.05s → 清除箭头后棋盘停留 1.20s，约 3.80s 加正常帧／轮询边界。代理起飞时才隐藏来源的绘制；提交成功后立即隐藏代理，原 View 决定真实场上卡，随后释放代理并恢复仍存活来源的 opacity。动画不写权威状态。比较轮注意／移动／目标强调为 80%，末尾仍 1.20s，约 3.28s。确认退出冻结移动；退出、重演、步骤离开时释放代理和来源引用。
+- **对手指示**：全程只使用一个临时琥珀箭头、轻微 pulse 与小型“对手”标签。部署依次指向手牌→移动代理→真实落位卡→清除；结束部署没有对手按钮，指向真实 Player B Header 状态区域，文案“对手正在结束部署。”→“对手已结束部署。”；盯人指向实际部署的斯通斯，文案“对手选择斯通斯作为盯人球员。”→“斯通斯已成为本回合的盯人球员。”。首轮结束部署准备 1.20s／盯人准备 1.45s，接受后各停留 1.10s，比较轮准备 ×0.80。生产 Tactical Scene／Reel／庆祝期间完全清除教学指示；防守起手 0.65s × 本轮系数后仍走原生产揭示。
+- **掷骰交接**：生产攻骰 ResultHold→Settled 时，Lesson 的 0.1s 轮询可能仍停在 AttackRoll，而当前 safe Interaction 已为 RollLongShotDirectDefense。教学可见性必须同时匹配真实 attack action，防止旧“进攻判定”紧凑条、退出、暗层／箭头在轮询前重新显示；玩家 roll CTA 也要求该匹配。无额外延迟、fade 或 opacity 掩盖。公式 hover／解释仅在真实 attack FormulaHold 教学窗口显示。
+- **技能解释位置**：仅“远射 · 3–5”使用 Full Card 右侧剩余空间的中心，向实际球场中心适度靠拢，纵向稍低于 viewport 中线；按当前容器、Full Card、Header／Pitch 与 modal desired size 留白及限位，避免覆盖真实卡面／技能行。不改变其它 modal 风格或公式布局。
+- **持球队员文案**：“点击场上的哲凯赖什，将他选中为本进攻回合的持球队员。”；比较轮换为厄德高，仍由原输入门控推进。
+- **公式教学**：第一次 Direct 在生产 Setup／Intent 结束、原 reveal gate 解除且 FormulaHold 可见后，紧凑动作条引导悬停真实 `TheaterAttackBaseHover` 中的 4。实际打开生产 native tooltip 后，改用和 Intro／回溯／特性完全相同的 `ModalPanel` 说明“理解公式”，共用背景、边框、顶部短线、标题、内边距、分隔线、CTA 和内部退出。面板依真实副标题与 Formula 上沿之间的可用区域布局，保留下方生产公式可见和原 tooltip 可访问；没有复制公式。点击“继续”后回到紧凑动作条“点击‘进攻方掷远射点数’”。第二次不重复首次说明；生产动画、Reel、Outcome、庆祝始终优先。
+- **公式正文**：“悬停属性值，可查看它的来源。／公式总值由属性值与掷骰值相加得到。／本次属性值仅来自哲凯赖什的射门 4。”这是用户明确要求保留的首轮当前公式来源说明，不恢复首轮 Full Card 的独立射门课程。
+- **失败后停留与回溯**：同 AttackSequence 的已披露 Direct outcome 到达生产空间 ResultHold，原 reveal gate 解除且庆祝不活动后，先完整保留约 1.60 秒生产失败画面，再显示教学回溯弹窗。正文为“哲凯赖什可以使用远射技能，但他没有远射特性。让我们换个人试试吧。”，删除底部小字段落，继续复用统一 ModalPanel。计时只延迟教学弹窗，不改变生产复制、结果、比分或动画。不能凭权威结果提前计时。
+- **重演**：仍重建预定义 runtime、重置并替换 Screen；清除悬停教学状态、确认、对手 submitted/settled/move、提示及旧表现缓存。固定 TP3、攻防 5／3、9 对 10 与 11 对 10 均由原生产路径产生。
+
+本轮最小验证：`FMCodex.LocalPlay.GuidedLesson1.FocusModeAndGating`；一条 `FMCodex.PIE.GuidedLesson1.FullFlow`，同时作为 focused PIE 与真实完整窗口运行，覆盖真实公式 hover、教学继续、失败停留、两次进攻、卡面观察顺序、对手落位、退出与普通操作恢复。必要增量 Development Editor build 与 `git diff --check`；仅具体问题允许针对性补跑。不运行 broad suites、Host/Remote、Shipping 或 cook/package。**USER PIE REQUIRED**，不启动 Lesson 2 或下一 Stage。
+
+## Stage 8.24B.2 — production LongShot vertical slice v1
+
+本节是当前教学接入合同，取代下文 8.21A 中尚未接入 Tactical Scene、只检查骰子揭示及第二轮可选看卡的流程描述。视觉与节奏仍需 USER PIE；不是教学视觉最终锁定。
+
+教学只拥有步骤、说明、暗层／高亮／箭头、允许输入、固定骰、预定义检查点和完成／退出。生产拥有 Full Card、Method Choice、Tactical Scene、Reel、Formula、Outcome、Goal Celebration、结果与比分揭示。没有教程专用远射、公式或庆祝组件。
+
+1. 实际掷出 TP3，悬停哲凯赖什真实 Full Card，依次观察远射 3–5 与射门 4；随后真实部署、选人、选择 LongShot。
+2. 真实 Method Choice 保持 Direct 默认动态预览；Direct 可用，Dead Corner 可见但禁用，本课不教死角。保留正常自动跳过缺席 Runner。
+3. 生产 Direct 使用原 Host DEV provider 的攻骰 5／防骰 3，真实 Formula 得到 9 对 10。教学在 Setup、Intent、骰子／Formula、Outcome 期间让出中央面板、横条、暗层和箭头，退出入口也暂时隐藏。
+4. 只有当前 AttackSequence 的 disclosed Direct outcome 已到空间 ResultHold、原 reveal gate 已解除且庆祝不活动，教学才解释特性与战术适配，不复述比分或 Formula 总值。空间 ResultHold 与骰子 reveal ResultHold 是不同状态；不能单凭 !IsAnimating 或被教学关闭的 bCanContinue 推进。
+5. 用户明确选择教学重演。沿原方式重建 runtime、重装 TP3／5／3 overrides、重置并替换 Screen。不是生产 Undo；序号可能复用，所以旧 scene、reel event、结果、庆祝与卡牌锚点不能跨 Screen 保留。
+6. 强制悬停厄德高真实 Full Card，依次观察远射 3–5、射门 4、远射专家 A，再部署。生产卡牌按 canonical attribute key／SkillId／TraitId 提供只读行查询，不按行号或中文字符串定位；不存在时返回空。
+7. 相同 Direct 与 5／3，由生产 Trait A 加成产生有效射门 6、最终 11 对 10及 Goal。原 Formula 下划线基础值 tooltip 展示射门 4、特性 +2；教学不复制公式。
+8. 自然 Goal Outcome 到达 ResultHold 后播放既有庆祝；教学让出画面，等庆祝结束才总结并完成。合法点击／焦点内 Space 只加速生产阶段，不推进教学；直接跳过 Outcome 不强制补播庆祝。
+
+Full Card 只读详情在观察步骤保持显示，离开后恢复正常关闭。新观察步骤属于 Lesson 状态；回退重新进入厄德高 inspection，不缓存另一套表现时钟。终局继续仍由教学限制，以便重演／总结；比分与 scorer 只来自权威。
+
+启动仍为 non-Shipping Local `fm.Tutorial.Lesson1`；退出 `fm.Tutorial.Exit` 返回普通新局。移除 Screen 中旧 Guided 场景排除表达式，也移除其越过 non-Shipping 宏的调用；不扩大 Shipping 教学入口。
+
+最小验证预算：GuidedLesson1 的 FlowAndCheckpoint、FocusModeAndGating、IsolationAndHints、ProductionLifecycleAndReset，及 LongShotMethodPreviewAndFlow；一条真实 FMCodex.PIE.GuidedLesson1.FullFlow，覆盖自然庆祝与一次空间点击加速。必要增量 Editor 构建；不因读取未变生产规则而运行 broad gameplay／Network suites。实际验证结果在本 Stage 交付报告，不将计划当作 PASS。
+
+## 8.21A 原始实现与历史验证
+
 Stage 8.21A 的 Local Development / Editor 原型。目标是让玩家完成一次基本进攻，并通过相同条件下的两次远射理解“先考虑战术，再选择适合它的球员”。首次体验目标为 3–5 分钟，实际阅读、比较和操作时长须由新玩家验收；代码不按目标时长强制等待。
 
 ## 固定场景与生产数据

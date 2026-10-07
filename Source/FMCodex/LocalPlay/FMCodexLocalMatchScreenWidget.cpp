@@ -610,7 +610,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshFromPresentation(
 {
 #if !UE_BUILD_SHIPPING
 	const auto* Lesson = MatchController ? MatchController->GetGuidedLesson1() : nullptr;
-	if (!Lesson || Lesson->GetStep() != EFMCodexLesson1Step::SkillRangeExplanation)
+	if (!Lesson || !Lesson->KeepsFullCardOpen())
 #endif
 		HideDetailOverlay();
 	// Any authoritative presentation rebuild invalidates the transient hover
@@ -2287,7 +2287,7 @@ void UFMCodexLocalMatchScreenWidget::HandleDetailHoverDismissed(
 	#if !UE_BUILD_SHIPPING
 	// Keep the genuinely inspected production card visible beside its explanation.
 	if (const auto* Lesson = MatchController ? MatchController->GetGuidedLesson1() : nullptr)
-		if (Lesson->GetStep() == EFMCodexLesson1Step::SkillRangeExplanation) return;
+		if (Lesson->KeepsFullCardOpen()) return;
 #endif
 	if (DetailHoverSource == SourceCard)
 	{
@@ -5257,7 +5257,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	FFMCodexUMGLongShotResolutionViewModel DisplayedLongShot =
 		BuildDisplayedLongShotResolution();
 	const bool bSpatialAllowed = FMCodexResolutionTheaterPrototype::IsEnabled()
-		&& !Presentation.Resolution.bRejected && !(MatchController && MatchController->GetGuidedLesson1());
+		&& !Presentation.Resolution.bRejected;
 	auto SpatialFacts = FMCodexTacticalScene::Project(DisplayedLongShot, Presentation.Header, bSpatialAllowed);
 	if (!SpatialFacts.bActive)
 		SpatialFacts = FMCodexTacticalScene::ProjectCross(DisplayedInlineFormula, Presentation.Header,
