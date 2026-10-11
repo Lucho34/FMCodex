@@ -100,7 +100,7 @@ void AFMCodexLocalMatchPlayerController::TickGuidedLesson1()
 	const bool bInspected = L->InspectCard(Detail ? Detail->GetPresentation().CardId : NAME_None,
 		bReady && Detail && PlayerMatchScreen->IsDetailOverlayVisible() && !Detail->GetTickSpaceGeometry().GetLocalSize().IsNearlyZero()
 		&& (L->IsComparison() ? Detail->FindTraitPresentationWidget(TEXT("Trait.LongShotCarrier")) != nullptr
-			: Detail->FindSkillPresentationWidget(L->Skill()) != nullptr), Now);
+			: Detail->FindSkillPresentationWidget(L->Skill(L->IsComparison())) != nullptr), Now);
 	bool bChanged = L->Update(InteractionView, bReady, Now-GuidedLesson1LastTime) || bInspected;
 	if (bReady && L->GetStep()==EFMCodexLesson1Step::FormulaHover
 		&& PlayerMatchScreen->GetTacticalScene().Phase==FMCodexTacticalScene::EPhase::FormulaHold)
@@ -127,6 +127,7 @@ void AFMCodexLocalMatchPlayerController::TickGuidedLesson1()
 	switch (Action.Kind)
 	{
 	case EFMCodexMatchScreenIntent::DeployOrdinary: PlayerMatchScreen->RequestDeployOrdinary(Action.OptionId, Action.SlotId); break;
+	case EFMCodexMatchScreenIntent::DeployGoalkeeper: PlayerMatchScreen->RequestDeployGoalkeeper(Action.SlotId); break;
 	case EFMCodexMatchScreenIntent::FinishDeployment: PlayerMatchScreen->RequestFinishDeployment(); break;
 	case EFMCodexMatchScreenIntent::Marker: PlayerMatchScreen->RequestSubmitMarker(Action.OptionId); break;
 	case EFMCodexMatchScreenIntent::Continue: PlayerMatchScreen->RequestContinueResolution(); break;

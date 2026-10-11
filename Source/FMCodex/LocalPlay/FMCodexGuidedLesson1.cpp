@@ -26,10 +26,10 @@ void FFMCodexGuidedLesson1::BindStaticContent()
   StaticBindings.Add(Name,Player->PreferredDisplayName.ToString());
   StaticBindings.Add(Shooting,FString::FromInt(Player->Card.Attributes.Shooting)); return true;
  };
- if(!BindPlayer(Gyokeres(),Var::FirstCarrierName,Var::FirstCarrierShooting)
+ if(!BindPlayer(Rice(),Var::FirstCarrierName,Var::FirstCarrierShooting)
   || !BindPlayer(Odegaard(),Var::ComparisonCarrierName,Var::ComparisonCarrierShooting))
  { ContentError=TEXT("Missing tutorial player content binding"); return; }
- const auto* Marker=FFMCodexPrototypeTeamContent::Find(Stones());
+ const auto* Marker=FFMCodexPrototypeTeamContent::Find(Cherki());
  if(!Marker || Marker->PreferredDisplayName.IsEmpty()) { ContentError=TEXT("Missing marker display name"); return; }
  StaticBindings.Add(Var::MarkerName,Marker->PreferredDisplayName.ToString());
  const auto* Comparison=FFMCodexPrototypeTeamContent::Find(Odegaard());
@@ -46,7 +46,7 @@ TMap<EFMCodexGuideVariable,FString> FFMCodexGuidedLesson1::Bindings() const
  {
   Result.Add(Var::CarrierName,Player->PreferredDisplayName.ToString());
   Result.Add(Var::CarrierShooting,FString::FromInt(Player->Card.Attributes.Shooting));
-  const auto* Range=Player->SkillAssignments.FindByPredicate([](const auto& S){return S.RuleId==Skill();});
+  const auto* Range=Player->SkillAssignments.FindByPredicate([&](const auto& S){return S.RuleId==Skill(bComparison);});
   if(Range) { Result.Add(Var::SkillMin,FString::FromInt(Range->MinTacticalPoint)); Result.Add(Var::SkillMax,FString::FromInt(Range->MaxTacticalPoint)); }
  }
  if(CurrentTP.IsSet()) Result.Add(Var::CurrentAttackTP,FString::FromInt(CurrentTP.GetValue()));
@@ -65,7 +65,7 @@ FText FFMCodexGuidedLesson1::Resolve(const FString& Template) const
 }
 FString FFMCodexGuidedLesson1::ContentStepId() const
 {
- static const TCHAR* Ids[]={TEXT("Intro"),TEXT("TacticPoint"),TEXT("TacticPointExplanation"),TEXT("InspectGyokeres"),TEXT("InspectOdegaard"),TEXT("ShootingExplanation"),TEXT("SkillRangeExplanation"),TEXT("TraitExplanation"),
+ static const TCHAR* Ids[]={TEXT("Intro"),TEXT("TacticPoint"),TEXT("TacticPointExplanation"),TEXT("InspectRice"),TEXT("InspectOdegaard"),TEXT("ShootingExplanation"),TEXT("SkillRangeExplanation"),TEXT("TraitExplanation"),
   TEXT("Deploy"),TEXT("OpponentDeploy"),TEXT("FinishExplanation"),TEXT("FinishDeployment"),TEXT("OpponentFinish"),TEXT("CarrierExplanation"),TEXT("Carrier"),TEXT("OpponentMarker"),TEXT("SkillExplanation"),TEXT("Skill"),
   TEXT("DirectExplanation"),TEXT("DirectShot"),TEXT("FormulaHover"),TEXT("FormulaExplanation"),TEXT("AttackRoll"),TEXT("OpponentDefense"),TEXT("ResultReveal"),TEXT("FailurePause"),TEXT("Rewind"),TEXT("RewindTransition"),TEXT("Summary"),TEXT("Complete")};
  static_assert(UE_ARRAY_COUNT(Ids)==static_cast<int32>(StepType::Complete)+1,"Each code step needs a stable content key");
@@ -105,12 +105,14 @@ FText FFMCodexGuidedLesson1::Eyebrow() const
  return Resolve(L?(bComparison?L->ComparisonTitle:L->Title):FString());
 }
 
-FName FFMCodexGuidedLesson1::Gyokeres() { return TEXT("Prototype.Arsenal.ViktorGyokeres"); }
+FName FFMCodexGuidedLesson1::Rice() { return TEXT("Prototype.Arsenal.DeclanRice"); }
 FName FFMCodexGuidedLesson1::Odegaard() { return TEXT("Prototype.Arsenal.MartinOdegaard"); }
-FName FFMCodexGuidedLesson1::Stones() { return TEXT("Prototype.ManchesterCity.JohnStones"); }
+FName FFMCodexGuidedLesson1::Cherki() { return TEXT("Prototype.ManchesterCity.RayanCherki"); }
 FName FFMCodexGuidedLesson1::AttackerSlot() { return TEXT("Demo.Slot.NearB.03"); }
 FName FFMCodexGuidedLesson1::DefenderSlot() { return TEXT("Demo.Slot.NearB.04"); }
-FName FFMCodexGuidedLesson1::Skill() { return TEXT("Canonical.Skill.LongShot.3.5"); }
+FName FFMCodexGuidedLesson1::Skill(bool bComparison) { return bComparison ? TEXT("Canonical.Skill.LongShot.3.5") : TEXT("Canonical.Skill.LongShot.3.3"); }
+FName FFMCodexGuidedLesson1::Goalkeeper() { return TEXT("Prototype.ManchesterCity.GianluigiDonnarumma"); }
+FName FFMCodexGuidedLesson1::GoalkeeperSlot() { return TEXT("Demo.Slot.NearB.05"); }
 
 void FFMCodexGuidedLesson1::SetStep(StepType NewStep)
 {
@@ -157,7 +159,7 @@ bool FFMCodexGuidedLesson1::Update(const FFMCodexLocalMatchInteractionView& V, b
 	FeedbackSeconds = FMath::Max(0.f, FeedbackSeconds - DeltaSeconds);
 	if (FeedbackSeconds == 0.f) Feedback = FText();
 	if (Step == StepType::FormulaHover || Step == StepType::FormulaExplanation) return false;
-	if (RequiresAcknowledgement() || Step == StepType::InspectGyokeres || Step == StepType::InspectOdegaard || Step == StepType::RewindTransition) return false;
+	if (RequiresAcknowledgement() || Step == StepType::InspectRice || Step == StepType::InspectOdegaard || Step == StepType::RewindTransition) return false;
 	if (!bRevealReady)
 	{
 		if (V.bTerminalPendingAdvance) SetStep(StepType::ResultReveal);
@@ -184,6 +186,7 @@ bool FFMCodexGuidedLesson1::Update(const FFMCodexLocalMatchInteractionView& V, b
 	case Category::TacticalPointRoll: SetStep(StepType::TacticPoint); break;
 	case Category::Deploy:
 	{
+		bOpponentGoalkeeperPlaced = V.DeploymentPlacements.ContainsByPredicate([](const auto& P){ return P.CardId == Goalkeeper(); });
 		bool bAttackerPlaced = false;
 		for (const auto& Region : V.PitchRegions)
 			for (const auto& Slot : Region.Slots)
@@ -220,7 +223,7 @@ void FFMCodexGuidedLesson1::Primary()
 {
 	if (!IsContentReady() || !CanAcknowledge()) return;
 	if (Step == StepType::Intro) SetStep(StepType::TacticPoint);
-	else if (Step == StepType::TacticPointExplanation) SetStep(StepType::InspectGyokeres);
+	else if (Step == StepType::TacticPointExplanation) SetStep(StepType::InspectRice);
 	else if (Step == StepType::SkillRangeExplanation) SetStep(StepType::Deploy);
 	else if (Step == StepType::ShootingExplanation) SetStep(StepType::TraitExplanation);
 	else if (Step == StepType::TraitExplanation) SetStep(StepType::Deploy);
@@ -294,14 +297,19 @@ bool FFMCodexGuidedLesson1::IsOpponentFocusVisible() const
 }
 void FFMCodexGuidedLesson1::OpponentActionSubmitted()
 {
+	if (Step == StepType::OpponentFinish && !bOpponentGoalkeeperPlaced) return;
 	if (IsOpponentPresenting()) { bOpponentSubmitted = true; OpponentSettledSeconds = 0.f; }
 }
 FFMCodexMatchScreenRequest FFMCodexGuidedLesson1::OpponentAction() const
 {
 	FFMCodexMatchScreenRequest R;
-	if (Step == StepType::OpponentDeploy) { R.Kind = Gesture::DeployOrdinary; R.OptionId = Stones(); R.SlotId = DefenderSlot(); }
-	else if (Step == StepType::OpponentFinish) R.Kind = Gesture::FinishDeployment;
-	else if (Step == StepType::OpponentMarker) { R.Kind = Gesture::Marker; R.OptionId = Stones(); }
+	if (Step == StepType::OpponentDeploy) { R.Kind = Gesture::DeployOrdinary; R.OptionId = Cherki(); R.SlotId = DefenderSlot(); }
+	else if (Step == StepType::OpponentFinish)
+	{
+		R.Kind = bOpponentGoalkeeperPlaced ? Gesture::FinishDeployment : Gesture::DeployGoalkeeper;
+		if (!bOpponentGoalkeeperPlaced) R.SlotId = GoalkeeperSlot();
+	}
+	else if (Step == StepType::OpponentMarker) { R.Kind = Gesture::Marker; R.OptionId = Cherki(); }
 	else { R.Kind = Gesture::Continue; R.Category = EFMCodexUMGInteractionCategory::RollLongShotDirectDefense; }
 	return R;
 }
@@ -322,7 +330,7 @@ bool FFMCodexGuidedLesson1::AllowsScreen(const FFMCodexMatchScreenRequest& R) co
 	case StepType::Deploy: return R.Kind == Gesture::DeployOrdinary && R.OptionId == Attacker() && R.SlotId == AttackerSlot();
 	case StepType::FinishDeployment: return R.Kind == Gesture::FinishDeployment;
 	case StepType::Carrier: return R.Kind == Gesture::Carrier && R.OptionId == Attacker();
-	case StepType::Skill: return R.Kind == Gesture::Skill && R.OptionId == Skill();
+	case StepType::Skill: return R.Kind == Gesture::Skill && R.OptionId == Skill(bComparison);
 	case StepType::DirectShot: return R.Kind == Gesture::Branch && R.Branch == EFMCodexUMGBranchIntent::DirectShot;
 	case StepType::AttackRoll: return R.Kind == Gesture::Continue && R.Category == EFMCodexUMGInteractionCategory::RollLongShotDirectAttack;
 	default: return false;
@@ -340,6 +348,8 @@ bool FFMCodexGuidedLesson1::AllowsIntent(const FMatchPlayPlayerIntent& I) const
 		LESSON_PAYLOAD(FMatchPlayFullD12EntryRequest, R.Kind = Gesture::TacticalPoints);
 	case EMatchPlayAuthoritativeCommandKind::DeployOrdinary:
 		LESSON_PAYLOAD(FMatchPlayAuthoritativeDeployOrdinaryRequest, R.Kind = Gesture::DeployOrdinary; R.OptionId = P.CardId; R.SlotId = P.SlotId);
+	case EMatchPlayAuthoritativeCommandKind::DeployGoalkeeper:
+		LESSON_PAYLOAD(FMatchPlayAuthoritativeDeployGoalkeeperRequest, R.Kind = Gesture::DeployGoalkeeper; R.SlotId = P.SlotId);
 	case EMatchPlayAuthoritativeCommandKind::FinishDeployment:
 		LESSON_PAYLOAD(FMatchPlayFinishDeploymentIntent, R.Kind = Gesture::FinishDeployment);
 	case EMatchPlayAuthoritativeCommandKind::SubmitCarrier:
@@ -363,13 +373,13 @@ bool FFMCodexGuidedLesson1::AllowsIntent(const FMatchPlayPlayerIntent& I) const
 void FFMCodexGuidedLesson1::ExplainUnavailable(const FFMCodexMatchScreenRequest& R)
 {
 	FeedbackSeconds = Timing(TEXT("FeedbackDuration"));
- Feedback = Label(bComparison && Step == StepType::Deploy && R.OptionId == Gyokeres()?TEXT("FeedbackCompare"):TEXT("FeedbackUnavailable"));
+ Feedback = Label(bComparison && Step == StepType::Deploy && R.OptionId == Rice()?TEXT("FeedbackCompare"):TEXT("FeedbackUnavailable"));
 }
 
 void FFMCodexGuidedLesson1::ApplyPresentation(FFMCodexUMGMatchScreenViewModel& P) const
 {
-	P.LocalRack.Cells.RemoveAll([&](const auto& C) { return C.Card.CardId != Gyokeres() && (!bComparison || C.Card.CardId != Odegaard()); });
-	P.OpponentRack.Cells.RemoveAll([&](const auto& C) { return C.Card.CardId != Stones(); });
+	P.LocalRack.Cells.RemoveAll([&](const auto& C) { return C.Card.CardId != Rice() && (!bComparison || C.Card.CardId != Odegaard()); });
+	P.OpponentRack.Cells.RemoveAll([&](const auto& C) { return C.Card.CardId != Cherki(); });
 	for (auto& C : P.LocalRack.Cells) C.bDeploymentDraggable &= Step == StepType::Deploy;
 	for (auto& C : P.OpponentRack.Cells) C.bDeploymentDraggable = false;
 	P.LocalRack.SideLabel = Label(TEXT("LocalRack")).ToString();
@@ -381,12 +391,12 @@ void FFMCodexGuidedLesson1::ApplyPresentation(FFMCodexUMGMatchScreenViewModel& P
 	P.Interaction.bCanResolveNoLegal = false;
 	P.Interaction.DeploymentChoices.RemoveAll([&](auto& C)
 	{
-		if (Step != StepType::Deploy || (C.CardId != Gyokeres() && (!bComparison || C.CardId != Odegaard()))) return true;
+		if (Step != StepType::Deploy || (C.CardId != Rice() && (!bComparison || C.CardId != Odegaard()))) return true;
 		C.Destinations.RemoveAll([](const auto& D) { return D.SlotId != AttackerSlot(); });
 		return C.Destinations.IsEmpty();
 	});
 	for (auto& C : P.Interaction.SelectionChoices)
-		if (Step != StepType::Skill || C.OptionId != Skill()) { C.bEnabled = false; C.SecondaryLabel = Label(TEXT("UnavailableChoice")).ToString(); }
+		if (Step != StepType::Skill || C.OptionId != Skill(bComparison)) { C.bEnabled = false; C.SecondaryLabel = Label(TEXT("UnavailableChoice")).ToString(); }
 	// The existing theater retains the absent method as a disabled option.
 	P.Interaction.BranchChoices.RemoveAll([](const auto& C) { return C.Intent != EFMCodexUMGBranchIntent::DirectShot; });
 	P.LongShotResolution.BranchChoices.RemoveAll([](const auto& C) { return C.Intent != EFMCodexUMGBranchIntent::DirectShot; });
@@ -464,7 +474,7 @@ void FFMCodexGuidedLesson1::InspectTacticPoint(bool bValueHovered)
 }
 bool FFMCodexGuidedLesson1::InspectCard(FName CardId, bool bFullCardVisible, double NowSeconds)
 {
-	if (!IsContentReady() || bExitConfirmation || (Step != StepType::InspectGyokeres && Step != StepType::InspectOdegaard)
+	if (!IsContentReady() || bExitConfirmation || (Step != StepType::InspectRice && Step != StepType::InspectOdegaard)
 		|| CardId != Attacker() || !bFullCardVisible)
 	{
 		CancelCardInspection(); return false;
@@ -477,8 +487,8 @@ bool FFMCodexGuidedLesson1::InspectCard(FName CardId, bool bFullCardVisible, dou
 }
 bool FFMCodexGuidedLesson1::AllowsInspection(FName CardId) const
 {
-	if (Step == StepType::InspectGyokeres || Step == StepType::InspectOdegaard || KeepsFullCardOpen()) return CardId == Attacker();
-	if (Step == StepType::Deploy) return CardId == Gyokeres() || (bComparison && CardId == Odegaard());
+	if (Step == StepType::InspectRice || Step == StepType::InspectOdegaard || KeepsFullCardOpen()) return CardId == Attacker();
+	if (Step == StepType::Deploy) return CardId == Rice() || (bComparison && CardId == Odegaard());
 	return Step == StepType::Carrier && CardId == Attacker();
 }
 bool FFMCodexGuidedLesson1::KeepsFullCardOpen() const

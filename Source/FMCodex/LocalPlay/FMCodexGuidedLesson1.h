@@ -11,7 +11,7 @@
 /** Local development lesson orchestration only; gameplay stays in the Host/Session. */
 enum class EFMCodexLesson1Step : uint8
 {
-	Intro, TacticPoint, TacticPointExplanation, InspectGyokeres, InspectOdegaard, ShootingExplanation, SkillRangeExplanation, TraitExplanation,
+	Intro, TacticPoint, TacticPointExplanation, InspectRice, InspectOdegaard, ShootingExplanation, SkillRangeExplanation, TraitExplanation,
 	Deploy, OpponentDeploy, FinishExplanation, FinishDeployment, OpponentFinish,
 	CarrierExplanation, Carrier, OpponentMarker, SkillExplanation, Skill,
 	DirectExplanation, DirectShot, FormulaHover, FormulaExplanation, AttackRoll, OpponentDefense,
@@ -42,17 +42,19 @@ public:
 	FText PointerLabel() const;
 	float Timing(const TCHAR* Key) const;
 	const FString& ContentSourceHash() const { return Content->SourceHash(); }
-	static FName Gyokeres();
+	static FName Rice();
 	static FName Odegaard();
-	static FName Stones();
+	static FName Cherki();
 	static FName AttackerSlot();
 	static FName DefenderSlot();
-	static FName Skill();
+	static FName Skill(bool bComparison = false);
+	static FName Goalkeeper();
+	static FName GoalkeeperSlot();
 
 	EFMCodexLesson1Step GetStep() const { return Step; }
 	bool IsComparison() const { return bComparison; }
 	int32 GetHintLevel() const { return HintLevel; }
-	FName Attacker() const { return bComparison ? Odegaard() : Gyokeres(); }
+	FName Attacker() const { return bComparison ? Odegaard() : Rice(); }
 	bool Update(const FFMCodexLocalMatchInteractionView& View, bool bRevealReady, float DeltaSeconds);
 	void Primary();
 	bool CanAcknowledge() const { return !bExitConfirmation && (Step != EFMCodexLesson1Step::TacticPointExplanation || bTacticPointInspected); }
@@ -112,6 +114,7 @@ private:
 	TOptional<int32> DisplayedAttackShooting, DisplayedAttackTraitBonus;
 	TOptional<double> FullCardVisibleSince;
 	bool bTacticPointInspected = false;
+	bool bOpponentGoalkeeperPlaced = false;
 	void SetStep(EFMCodexLesson1Step NewStep);
 	EFMCodexLesson1Step Step = EFMCodexLesson1Step::Intro;
 	bool bComparison = false;

@@ -50,7 +50,7 @@
 
 用 `{变量名}` 原样填写。未知变量、拼错字段、缺少绑定会报错，绝不把花括号原文或旧文案当 fallback。TP 在掷点前不可用，Formula 值只能用于已有 Formula 的步骤；全局标签只允许静态绑定。
 
-说明中的固定“射门 +2”仍是本课既定 A 特性的规则教学文本，不是数值配置，也不参与计算。规则教学措辞改变仍需核对 canonical rules；本阶段不建立规则文本自动生成器。原场景启动校验继续要求双方射门 4、指定技能／特性、TP3 与固定骰，数据不决定这些条件。球员数据与规则发生变化后，场景不满足要求会明确拒绝启动，不能仅改文案绕过。
+说明中的固定“射门 +1”是本课既定 B 特性的规则教学文本，不是数值配置，也不参与计算。规则教学措辞改变仍需核对 canonical rules；本阶段不建立规则文本自动生成器。原场景启动校验继续要求双方射门 4、指定技能／特性、TP3 与固定骰，数据不决定这些条件。球员数据与规则发生变化后，场景不满足要求会明确拒绝启动，不能仅改文案绕过。
 
 ## 语义目标与箭头
 
@@ -64,7 +64,7 @@ loader 将 TargetId 映射到教学专属 enum；原 resolver 再取得真实控
 
 Timings 配置源注意、代理移动、目标强调、结束停留、防守起手、失败后讲解、重演等待、提示递进和反馈存续。除 ComparisonPace 为倍率外，单位均为秒。保留已接受的首轮 0.75／0.80／1.05／1.20 与比较前段 ×0.80、失败 1.60；具体可编辑数值以工作簿为准。
 
-`FullCardExplanationDelay` 默认 1 秒，仅用于哲凯赖什与厄德高的 Full Card 检查。计时从真实卡片可见后开始，离开／隐藏、退出确认与步骤切换即取消。不会延迟卡片显示或其他教学步骤。
+`FullCardExplanationDelay` 默认 1 秒，仅用于赖斯与厄德高的 Full Card 检查。计时从真实卡片可见后开始，离开／隐藏、退出确认与步骤切换即取消。不会延迟卡片显示或其他教学步骤。
 
 校验要求有限非负值，普通项 0–60；移动时长 0.05–10，倍率 0.05–2；两级提示时间必须递增。计时只消费真实 elapsed time。生产 Reel、Formula reveal、Tactical Scene、Outcome、Goal Celebration、score disclosure 均不读取这些参数。
 
@@ -73,3 +73,5 @@ Timings 配置源注意、代理移动、目标强调、结束停留、防守起
 Python 复用球员 importer 的标准库 OOXML reader；整份源通过验证后原子替换输出。相同源字节产生相同 JSON，含源 basename 与 SHA256，无生成时间戳。`--input`／`--output` 可指定显式路径；`--check` 不写文件。
 
 C++ 同样验证 schema、字段类型、唯一性、完整 Lesson01 绑定、surface／target／arrow、timing、placeholder 和 emphasis；失败不发布半份模型。Host 在改变当前 runtime 前加载候选内容，缺失／错误时记录具体错误并拒绝 launch。数据读取使用已有 Content/Data UFS 路径；runtime 不读 Excel，不依赖 Python 或 Office。
+
+Stage 8.27A 将 InspectGyokeres 键替换为 InspectRice，schema 1 的数据形状不变；源表/导入器/loader 同步更新。两名球员分别绑定 LongShot.3.3 / LongShot.3.5，Formula 数值仍逐项来自权威事实。

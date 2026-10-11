@@ -34,31 +34,28 @@ class SimplifiedContentTests(unittest.TestCase):
         runtime = self.parse()
         saved = (ROOT / "Content/Data/CanonicalPlayerContent.json").read_text(encoding="utf-8-sig")
         self.assertEqual(saved, json.dumps(runtime, ensure_ascii=False, indent=2) + "\n")
-        self.assertEqual(runtime["schemaVersion"], 4)
+        self.assertEqual(runtime["schemaVersion"], 5)
         self.assertEqual(len(runtime["players"]), 40)
         self.assertEqual(sum(p["position"] == "GK" for p in runtime["players"]), 2)
 
-    def test_draft_values_and_passive_assignments_exact(self):
-        draft = SOURCE / "FMCodex_Rules_Simplification_Draft.xlsx"
-        attributes = {r[6]: r for r in importer.read_sheet_rows(draft, "AttributeMigrationDraft")[1:]}
-        traits = {r[6]: r for r in importer.read_sheet_rows(draft, "TraitMigrationDraft")[1:]}
+    def test_current_taxonomy_and_source_assignments(self):
+        # The latest canonical workbook owns player design, never the historical draft.
+        self.assertEqual(len(importer.TRAIT_HEADERS), 20)
+        self.assertEqual(len(set(importer.TRAIT_HEADERS)), 20)
+        retired = {"Trait.CornerHighThreat", "Trait.CornerLowThreat", "Trait.CornerHighDefense", "Trait.CornerLowDefense"}
+        self.assertFalse(retired.intersection(importer.TRAIT_HEADERS))
         for player in self.parse()["players"]:
-            row = attributes[player["playerKey"]]
-            self.assertEqual((player["displaySerial"], player["team"], player["chineseName"], player["position"], player["rosterSlot"], player["englishName"]), tuple(row[:6]))
+            self.assertTrue(all(t["traitId"] not in retired for t in player["rankedTraits"]))
             if player["position"] == "GK":
                 self.assertIsNone(player["staminaTier"])
                 self.assertIsNone(player["outfieldAttributes"])
                 self.assertFalse(player["rankedTraits"] or player["binaryTraits"])
             else:
                 self.assertEqual(set(player["outfieldAttributes"]), set(importer.OUTFIELD_ATTRIBUTES))
-                for key, index in [("SHO", 14), ("CON", 15), ("DEF", 16)]:
-                    self.assertEqual(player["outfieldAttributes"][key], row[index])
-                self.assertEqual(player["staminaTier"], row[17])
-            assigned = traits[player["playerKey"]][7:31]
-            expected_ranked = [{"traitId": key, "rank": value} for key, value in zip(importer.TRAIT_HEADERS, assigned) if value and key != importer.BINARY_TRAIT]
-            expected_binary = [key for key, value in zip(importer.TRAIT_HEADERS, assigned) if value and key == importer.BINARY_TRAIT]
-            self.assertEqual(player["rankedTraits"], expected_ranked)
-            self.assertEqual(player["binaryTraits"], expected_binary)
+        for old in retired:
+            rows = copy.deepcopy(self.rows)
+            rows[0][self.columns["Trait.CrossHighRunner"]] = old
+            with self.assertRaises(importer.ValidationFailure): self.parse(rows)
 
     def test_base_range_and_missing_value(self):
         for key in importer.OUTFIELD_ATTRIBUTES:

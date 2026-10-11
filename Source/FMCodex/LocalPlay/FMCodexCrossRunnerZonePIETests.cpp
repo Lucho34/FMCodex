@@ -28,7 +28,7 @@ public:
 	}
 };
 
-// Real Local PIE, canonical Prototype40_v3, Screen typed actions and the existing
+// Real Local PIE, canonical Prototype40_v4, Screen typed actions and the existing
 // DEV provider. No gameplay-state edits, fake candidates or reveal-clock jumps.
 class FCrossRunnerZonePIE final : public IAutomationLatentCommand
 {
@@ -44,7 +44,7 @@ public:
 		if (!S || FPlatformTime::Seconds() - Changed < .6) return false;
 		if (Step == 0)
 		{
-			Test->TestEqual(TEXT("Committed four-tactic production content"), FFMCodexPrototypeTeamContent::GetBalanceContentVersion(), FString(TEXT("Prototype40_v3")));
+			Test->TestEqual(TEXT("Committed four-tactic production content"), FFMCodexPrototypeTeamContent::GetBalanceContentVersion(), FString(TEXT("Prototype40_v4")));
 			S->RequestStartNewMatch(); ++Step; Changed = FPlatformTime::Seconds(); return false;
 		}
 		if (S->IsInlineFormulaRevealInputBlocked()) return false;

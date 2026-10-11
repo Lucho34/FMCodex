@@ -5,32 +5,32 @@ namespace
 using R = EMatchPlayResolutionParticipantRole;
 using A = EMatchPlayResolutionFormulaAttribute;
 struct FEntry { FName Id; FText Name; FName Context; FName OtherContext; R Role; A Attribute; A OtherAttribute; };
+// Low-ball contexts intentionally have separate entries: exactly one attribute
+// applies in a context. Never treat Speed/Control or Speed/Defense as dual operands.
 const TArray<FEntry>& Registry()
 {
  static const TArray<FEntry> Entries = {
   {TEXT("Trait.LongShotCarrier"), NSLOCTEXT("FMCodexTraits", "LongShotCarrier", "远射专家"), TEXT("LongShot.DirectShot"), NAME_None, R::Carrier, A::Shooting, A::None},
   {TEXT("Trait.CutInsideCarrier"), NSLOCTEXT("FMCodexTraits", "CutInsideCarrier", "内切专家"), TEXT("CutInsideShot.DirectShot"), NAME_None, R::Carrier, A::Control, A::None},
   {TEXT("Trait.CrossCarrier"), NSLOCTEXT("FMCodexTraits", "CrossCarrier", "传中专家"), TEXT("Cross.High"), TEXT("Cross.Low"), R::Carrier, A::Passing, A::None},
-  {TEXT("Trait.CrossHighRunner"), NSLOCTEXT("FMCodexTraits", "CrossHighRunner", "高球传中接应"), TEXT("Cross.High"), NAME_None, R::Runner, A::Strength, A::None},
-  {TEXT("Trait.CrossLowRunner"), NSLOCTEXT("FMCodexTraits", "CrossLowRunner", "低球传中接应"), TEXT("Cross.Low"), NAME_None, R::Runner, A::Speed, A::None},
+  {TEXT("Trait.CrossHighRunner"), NSLOCTEXT("FMCodexTraits", "CrossHighRunner", "高球接应"), TEXT("Cross.High"), TEXT("Corner.High"), R::Runner, A::Strength, A::None},
+  {TEXT("Trait.CrossLowRunner"), NSLOCTEXT("FMCodexTraits", "CrossLowRunner", "低球接应"), TEXT("Cross.Low"), NAME_None, R::Runner, A::Speed, A::None},
+  {TEXT("Trait.CrossLowRunner"), NSLOCTEXT("FMCodexTraits", "CrossLowRunner", "低球接应"), TEXT("Corner.Low"), NAME_None, R::Runner, A::Control, A::None},
   {TEXT("Trait.ThroughBallCarrier"), NSLOCTEXT("FMCodexTraits", "ThroughBallCarrier", "直塞大师"), TEXT("ThroughBall.Feet"), TEXT("ThroughBall.BehindDefense.P1"), R::Carrier, A::Passing, A::None},
   {TEXT("Trait.ThroughBallBehindRunner"), NSLOCTEXT("FMCodexTraits", "ThroughBallBehindRunner", "身后球接应"), TEXT("ThroughBall.BehindDefense.P1"), NAME_None, R::Runner, A::Speed, A::None},
   {TEXT("Trait.ThroughBallFeetRunner"), NSLOCTEXT("FMCodexTraits", "ThroughBallFeetRunner", "脚下球接应"), TEXT("ThroughBall.Feet"), NAME_None, R::Runner, A::Control, A::None},
-  {TEXT("Trait.CornerHighThreat"), NSLOCTEXT("FMCodexTraits", "CornerHighThreat", "高球角球威胁"), TEXT("Corner.High"), NAME_None, R::Runner, A::Strength, A::None},
-  {TEXT("Trait.CornerLowThreat"), NSLOCTEXT("FMCodexTraits", "CornerLowThreat", "低球角球威胁"), TEXT("Corner.Low"), NAME_None, R::Runner, A::Control, A::None},
   {TEXT("Trait.NearFreeKickTaker"), NSLOCTEXT("FMCodexTraits", "NearFreeKickTaker", "近距离任意球大师"), TEXT("NearFreeKick.Direct"), NAME_None, R::Taker, A::Shooting, A::Passing},
   {TEXT("Trait.LongFreeKickTaker"), NSLOCTEXT("FMCodexTraits", "LongFreeKickTaker", "远距离任意球大师"), TEXT("LongFreeKick.Direct"), NAME_None, R::Taker, A::Shooting, A::None},
   {TEXT("Trait.PenaltyTaker"), NSLOCTEXT("FMCodexTraits", "PenaltyTaker", "点球专家"), TEXT("Penalty.Direct"), NAME_None, R::Taker, A::Shooting, A::Passing},
   {TEXT("Trait.LongShotBlocker"), NSLOCTEXT("FMCodexTraits", "LongShotBlocker", "远射封堵"), TEXT("LongShot.DirectShot"), NAME_None, R::Marker, A::Defense, A::None},
   {TEXT("Trait.CutInsideStopper"), NSLOCTEXT("FMCodexTraits", "CutInsideStopper", "内切封锁"), TEXT("CutInsideShot.DirectShot"), NAME_None, R::Marker, A::Defense, A::None},
   {TEXT("Trait.CrossMarkerBlocker"), NSLOCTEXT("FMCodexTraits", "CrossMarkerBlocker", "传中封堵"), TEXT("Cross.High"), TEXT("Cross.Low"), R::Marker, A::Defense, A::None},
-  {TEXT("Trait.CrossHighHelperDefense"), NSLOCTEXT("FMCodexTraits", "CrossHighHelperDefense", "高球传中协防"), TEXT("Cross.High"), NAME_None, R::Helper, A::Strength, A::None},
-  {TEXT("Trait.CrossLowHelperDefense"), NSLOCTEXT("FMCodexTraits", "CrossLowHelperDefense", "低球传中协防"), TEXT("Cross.Low"), NAME_None, R::Helper, A::Speed, A::None},
+  {TEXT("Trait.CrossHighHelperDefense"), NSLOCTEXT("FMCodexTraits", "CrossHighHelperDefense", "高球协防"), TEXT("Cross.High"), TEXT("Corner.High"), R::Helper, A::Strength, A::None},
+  {TEXT("Trait.CrossLowHelperDefense"), NSLOCTEXT("FMCodexTraits", "CrossLowHelperDefense", "低球协防"), TEXT("Cross.Low"), NAME_None, R::Helper, A::Speed, A::None},
+  {TEXT("Trait.CrossLowHelperDefense"), NSLOCTEXT("FMCodexTraits", "CrossLowHelperDefense", "低球协防"), TEXT("Corner.Low"), NAME_None, R::Helper, A::Defense, A::None},
   {TEXT("Trait.ThroughBallMarkerDefense"), NSLOCTEXT("FMCodexTraits", "ThroughBallMarkerDefense", "直塞盯防"), TEXT("ThroughBall.Feet"), TEXT("ThroughBall.BehindDefense.P1"), R::Marker, A::Defense, A::None},
   {TEXT("Trait.ThroughBallFeetHelperDefense"), NSLOCTEXT("FMCodexTraits", "ThroughBallFeetHelperDefense", "脚下球协防"), TEXT("ThroughBall.Feet"), NAME_None, R::Helper, A::Defense, A::None},
   {TEXT("Trait.ThroughBallBehindHelperDefense"), NSLOCTEXT("FMCodexTraits", "ThroughBallBehindHelperDefense", "身后球协防"), TEXT("ThroughBall.BehindDefense.P1"), NAME_None, R::Helper, A::Speed, A::None},
-  {TEXT("Trait.CornerHighDefense"), NSLOCTEXT("FMCodexTraits", "CornerHighDefense", "高球角球防守"), TEXT("Corner.High"), NAME_None, R::Helper, A::Strength, A::None},
-  {TEXT("Trait.CornerLowDefense"), NSLOCTEXT("FMCodexTraits", "CornerLowDefense", "低球角球防守"), TEXT("Corner.Low"), NAME_None, R::Helper, A::Defense, A::None},
  };
  return Entries;
 }

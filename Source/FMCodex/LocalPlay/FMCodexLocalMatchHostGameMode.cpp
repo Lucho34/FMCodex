@@ -3190,16 +3190,17 @@ bool AFMCodexLocalMatchHostGameMode::InitializeLesson1Runtime(bool bDeploymentCh
 {
 	using Lesson = FFMCodexGuidedLesson1;
 	auto Demo = FFMCodexLocalMatchDemoConfigurationFactory::Create();
-	const auto* G = Demo.OpeningInput.OpeningInput.PlayerADeck.FindByPredicate([](const auto& C){ return C.CardId == Lesson::Gyokeres(); });
+	const auto* G = Demo.OpeningInput.OpeningInput.PlayerADeck.FindByPredicate([](const auto& C){ return C.CardId == Lesson::Rice(); });
 	const auto* O = Demo.OpeningInput.OpeningInput.PlayerADeck.FindByPredicate([](const auto& C){ return C.CardId == Lesson::Odegaard(); });
-	const auto* S = Demo.OpeningInput.OpeningInput.PlayerBDeck.FindByPredicate([](const auto& C){ return C.CardId == Lesson::Stones(); });
+	const auto* S = Demo.OpeningInput.OpeningInput.PlayerBDeck.FindByPredicate([](const auto& C){ return C.CardId == Lesson::Cherki(); });
+	const auto* GK = Demo.OpeningInput.OpeningInput.PlayerBDeck.FindByPredicate([](const auto& C){ return C.CardId == Lesson::Goalkeeper(); });
 	const auto* Trait = O ? O->RankedTraits.FindByPredicate([](const auto& T){ return T.TraitId == FName(TEXT("Trait.LongShotCarrier")); }) : nullptr;
 	const auto* SkillRule = Demo.SkillRuleSet.SkillRules.FindByPredicate([](const auto& R){ return R.SkillId == Lesson::Skill(); });
-	if (!G || !O || !S || G->Attributes.Shooting != 4 || O->Attributes.Shooting != 4
-		|| S->Attributes.Defense != 4 || !Trait || Trait->Rank != EPlayerTraitRank::A
+	if (!G || !O || !S || !GK || GK->GoalkeeperAttributes.Positioning != 5 || G->Attributes.Shooting != 4 || O->Attributes.Shooting != 4
+		|| S->Attributes.Defense != 2 || !Trait || Trait->Rank != EPlayerTraitRank::B
 		|| G->RankedTraits.ContainsByPredicate([](const auto& T){ return T.TraitId == FName(TEXT("Trait.LongShotCarrier")); })
 		|| S->RankedTraits.ContainsByPredicate([](const auto& T){ return T.TraitId == FName(TEXT("Trait.LongShotBlocker")); })
-		|| !G->AttackSkillIds.Contains(Lesson::Skill()) || !O->AttackSkillIds.Contains(Lesson::Skill())
+		|| !G->AttackSkillIds.Contains(Lesson::Skill()) || !O->AttackSkillIds.Contains(Lesson::Skill(true))
 		|| !SkillRule || SkillRule->MinTriggerActionPoint > 3 || SkillRule->MaxTriggerActionPoint < 3)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Lesson 1 production content differs from the approved scenario; product decision required."));
@@ -3214,7 +3215,7 @@ bool AFMCodexLocalMatchHostGameMode::InitializeLesson1Runtime(bool bDeploymentCh
 	GuidedLesson1 = MoveTemp(PreservedLesson);
 	if (!bStarted) return false;
 	for (const auto& Pair : {TPair<EFMCodexLocalDevRollTarget, int32>(EFMCodexLocalDevRollTarget::FullD12, 3),
-		{EFMCodexLocalDevRollTarget::LongShotDirectAttack, 5}, {EFMCodexLocalDevRollTarget::LongShotDirectDefense, 3}})
+		{EFMCodexLocalDevRollTarget::LongShotDirectAttack, 5}, {EFMCodexLocalDevRollTarget::LongShotDirectDefense, 2}})
 	{
 		FFMCodexLocalDevRollOverrideRequest R; R.Target = Pair.Key; R.Value = Pair.Value;
 		if (!ActiveMatchRuntime->DevRollOverride.SetOverride(R).bSuccess) return false;

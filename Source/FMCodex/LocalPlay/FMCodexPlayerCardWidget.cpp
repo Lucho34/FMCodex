@@ -47,6 +47,13 @@ namespace FMCodexPlayerCardWidget
 	constexpr float FullCardPortraitTop = 0.045f;
 	constexpr float FullCardPortraitRight = 1.0f;
 	constexpr float FullCardPortraitBottom = 0.658f;
+    int32 FullCardTraitRowCapacity(const FFMCodexUMGCardViewModel& Card)
+    {
+        int32 Offensive = Card.BinaryTraits.Num(), Defensive = 0;
+        for (const auto& Trait : Card.RankedTraits)
+            (FPlayerTraitFormula::Category(Trait.TraitId) == EPlayerTraitCategory::Offensive ? Offensive : Defensive)++;
+        return FMath::Max(2, FMath::Max(Offensive, Defensive));
+    }
 	constexpr float HandMicroDragProxyScale = 1.10f;
 	constexpr float PitchMiniInteriorWidth = 130.0f;
 	constexpr float PitchMiniInteriorHeight = 134.0f;
@@ -2441,7 +2448,12 @@ void UFMCodexPlayerCardWidget::RefreshBiography()
 		USizeBox* RowBounds = WidgetTree->ConstructWidget<USizeBox>(
 			USizeBox::StaticClass(),
 			FName(*(RowName.ToString() + TEXT("Bounds"))));
-		RowBounds->SetHeightOverride(!Presentation.bGoalkeeper || (bFullCardPilot && Presentation.Skills.Num() >= 3) ? (!Presentation.bGoalkeeper ? 30.f : 32.f) : 34.f);
+        // A third Trait row plus two Skills needs a tighter profile rhythm, not
+        // a smaller font, missing fact, or player-specific layout.
+        const bool bCompactProfile = !Presentation.bGoalkeeper && Presentation.Skills.Num() >= 2
+            && FMCodexPlayerCardWidget::FullCardTraitRowCapacity(Presentation) >= 3;
+		RowBounds->SetHeightOverride(!Presentation.bGoalkeeper ? (bCompactProfile ? 26.f : 30.f)
+            : bFullCardPilot && Presentation.Skills.Num() >= 3 ? 32.f : 34.f);
 		UBorder* RowSurface = FMCodexPlayerCardWidget::MakeRegion(
 			*WidgetTree, RowName, FLinearColor::Transparent,
 			FMargin(0,0));
@@ -2974,7 +2986,7 @@ void UFMCodexPlayerCardWidget::RefreshTraits()
     }
     for (const FName Id : Presentation.BinaryTraits)
         Offensive.Add({Id, FString(), 0, true});
-    const int32 RowCount = FMath::Max(2, FMath::Max(Offensive.Num(), Defensive.Num()));
+    const int32 RowCount = FullCardTraitRowCapacity(Presentation);
     auto AddColumn = [&](const TCHAR* Prefix, const FText& Heading, const TArray<FRow>& Rows, const FLinearColor HeaderColor)
     {
         auto* Column = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), FName(Prefix));
@@ -3158,11 +3170,15 @@ void UFMCodexPlayerCardWidget::RefreshFullCardPilot()
     }
     const bool bDenseBiography = bFullCardPilot && (!Presentation.bGoalkeeper || Presentation.Skills.Num() >= 3);
     auto* BioBounds = CastChecked<USizeBox>(GetWidgetFromName(TEXT("InMatchFullCardBiographyBounds")));
-    // Global Full bio clearance: narrow only from the left, retaining each frame
-    // skin's accepted top/right anchors and all vertical capacity rules.
+    // Retain the shared horizontal text lane and right inset. Vertical spacing
+    // follows content capacity below, without changing the profile fonts.
     BioBounds->SetWidthOverride(FullCardBiographyWidth);
     if (auto* BioSlot = Cast<UOverlaySlot>(BioBounds->Slot))
-        BioSlot->SetPadding(bFullCardPilot ? FMargin(0,bDenseBiography ? 12 : 18,10,0) : FMargin(0,10,5,0));
+    {
+        const float ProfileTop = !Presentation.bGoalkeeper && Presentation.Skills.Num() >= 2
+            ? (FullCardTraitRowCapacity(Presentation) >= 3 ? 8.f : 9.f) : bDenseBiography ? 12.f : 18.f;
+        BioSlot->SetPadding(bFullCardPilot ? FMargin(0,ProfileTop,10,0) : FMargin(0,10,5,0));
+    }
     BiographyRegion->SetPadding(bFullCardPilot
         ? (bDenseBiography ? FMargin(4,4) : FMargin(4,9,4,10)) : FMargin(4,6));
     SetFullSurface(SkillRegion, bFullCardPilot, EFMCodexFullCardSurface::Section, Accent);
@@ -3248,13 +3264,13 @@ void UFMCodexPlayerCardWidget::RefreshFullCardPilot()
     const int32 SkillRows = RenderedSkillTexts.Num();
     // UI space allocation only: no attribute/skill facts are invented for short cards.
     // Reserve both assignment columns even when one category is empty.
-    int32 OffensiveCount = Presentation.BinaryTraits.Num(), DefensiveCount = 0;
-    for (const auto& T : Presentation.RankedTraits)
-        (FPlayerTraitFormula::Category(T.TraitId) == EPlayerTraitCategory::Offensive ? OffensiveCount : DefensiveCount)++;
-    const float TraitHeight = 41.f + 21.f * FMath::Max(2, FMath::Max(OffensiveCount, DefensiveCount));
+    const float TraitHeight = 41.f + 21.f * FullCardTraitRowCapacity(Presentation);
+    // Zero-skill GK attributes retain their existing 32-unit rows (outfield: 21).
+    // Account for that extra lower-section space instead of clipping the footer.
+    const float GoalkeeperRowSpace = Presentation.bGoalkeeper && SkillRows == 0 ? AttributeRows * (32.f-21.f) : 0.f;
     const float HeroHeight = FMath::Clamp(280.f + (2-SkillRows)*26.f
         + (5-AttributeRows)*24.f + (SkillRows == 0 ? 20.f : 0.f)
-        - (SkillRows >= 3 ? 12.f : 0.f) - TraitHeight + 10.f, 220.f, 360.f);
+        - (SkillRows >= 3 ? 12.f : 0.f) - TraitHeight + 10.f - GoalkeeperRowSpace, 220.f, 360.f);
     PortraitBounds->SetHeightOverride(HeroHeight);
 
     if (!bFullCardPilot)

@@ -23,7 +23,7 @@ ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx
 
 ## Guided Match content consumer
 
-Stage 8.25A follows this source/import policy for tutorial presentation only: `ContentSource/Tutorial/FMCodex_Guided_Match.xlsx` → `Scripts/ImportGuidedMatchContent.py` → committed `Content/Data/CanonicalGuidedMatchContent.json`. It reuses this importer's standard-library OOXML reader, deterministic provenance, whole-input validation and atomic publish philosophy. Tutorial schema 1 is independent of player schema 4; no player source, generated player data, loader or balance changes. See [tutorial authoring](Tutorial/Guided_Match_Lesson_01_Copy_Script.md).
+Stage 8.25A follows this source/import policy for tutorial presentation only: `ContentSource/Tutorial/FMCodex_Guided_Match.xlsx` → `Scripts/ImportGuidedMatchContent.py` → committed `Content/Data/CanonicalGuidedMatchContent.json`. It reuses this importer's standard-library OOXML reader, deterministic provenance, whole-input validation and atomic publish philosophy. Tutorial schema 1 is independent of player schema 5; no player source, generated player data, loader or balance changes. See [tutorial authoring](Tutorial/Guided_Match_Lesson_01_Copy_Script.md).
 
 ## Identity and ordering
 
@@ -42,9 +42,9 @@ Outfield positions use the workbook values `A`, `M`, `D`, `A/M`, and `M/D`. Goal
 
 A skill assignment consists of the canonical skill identity plus `MinTP` and `MaxTP`. Runtime rule identity is derived deterministically as `Canonical.Skill.<SkillId>.<MinTP>.<MaxTP>`, allowing the existing rule lookup and TP filter to represent different approved ranges for the same skill family without duplicating player-facing skill names.
 
-`balanceContentVersion` is `Prototype40_v3`; generated/runtime `schemaVersion` is `4`. The identity/presentation sidecar remains schema `3`. Stage 8.20B.1 copies the approved draft's Shooting/Control/Defense/tier and Trait assignments by stable identity, retaining Passing/Speed/Strength, names, teams, skill/TP assignments, notes, presentation and all GK values exactly. The draft remains unchanged; only the two production workbook sheets are retained.
+`balanceContentVersion` is `Prototype40_v4`; generated/runtime `schemaVersion` is `5`. The identity/presentation sidecar remains schema `3`. Stage 8.27A imports the latest user-edited canonical workbook and performs only the approved Cross/Corner Trait consolidation; all other authored player cells are preserved. The earlier Stage 8.20B.1 draft migration is historical, not an authority over the current roster. Only the two production workbook sheets are retained.
 
-The source has 53 columns: identity A:F; outfield G:L; tier M; GK N:S; skills/TP T:AB; 24 passive Trait columns AC:AZ; Notes BA. Ranked cells are S/A/B or empty; `Trait.ThroughBallAntiRunner` is binary `有` or empty. JSON stores `{traitId,rank}` in `rankedTraits` and IDs in `binaryTraits`, including empty arrays. GK tier is null and Trait arrays empty. Runtime snapshots retain the payload without activating any effects. Stable technical IDs are fixed in importer `TRAIT_KEYS` and CoreRules `PlayerTraitData.h`, never derived from localized names.
+The source has 49 columns: identity A:F; outfield G:L; tier M; GK N:S; skills/TP T:AB; 20 Trait columns AC:AV; Notes AW. Ranked cells are S/A/B or empty; `Trait.ThroughBallAntiRunner` is binary `有` or empty. JSON stores `{traitId,rank}` in `rankedTraits` and IDs in `binaryTraits`, including empty arrays. GK tier is null and Trait arrays empty. Runtime snapshots retain the payload; CoreRules applies the context-specific Trait effects. Stable technical IDs are fixed in importer `TRAIT_KEYS` and CoreRules `PlayerTraitData.h`, never derived from localized names.
 
 Non-GK OVR is derived display-only: `Clamp(59 + sum of six base attributes, 65, 95)`; tier/Traits/rarity never contribute. GK OVR is unchanged.
 
@@ -64,7 +64,7 @@ The importer validates before writing:
 - exactly 40 non-empty explicit `displayName` values in the import config;
 - generated output equality in `--check` mode.
 
-Current experiment totals are 40 players, 31 skill assignments, skill-count distribution `0:18 / 1:13 / 2:9 / 3:0`, 280 per-player TP overlap checks, and zero overlap violations. Family assignments are LongShot 5, CutInsideShot 8, Cross 10, ThroughBall 8, PassControl 0.
+Current totals: 40 players, 48 skill assignments, distribution `0:10 / 1:12 / 2:18 / 3:0`; 280 TP overlap checks, zero violations. Families: LongShot 11, CutInsideShot 13, Cross 10, ThroughBall 14. The user-edited canonical workbook supersedes historical draft values.
 
 The runtime catalog also validates exactly one goalkeeper per team and 38 outfield players overall. Workbook dropdowns and numeric validation aid editing; the importer remains the final validator for mapping, uniqueness, skill ranges and overlap. Do not rely on Excel input validation alone.
 
@@ -159,3 +159,12 @@ Current art coverage is 28/40, 14 Arsenal and 14 ManchesterCity. The eight addit
 Formal Player Card Family v1.2 uses one Master, SourceSpaceForeground_v2 and explicit BalancedBust_v3 / QuietPitchBust_v3 for Hand / Shared-Pitch. Full retains CropOnly_v1 directly from Master. The migration changed 56 small-card PNGs and their imported textures; final acceptance closes their temporary pending state and Batch 3's eight Full roles. No art is regenerated or reimported during closeout. New or changed art still returns to PENDING USER PIE; byte-identical accepted art stays accepted.
 
 No bio, number, serial, roster, skill or balance data changes; biography stays 160/160. Remaining non-canonical legacy/fallback routes remain valid. JohnStones is a real still-non-canonical missing-art/rebinding fixture; MarcGuehi is now canonical. Card dimensions, runtime UV, drag proxy and Full layout are unchanged; Full safe-zone remains DEFERRED. Future canonical additions must obey [the permanent v1.2 preflight gate](UI/Shared_Portrait_Art_Contract_v1.md#30-permanent-canonical-player-art-preflight-gate-v12); sections 36-37 document the formal production workflow and final acceptance.
+
+
+## Stage 8.27A compatibility and consolidation
+
+Schema 5 deliberately rejects schema 4. The wire shape is unchanged, but the four surviving Cross IDs now also apply in Corner; accepting old content under the same semantic schema would reinterpret it. Sidecar schema 3 is unchanged. No production SaveGame, disk replay loader or cross-build state restore was found; reconstructed State constructors are test-only. Start fresh sessions with matching Host/Remote builds/content. No old frozen snapshot is rewritten or re-resolved; historical FormulaFacts are not migrated. A future persisted-match loader needs an explicit rules-version policy before consuming old snapshots.
+
+CornerHighThreat → CrossHighRunner; CornerLowThreat → CrossLowRunner; CornerHighDefense → CrossHighHelperDefense; CornerLowDefense → CrossLowHelperDefense. Same-rank duplicates on Gabriel, Saliba and Merino collapse once; all other values, notes, identities, skills, TP ranges, tiers and GK fields are preserved. Four retired columns are removed, including their table/validation ranges. Counts: 96 → 93 assignments, 88 ranked + 5 binary, 13 players with affected applicability. No rank conflicts.
+
+Pure D players remain ineligible for ordinary Forward deployment even with receiving Traits. Available non-GK Corner candidates use the existing independent selection contract. No player Trait cap, compensating balance nerf, new action, RNG change or opponent Trait disclosure change is introduced.

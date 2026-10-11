@@ -22,8 +22,8 @@ bool FGuidedContentTeachingTest::RunTest(const FString&)
  FFMCodexLocalMatchInteractionView View; View.ActionPoint=3; View.InteractionCategory=EFMCodexLocalMatchInteractionCategory::Deploy;
  View.ExpectedActingPlayer=EInitialTurnOrderPlayer::PlayerA;
  L.Update(View,true,.1f); L.InspectTacticPoint(true); L.Primary();
- L.InspectCard(L.Gyokeres(),true,0.); L.InspectCard(L.Gyokeres(),true,L.Timing(TEXT("FullCardExplanationDelay")));
- TestEqual(TEXT("Skill range comes from production catalog and live TP"),L.Instruction().ToString(),FString(TEXT("远射技能范围为 3–5。当前进攻战术点为 3，落在范围内，因此可以使用远射。")));
+ L.InspectCard(L.Rice(),true,0.); L.InspectCard(L.Rice(),true,L.Timing(TEXT("FullCardExplanationDelay")));
+ TestEqual(TEXT("Skill range comes from production catalog and live TP"),L.Instruction().ToString(),FString(TEXT("远射技能范围为 3–3。当前进攻战术点为 3，落在范围内，因此可以使用远射。")));
  const auto* Lesson=Content->FindLesson(TEXT("Lesson01"));
  TestEqual(TEXT("End Deployment copy"),Lesson->Steps[TEXT("FinishDeployment")].Body,FString(TEXT("点击“结束部署”，结束本次部署。")));
  FString Rendered;

@@ -31,11 +31,11 @@ OUTFIELD_ATTRIBUTES = ("SHO", "PAS", "CON", "SPD", "STR", "DEF")
 TRAIT_KEYS = (
     "LongShotCarrier", "CutInsideCarrier", "CrossCarrier", "CrossHighRunner",
     "CrossLowRunner", "ThroughBallCarrier", "ThroughBallAntiRunner",
-    "ThroughBallBehindRunner", "ThroughBallFeetRunner", "CornerHighThreat",
-    "CornerLowThreat", "NearFreeKickTaker", "LongFreeKickTaker", "PenaltyTaker",
+    "ThroughBallBehindRunner", "ThroughBallFeetRunner",
+    "NearFreeKickTaker", "LongFreeKickTaker", "PenaltyTaker",
     "LongShotBlocker", "CutInsideStopper", "CrossMarkerBlocker", "CrossHighHelperDefense",
     "CrossLowHelperDefense", "ThroughBallMarkerDefense", "ThroughBallFeetHelperDefense",
-    "ThroughBallBehindHelperDefense", "CornerHighDefense", "CornerLowDefense",
+    "ThroughBallBehindHelperDefense",
 )
 TRAIT_HEADERS = tuple("Trait." + key for key in TRAIT_KEYS)
 BINARY_TRAIT = "Trait.ThroughBallAntiRunner"
@@ -50,7 +50,7 @@ SOURCE_HEADERS = (
     "Skill3", "S3_MinTP", "S3_MaxTP", *TRAIT_HEADERS, "Notes",
 )
 CONFIG_SCHEMA_VERSION = 3
-RUNTIME_SCHEMA_VERSION = 4
+RUNTIME_SCHEMA_VERSION = 5
 PLAYER_KEY_PATTERN = re.compile(r"^[A-Za-z0-9.]+$")
 
 

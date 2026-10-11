@@ -28,8 +28,6 @@ inline bool IsKnownRankedPlayerTrait(const FName Id)
 		TEXT("Trait.ThroughBallCarrier"),
 		TEXT("Trait.ThroughBallBehindRunner"),
 		TEXT("Trait.ThroughBallFeetRunner"),
-		TEXT("Trait.CornerHighThreat"),
-		TEXT("Trait.CornerLowThreat"),
 		TEXT("Trait.NearFreeKickTaker"),
 		TEXT("Trait.LongFreeKickTaker"),
 		TEXT("Trait.PenaltyTaker"),
@@ -41,8 +39,6 @@ inline bool IsKnownRankedPlayerTrait(const FName Id)
 		TEXT("Trait.ThroughBallMarkerDefense"),
 		TEXT("Trait.ThroughBallFeetHelperDefense"),
 		TEXT("Trait.ThroughBallBehindHelperDefense"),
-		TEXT("Trait.CornerHighDefense"),
-		TEXT("Trait.CornerLowDefense")
 	};
 	return Ids.Contains(Id);
 }
@@ -55,7 +51,7 @@ inline bool IsKnownBinaryPlayerTrait(const FName Id)
 inline bool ValidatePassivePlayerTraits(const TArray<FPlayerRankedTrait>& Ranked,
 	const TArray<FName>& Binary, const bool bGoalkeeper)
 {
-	if (Ranked.Num() > 23 || Binary.Num() > 1 || (bGoalkeeper && (!Ranked.IsEmpty() || !Binary.IsEmpty()))) return false;
+	if (Ranked.Num() > 19 || Binary.Num() > 1 || (bGoalkeeper && (!Ranked.IsEmpty() || !Binary.IsEmpty()))) return false;
 	TSet<FName> Seen;
 	for (const auto& Trait : Ranked)
 	{

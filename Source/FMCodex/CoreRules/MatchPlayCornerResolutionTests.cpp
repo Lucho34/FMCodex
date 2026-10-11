@@ -1,6 +1,7 @@
 #include "MatchPlayCornerResolution.h"
 #include "MatchPlayOpeningInitializer.h"
 #include "MatchPlaySetPieceParticipantConsumption.h"
+#include "MatchPlayOrdinaryDeploymentLegality.h"
 #include "TacticalRuleDescription.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -1080,10 +1081,21 @@ bool FCornerRankedIsolation::RunTest(const FString&)
  for(bool High:{true,false})for(bool Selected:{true,false})
  {
   auto State=MakeAwaitingAttacker(TEXT("TraitCorner"));const auto A=State.RuntimeState.CurrentAttackingPlayer;const auto D=Other(A);
-  FPlayerRankedTrait AttackTrait;AttackTrait.TraitId=High?TEXT("Trait.CornerHighThreat"):TEXT("Trait.CornerLowThreat");AttackTrait.Rank=EPlayerTraitRank::A;
-  FPlayerRankedTrait DefenseTrait;DefenseTrait.TraitId=High?TEXT("Trait.CornerHighDefense"):TEXT("Trait.CornerLowDefense");DefenseTrait.Rank=EPlayerTraitRank::B;
+  FPlayerRankedTrait AttackTrait;AttackTrait.TraitId=High?TEXT("Trait.CrossHighRunner"):TEXT("Trait.CrossLowRunner");AttackTrait.Rank=EPlayerTraitRank::A;
+  FPlayerRankedTrait DefenseTrait;DefenseTrait.TraitId=High?TEXT("Trait.CrossHighHelperDefense"):TEXT("Trait.CrossLowHelperDefense");DefenseTrait.Rank=EPlayerTraitRank::B;
   auto* AP=FindSnapshot(State,A,false,Selected?0:1);auto* DP=FindSnapshot(State,D,false,Selected?0:1);
   AP->RankedTraits.Add(AttackTrait);DP->RankedTraits.Add(DefenseTrait);
+  AP->PositionTypes={EPlayerPositionType::Defense};
+  if (Selected)
+  {
+   auto Ordinary=State;
+   Ordinary.CurrentAttack.Phase=EMatchPlayCurrentAttackPhase::Deployment;
+   Ordinary.CurrentAttack.CurrentLegalDeploymentSide=A;
+   FMatchPlayOrdinaryDeploymentRequest Req;Req.AttackSequence=Ordinary.CurrentAttack.AttackSequence;Req.RequestingSide=A;Req.CardId=AP->CardId;
+   Req.SlotId=A==EInitialTurnOrderPlayer::PlayerA?TEXT("TraitCorner_SlotB"):TEXT("TraitCorner_SlotA");
+   const auto Eligibility=FMatchPlayOrdinaryDeploymentLegalityEvaluator::Evaluate(Ordinary,Req);
+   TestEqual(TEXT("Pure D with receiving Trait still cannot occupy ordinary Forward: ")+Eligibility.ErrorMessage,Eligibility.ErrorCode,EMatchPlayOrdinaryDeploymentErrorCode::PositionNotEligibleForZone);
+  }
   const auto Result=MakeTerminal(State,2,2,1,High?EMatchPlayCornerRouteIntent::High:EMatchPlayCornerRouteIntent::Low,1,4,3);
   if(!TestTrue(TEXT("Selected-only Corner lifecycle"),Result.bSuccess))return false;
   const auto Preview=FMatchPlayCornerResolution::QueryFormulaPreview(Result.AfterState);

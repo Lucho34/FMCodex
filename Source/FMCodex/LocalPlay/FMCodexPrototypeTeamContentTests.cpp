@@ -249,7 +249,7 @@ bool FFMCodexPrototypeTeamCatalogTest::RunTest(const FString& Parameters)
 		ValidationErrors.Num(), 0);
 	TestEqual(TEXT("Balance content version is explicit"),
 		FFMCodexPrototypeTeamContent::GetBalanceContentVersion(),
-		FString(TEXT("Prototype40_v3")));
+		FString(TEXT("Prototype40_v4")));
 	TestTrue(TEXT("Generated runtime JSON exists outside gameplay C++"),
 		IFileManager::Get().FileExists(
 			*FFMCodexPrototypeTeamContent::GetRuntimeContentPath()));
@@ -352,9 +352,9 @@ bool FFMCodexPrototypeTeamCatalogTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Full overlap matrix contains 40 x 7 checks"),
 		OverlapChecks, 280);
 	TestTrue(TEXT("Skill count distribution is exact"),
-		SkillCounts.FindRef(0) == 18
-			&& SkillCounts.FindRef(1) == 13
-			&& SkillCounts.FindRef(2) == 9
+		SkillCounts.FindRef(0) == 10
+			&& SkillCounts.FindRef(1) == 12
+			&& SkillCounts.FindRef(2) == 18
 			&& SkillCounts.FindRef(3) == 0);
 
 	const FFMCodexLocalMatchDemoConfiguration Demo =
@@ -427,7 +427,7 @@ bool FFMCodexCanonicalPlayerSkillRulesTest::RunTest(const FString& Parameters)
 			&& Saka->Card.PositionTypes
 				== TArray<EPlayerPositionType>{ EPlayerPositionType::Attack }
 			&& Saka->Card.Attributes.Shooting == 4
-			&& Saka->Card.Attributes.Control == 6
+			&& Saka->Card.Attributes.Control == 5
 			&& Saka->Card.Attributes.Defense == 3
 			&& Saka->SkillAssignments.Num() == 2
 			&& Saka->SkillAssignments[0].SkillId == TEXT("Cross")

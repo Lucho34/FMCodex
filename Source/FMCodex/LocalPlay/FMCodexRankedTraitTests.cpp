@@ -51,8 +51,8 @@ bool FRankedTraitMatrix::RunTest(const FString&)
  {TEXT("ThroughBallCarrier"), TEXT("ThroughBall.Feet"), R::Carrier, A::Passing},
  {TEXT("ThroughBallBehindRunner"), TEXT("ThroughBall.BehindDefense.P1"), R::Runner, A::Speed},
  {TEXT("ThroughBallFeetRunner"), TEXT("ThroughBall.Feet"), R::Runner, A::Control},
- {TEXT("CornerHighThreat"), TEXT("Corner.High"), R::Runner, A::Strength},
- {TEXT("CornerLowThreat"), TEXT("Corner.Low"), R::Runner, A::Control},
+ {TEXT("CrossHighRunner"), TEXT("Corner.High"), R::Runner, A::Strength},
+ {TEXT("CrossLowRunner"), TEXT("Corner.Low"), R::Runner, A::Control},
  {TEXT("NearFreeKickTaker"), TEXT("NearFreeKick.Direct"), R::Taker, A::Shooting},
  {TEXT("LongFreeKickTaker"), TEXT("LongFreeKick.Direct"), R::Taker, A::Shooting},
  {TEXT("PenaltyTaker"), TEXT("Penalty.Direct"), R::Taker, A::Shooting},
@@ -64,10 +64,10 @@ bool FRankedTraitMatrix::RunTest(const FString&)
  {TEXT("ThroughBallMarkerDefense"), TEXT("ThroughBall.BehindDefense.P1"), R::Marker, A::Defense},
  {TEXT("ThroughBallFeetHelperDefense"), TEXT("ThroughBall.Feet"), R::Helper, A::Defense},
  {TEXT("ThroughBallBehindHelperDefense"), TEXT("ThroughBall.BehindDefense.P1"), R::Helper, A::Speed},
- {TEXT("CornerHighDefense"), TEXT("Corner.High"), R::Helper, A::Strength},
- {TEXT("CornerLowDefense"), TEXT("Corner.Low"), R::Helper, A::Defense}
+ {TEXT("CrossHighHelperDefense"), TEXT("Corner.High"), R::Helper, A::Strength},
+ {TEXT("CrossLowHelperDefense"), TEXT("Corner.Low"), R::Helper, A::Defense}
  };
- TestEqual(TEXT("All ranked mappings"), static_cast<int32>(UE_ARRAY_COUNT(Cases)), 23);
+ TestEqual(TEXT("Nineteen ranked identities with four additional Corner contexts"), static_cast<int32>(UE_ARRAY_COUNT(Cases)), 23);
  for (const auto& C : Cases)
  {
   auto P = Card(TEXT("Participant")); const FString Id = FString(TEXT("Trait.")) + C.Id; Trait(P, *Id);
@@ -101,6 +101,45 @@ bool FRankedTraitMatrix::RunTest(const FString&)
  TestFalse(TEXT("Rank required"),ValidatePassivePlayerTraits(P.RankedTraits,{},false));
  P.RankedTraits.Reset(); Trait(P,TEXT("Trait.ThroughBallAntiRunner"));
  TestFalse(TEXT("Binary cannot carry rank"),ValidatePassivePlayerTraits(P.RankedTraits,{},false));
+ return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FConsolidatedTraitContexts, "FMCodex.RankedTraits.ConsolidatedContexts", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FConsolidatedTraitContexts::RunTest(const FString&)
+{
+ using namespace RankedTraitTests;
+ struct FCase { const TCHAR* Id; const TCHAR* Name; R Role; A Cross; A Corner; bool High; };
+ const FCase Cases[] = {
+  {TEXT("Trait.CrossHighRunner"),TEXT("高球接应"),R::Runner,A::Strength,A::Strength,true},
+  {TEXT("Trait.CrossLowRunner"),TEXT("低球接应"),R::Runner,A::Speed,A::Control,false},
+  {TEXT("Trait.CrossHighHelperDefense"),TEXT("高球协防"),R::Helper,A::Strength,A::Strength,true},
+  {TEXT("Trait.CrossLowHelperDefense"),TEXT("低球协防"),R::Helper,A::Speed,A::Defense,false}
+ };
+ for (const auto& C:Cases) for (auto Rank:{EPlayerTraitRank::B,EPlayerTraitRank::A,EPlayerTraitRank::S})
+ {
+  auto P=Card(TEXT("ActualParticipant")); Trait(P,C.Id,Rank);
+  TestEqual(TEXT("Concise shared display identity"),FPlayerTraitFormula::DisplayName(C.Id).ToString(),FString(C.Name));
+  for (bool Corner:{false,true})
+  {
+   const FName Context=Corner?(C.High?TEXT("Corner.High"):TEXT("Corner.Low")):(C.High?TEXT("Cross.High"):TEXT("Cross.Low"));
+   for (auto Attr:{A::Shooting,A::Passing,A::Control,A::Speed,A::Strength,A::Defense})
+   {
+    const auto F=FPlayerTraitFormula::Resolve(P,Context,C.Role,Attr);
+    const int32 Bonus=Attr==(Corner?C.Corner:C.Cross)?FPlayerTraitFormula::RankBonus(Rank):0;
+    TestTrue(TEXT("All base operands remain valid"),F.bValid);
+    TestEqual(TEXT("Only the context-specific attribute receives the rank"),F.Bonus,Bonus);
+    TestEqual(TEXT("Authoritative effective fact"),F.EffectiveValue,4+Bonus);
+    if(Bonus) TestTrue(TEXT("Source ID, rank and localized attribution preserved"),F.TraitId==C.Id&&F.Rank==Rank&&FMCodexTraitFormulaPresentation::Operand(F).Contains(C.Name));
+   }
+  }
+  for (auto Context:{TEXT("ThroughBall.Feet"),TEXT("ThroughBall.BehindDefense.P1"),TEXT("NearFreeKick.Direct"),TEXT("Penalty.Direct")})
+   for (auto Attr:{A::Control,A::Speed,A::Strength,A::Defense})
+    TestEqual(TEXT("No spill into unrelated routes"),FPlayerTraitFormula::Resolve(P,Context,C.Role,Attr).Bonus,0);
+  const auto Duplicate=P.RankedTraits[0]; P.RankedTraits.Add(Duplicate);
+  TestFalse(TEXT("Consolidated duplicate rejected rather than stacked"),ValidatePassivePlayerTraits(P.RankedTraits,{},false));
+ }
+ for (auto Id:{TEXT("Trait.CornerHighThreat"),TEXT("Trait.CornerLowThreat"),TEXT("Trait.CornerHighDefense"),TEXT("Trait.CornerLowDefense")})
+  TestFalse(TEXT("Retired assignments are not reinterpreted"),IsKnownRankedPlayerTrait(Id));
  return true;
 }
 

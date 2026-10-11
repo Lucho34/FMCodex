@@ -42,7 +42,7 @@
 
 生产内容的完整导入、版本、校验与维护流程见 `Docs/Canonical_Player_Content.md`。运行时记录由 `Content/Data/CanonicalPlayerContent.json` 提供，不读取 XLSX。
 
-当前权威平衡源表为仓库内 `ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx`，身份与表现 sidecar 仍为同目录 `CanonicalPlayerImportConfig.json`。Stage 8.15S 从已验证基线恢复新的源表，历史原表仍遗失；恢复 provenance 见同目录 `CanonicalPlayerSourceRecovery.md`。JSON 只由前向导入器生成，禁止作为源手工编辑。Stage 8.20B.1 使用 `Prototype40_v3`、runtime schema 4；sidecar schema 3 不变。六属性与 S/A/B 体力一次切换，旧 runtime schema 不再接受；精确迁移及恢复流程见内容文档。
+当前权威平衡源表为仓库内 `ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx`，身份与表现 sidecar 仍为同目录 `CanonicalPlayerImportConfig.json`。Stage 8.15S 从已验证基线恢复新的源表，历史原表仍遗失；恢复 provenance 见同目录 `CanonicalPlayerSourceRecovery.md`。JSON 只由前向导入器生成，禁止作为源手工编辑。Stage 8.27A 使用 `Prototype40_v4`、runtime schema 5（20 Trait taxonomy）；sidecar schema 3 不变。六属性与 S/A/B 体力一次切换，旧 runtime schema 不再接受；精确迁移及恢复流程见内容文档。
 
 - `PlayerKey`：稳定技术身份，进入运行时 `CardId`；不从姓名或展示编号临时推导。
 - `Team + RosterSlot`：每队 1–20 的确定性阵容顺序；`RosterSlot` 不是身份。
@@ -99,7 +99,7 @@
 - `Defense`：防守。
 - `StaminaTier`：独立语义 enum S/A/B；None 只用于缺席值或 GK。非 GK 必填；集中转换 `PlayerStaminaGameplayValue` 为 5/3/1。
 
-`FPlayerCardData` 与 authoritative `FPlayerCardRuleSnapshot` 被动保存 `RankedTraits: [{TraitId, Rank}]` 与 `BinaryTraits: [TraitId]`。固定 23 Ranked + 1 Binary 身份以 `Trait.` 命名空间独立于中文名；Rank 为 S/A/B；拒绝未知、重复、非法 Rank、GK Trait。B.1 无加成计算、触发器或双骰效果。详细固定 ID 见 `PlayerTraitData.h` 与 canonical importer `TRAIT_KEYS`。
+`FPlayerCardData` 与 authoritative `FPlayerCardRuleSnapshot` 保存 `RankedTraits: [{TraitId, Rank}]` 与 `BinaryTraits: [TraitId]`。Stage 8.27A 当前为 19 Ranked + 1 Binary，身份以 `Trait.` 命名空间独立于中文名；Rank 为 S/A/B；拒绝未知、重复、非法 Rank、GK Trait。CoreRules 按实际上下文和参与者应用特性；数据对象不计算加成。四个独立 Corner Trait 已合并到对应 Cross stable ID，低球在 Cross 与 Corner 使用不同单一属性。详细固定 ID 与效果见 `PlayerTraitData.h`、canonical importer `TRAIT_KEYS` 和 [Trait Contract](Rules/Trait_System_Design_Contract.md)。
 
 JSON 非 GK 为六键 `outfieldAttributes`、`staminaTier` 字符串；GK 为 `goalkeeperAttributes`、`staminaTier: null`，另一属性对象为 null。每人必须有 `rankedTraits` 与 `binaryTraits` 数组。非 GK OVR 由六项 base 得出 65–95，仅显示，不新增可编辑或持久化 OVR 字段。
 

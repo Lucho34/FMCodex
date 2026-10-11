@@ -82,7 +82,7 @@
 
 非 GK 总评为 `Clamp(59 + Shooting + Passing + Control + Speed + Strength + Defense, 65, 95)`，仅显示，不计 Trait、体力、稀有度或临时修正，不进入选择、Formula、平局或 Recovery。GK 总评沿用既有算法。
 
-Trait assignment 现为被动数据；Ranked 加成与反越位专家双骰尚未启用。移除的独立远射、盘带、跑位、抢断、盯人、数值体力不作为隐藏兼容属性保存。
+当前已启用 19 项 Ranked（B+1/A+2/S+3）与反越位专家 Binary。高/低球接应与协防覆盖传中和角球的合法实际参与者；低传中增强速度，低角球分别增强接应控球和协防防守。完整上下文见 [Trait Contract](Rules/Trait_System_Design_Contract.md)。移除的独立远射、盘带、跑位、抢断、盯人、数值体力不作为隐藏兼容属性保存。
 
 门将属性数值区间为 1-6：
 

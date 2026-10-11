@@ -14,7 +14,7 @@ namespace FMCodexPrototypeTeamContent
 	const FName ManchesterCityId(TEXT("Prototype.Team.ManchesterCity"));
 	constexpr int32 CanonicalPlayersPerTeam = 20;
 	constexpr int32 CanonicalPlayerCount = CanonicalPlayersPerTeam * 2;
-	constexpr int32 RuntimeSchemaVersion = 4;
+	constexpr int32 RuntimeSchemaVersion = 5;
 
 	struct FCatalog
 	{

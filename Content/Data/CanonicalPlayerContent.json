@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 4,
-  "balanceContentVersion": "Prototype40_v3",
+  "schemaVersion": 5,
+  "balanceContentVersion": "Prototype40_v4",
   "sourceWorkbook": "FMCodex_Canonical_Player_Content.xlsx",
-  "sourceWorkbookSha256": "b8bac0b8cd5a3c166dbacb6de5c75afc45cc9e66502d8df8a44d94c44b2a5bfc",
+  "sourceWorkbookSha256": "9bd3a80b6bfbef57d807c12cd35d266c1da35dd2aa399d5c21a48e0ef7940d37",
   "sourceSheet": "球员配置",
   "players": [
     {
@@ -47,26 +47,22 @@
       "englishName": "Gabriel Magalhães",
       "position": "D",
       "outfieldAttributes": {
-        "SHO": 1,
+        "SHO": 2,
         "PAS": 3,
         "CON": 3,
         "SPD": 3,
-        "STR": 5,
+        "STR": 6,
         "DEF": 5
       },
       "goalkeeperAttributes": null,
       "staminaTier": "B",
       "rankedTraits": [
         {
-          "traitId": "Trait.CornerHighThreat",
+          "traitId": "Trait.CrossHighRunner",
           "rank": "B"
         },
         {
           "traitId": "Trait.CrossHighHelperDefense",
-          "rank": "B"
-        },
-        {
-          "traitId": "Trait.CornerHighDefense",
           "rank": "B"
         }
       ],
@@ -93,15 +89,19 @@
       "position": "D",
       "outfieldAttributes": {
         "SHO": 1,
-        "PAS": 4,
+        "PAS": 3,
         "CON": 3,
-        "SPD": 4,
+        "SPD": 5,
         "STR": 5,
         "DEF": 6
       },
       "goalkeeperAttributes": null,
       "staminaTier": "A",
       "rankedTraits": [
+        {
+          "traitId": "Trait.CrossHighHelperDefense",
+          "rank": "B"
+        },
         {
           "traitId": "Trait.ThroughBallFeetHelperDefense",
           "rank": "A"
@@ -131,7 +131,7 @@
       "outfieldAttributes": {
         "SHO": 1,
         "PAS": 4,
-        "CON": 4,
+        "CON": 3,
         "SPD": 4,
         "STR": 4,
         "DEF": 4
@@ -145,6 +145,10 @@
         },
         {
           "traitId": "Trait.CutInsideStopper",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallFeetHelperDefense",
           "rank": "B"
         }
       ],
@@ -188,11 +192,21 @@
       "rankedTraits": [
         {
           "traitId": "Trait.CutInsideStopper",
-          "rank": "A"
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallBehindHelperDefense",
+          "rank": "B"
         }
       ],
       "binaryTraits": [],
-      "skills": [],
+      "skills": [
+        {
+          "skillId": "Cross",
+          "minTP": 4,
+          "maxTP": 5
+        }
+      ],
       "notes": "左脚中卫；速度快、善于回追，不配置Skill。",
       "presentation": {
         "nationality": "厄瓜多尔",
@@ -215,7 +229,7 @@
       "outfieldAttributes": {
         "SHO": 2,
         "PAS": 4,
-        "CON": 3,
+        "CON": 4,
         "SPD": 4,
         "STR": 4,
         "DEF": 4
@@ -229,13 +243,17 @@
         },
         {
           "traitId": "Trait.CutInsideStopper",
+          "rank": "A"
+        },
+        {
+          "traitId": "Trait.ThroughBallBehindHelperDefense",
           "rank": "B"
         }
       ],
       "binaryTraits": [],
       "skills": [
         {
-          "skillId": "Cross",
+          "skillId": "ThroughBall",
           "minTP": 5,
           "maxTP": 5
         }
@@ -271,7 +289,11 @@
       "staminaTier": "B",
       "rankedTraits": [
         {
-          "traitId": "Trait.CrossCarrier",
+          "traitId": "Trait.CrossHighHelperDefense",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallFeetHelperDefense",
           "rank": "B"
         }
       ],
@@ -280,6 +302,11 @@
         {
           "skillId": "Cross",
           "minTP": 4,
+          "maxTP": 5
+        },
+        {
+          "skillId": "ThroughBall",
+          "minTP": 5,
           "maxTP": 5
         }
       ],
@@ -303,7 +330,7 @@
       "englishName": "Myles Lewis-Skelly",
       "position": "M/D",
       "outfieldAttributes": {
-        "SHO": 3,
+        "SHO": 2,
         "PAS": 4,
         "CON": 4,
         "SPD": 4,
@@ -312,7 +339,12 @@
       },
       "goalkeeperAttributes": null,
       "staminaTier": "A",
-      "rankedTraits": [],
+      "rankedTraits": [
+        {
+          "traitId": "Trait.CutInsideStopper",
+          "rank": "B"
+        }
+      ],
       "binaryTraits": [],
       "skills": [],
       "notes": "年轻内收边卫；重视持球安全与中场衔接。",
@@ -347,10 +379,14 @@
       "rankedTraits": [
         {
           "traitId": "Trait.LongShotCarrier",
-          "rank": "A"
+          "rank": "B"
         },
         {
           "traitId": "Trait.ThroughBallCarrier",
+          "rank": "A"
+        },
+        {
+          "traitId": "Trait.ThroughBallMarkerDefense",
           "rank": "B"
         }
       ],
@@ -388,7 +424,7 @@
       "position": "A/M",
       "outfieldAttributes": {
         "SHO": 4,
-        "PAS": 5,
+        "PAS": 4,
         "CON": 5,
         "SPD": 4,
         "STR": 3,
@@ -398,20 +434,24 @@
       "staminaTier": "B",
       "rankedTraits": [
         {
+          "traitId": "Trait.LongShotCarrier",
+          "rank": "B"
+        },
+        {
           "traitId": "Trait.CutInsideCarrier",
           "rank": "B"
         },
         {
-          "traitId": "Trait.ThroughBallCarrier",
+          "traitId": "Trait.LongFreeKickTaker",
           "rank": "B"
         }
       ],
       "binaryTraits": [],
       "skills": [
         {
-          "skillId": "ThroughBall",
-          "minTP": 6,
-          "maxTP": 8
+          "skillId": "LongShot",
+          "minTP": 3,
+          "maxTP": 4
         },
         {
           "skillId": "CutInsideShot",
@@ -437,27 +477,41 @@
       "displaySerial": 11,
       "chineseName": "米克尔·梅里诺",
       "englishName": "Mikel Merino",
-      "position": "M",
+      "position": "A/M",
       "outfieldAttributes": {
         "SHO": 4,
         "PAS": 4,
         "CON": 4,
         "SPD": 3,
-        "STR": 4,
+        "STR": 5,
         "DEF": 4
       },
       "goalkeeperAttributes": null,
       "staminaTier": "A",
       "rankedTraits": [
         {
+          "traitId": "Trait.CrossHighRunner",
+          "rank": "A"
+        },
+        {
           "traitId": "Trait.ThroughBallFeetRunner",
           "rank": "B"
+        },
+        {
+          "traitId": "Trait.CrossHighHelperDefense",
+          "rank": "A"
         }
       ],
       "binaryTraits": [
         "Trait.ThroughBallAntiRunner"
       ],
-      "skills": [],
+      "skills": [
+        {
+          "skillId": "ThroughBall",
+          "minTP": 5,
+          "maxTP": 5
+        }
+      ],
       "notes": "全能中场；没有极端短板，提供二线支援。",
       "presentation": {
         "nationality": "西班牙",
@@ -490,6 +544,14 @@
       "rankedTraits": [
         {
           "traitId": "Trait.ThroughBallCarrier",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.LongShotBlocker",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallFeetHelperDefense",
           "rank": "B"
         }
       ],
@@ -532,8 +594,12 @@
       "staminaTier": "S",
       "rankedTraits": [
         {
-          "traitId": "Trait.LongShotCarrier",
+          "traitId": "Trait.NearFreeKickTaker",
           "rank": "B"
+        },
+        {
+          "traitId": "Trait.LongFreeKickTaker",
+          "rank": "A"
         },
         {
           "traitId": "Trait.ThroughBallMarkerDefense",
@@ -574,15 +640,23 @@
       "position": "M/D",
       "outfieldAttributes": {
         "SHO": 3,
-        "PAS": 4,
+        "PAS": 3,
         "CON": 3,
         "SPD": 2,
         "STR": 4,
-        "DEF": 4
+        "DEF": 5
       },
       "goalkeeperAttributes": null,
       "staminaTier": "A",
       "rankedTraits": [
+        {
+          "traitId": "Trait.CrossHighRunner",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.CrossHighHelperDefense",
+          "rank": "B"
+        },
         {
           "traitId": "Trait.ThroughBallMarkerDefense",
           "rank": "B"
@@ -612,7 +686,7 @@
       "outfieldAttributes": {
         "SHO": 4,
         "PAS": 5,
-        "CON": 6,
+        "CON": 5,
         "SPD": 5,
         "STR": 4,
         "DEF": 3
@@ -665,7 +739,7 @@
         "SHO": 4,
         "PAS": 4,
         "CON": 5,
-        "SPD": 6,
+        "SPD": 5,
         "STR": 3,
         "DEF": 2
       },
@@ -674,14 +748,21 @@
       "rankedTraits": [
         {
           "traitId": "Trait.ThroughBallBehindRunner",
-          "rank": "B"
+          "rank": "A"
         }
       ],
-      "binaryTraits": [],
+      "binaryTraits": [
+        "Trait.ThroughBallAntiRunner"
+      ],
       "skills": [
         {
           "skillId": "CutInsideShot",
           "minTP": 4,
+          "maxTP": 5
+        },
+        {
+          "skillId": "Cross",
+          "minTP": 5,
           "maxTP": 5
         }
       ],
@@ -710,7 +791,7 @@
         "CON": 4,
         "SPD": 5,
         "STR": 6,
-        "DEF": 2
+        "DEF": 3
       },
       "goalkeeperAttributes": null,
       "staminaTier": "S",
@@ -718,14 +799,20 @@
         {
           "traitId": "Trait.CrossHighRunner",
           "rank": "B"
+        },
+        {
+          "traitId": "Trait.PenaltyTaker",
+          "rank": "A"
         }
       ],
-      "binaryTraits": [],
+      "binaryTraits": [
+        "Trait.ThroughBallAntiRunner"
+      ],
       "skills": [
         {
-          "skillId": "LongShot",
-          "minTP": 3,
-          "maxTP": 5
+          "skillId": "CutInsideShot",
+          "minTP": 4,
+          "maxTP": 4
         }
       ],
       "notes": "强力中锋；终结与身体对抗是两项招牌能力。",
@@ -759,12 +846,27 @@
       "staminaTier": "A",
       "rankedTraits": [
         {
-          "traitId": "Trait.ThroughBallFeetRunner",
+          "traitId": "Trait.LongShotCarrier",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.CutInsideCarrier",
           "rank": "B"
         }
       ],
       "binaryTraits": [],
-      "skills": [],
+      "skills": [
+        {
+          "skillId": "CutInsideShot",
+          "minTP": 2,
+          "maxTP": 3
+        },
+        {
+          "skillId": "LongShot",
+          "minTP": 4,
+          "maxTP": 4
+        }
+      ],
       "notes": "技术型攻击手；狭小空间处理和弱侧终结稳定。",
       "presentation": {
         "nationality": "比利时",
@@ -786,7 +888,7 @@
       "position": "A",
       "outfieldAttributes": {
         "SHO": 3,
-        "PAS": 4,
+        "PAS": 3,
         "CON": 4,
         "SPD": 6,
         "STR": 3,
@@ -838,18 +940,32 @@
         "CON": 5,
         "SPD": 3,
         "STR": 4,
-        "DEF": 2
+        "DEF": 3
       },
       "goalkeeperAttributes": null,
       "staminaTier": "S",
       "rankedTraits": [
+        {
+          "traitId": "Trait.CrossHighRunner",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.CrossLowRunner",
+          "rank": "B"
+        },
         {
           "traitId": "Trait.ThroughBallFeetRunner",
           "rank": "B"
         }
       ],
       "binaryTraits": [],
-      "skills": [],
+      "skills": [
+        {
+          "skillId": "ThroughBall",
+          "minTP": 5,
+          "maxTP": 5
+        }
+      ],
       "notes": "前场连接点；无球跑位、背身衔接与高位压迫均衡。",
       "presentation": {
         "nationality": "德国",
@@ -904,7 +1020,7 @@
       "outfieldAttributes": {
         "SHO": 1,
         "PAS": 3,
-        "CON": 3,
+        "CON": 2,
         "SPD": 3,
         "STR": 5,
         "DEF": 5
@@ -912,6 +1028,14 @@
       "goalkeeperAttributes": null,
       "staminaTier": "A",
       "rankedTraits": [
+        {
+          "traitId": "Trait.CrossHighRunner",
+          "rank": "A"
+        },
+        {
+          "traitId": "Trait.CrossHighHelperDefense",
+          "rank": "B"
+        },
         {
           "traitId": "Trait.ThroughBallMarkerDefense",
           "rank": "B"
@@ -942,9 +1066,9 @@
         "SHO": 1,
         "PAS": 3,
         "CON": 3,
-        "SPD": 4,
+        "SPD": 5,
         "STR": 4,
-        "DEF": 5
+        "DEF": 4
       },
       "goalkeeperAttributes": null,
       "staminaTier": "A",
@@ -952,6 +1076,14 @@
         {
           "traitId": "Trait.CutInsideStopper",
           "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallFeetHelperDefense",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallBehindHelperDefense",
+          "rank": "A"
         }
       ],
       "binaryTraits": [],
@@ -980,23 +1112,36 @@
         "PAS": 4,
         "CON": 4,
         "SPD": 4,
-        "STR": 5,
+        "STR": 4,
         "DEF": 4
       },
       "goalkeeperAttributes": null,
-      "staminaTier": "S",
+      "staminaTier": "A",
       "rankedTraits": [
         {
-          "traitId": "Trait.CrossCarrier",
+          "traitId": "Trait.LongShotCarrier",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.CutInsideStopper",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallFeetHelperDefense",
           "rank": "B"
         }
       ],
       "binaryTraits": [],
       "skills": [
         {
-          "skillId": "Cross",
+          "skillId": "CutInsideShot",
           "minTP": 4,
-          "maxTP": 5
+          "maxTP": 4
+        },
+        {
+          "skillId": "LongShot",
+          "minTP": 3,
+          "maxTP": 3
         }
       ],
       "notes": "进攻型左后卫；标记M/D，以推进和Cross支援。",
@@ -1020,15 +1165,24 @@
       "position": "D",
       "outfieldAttributes": {
         "SHO": 2,
-        "PAS": 4,
+        "PAS": 3,
         "CON": 4,
         "SPD": 4,
         "STR": 4,
         "DEF": 4
       },
       "goalkeeperAttributes": null,
-      "staminaTier": "B",
-      "rankedTraits": [],
+      "staminaTier": "A",
+      "rankedTraits": [
+        {
+          "traitId": "Trait.CutInsideStopper",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.CrossMarkerBlocker",
+          "rank": "B"
+        }
+      ],
       "binaryTraits": [],
       "skills": [],
       "notes": "左脚中卫轮换；稳定灵活，不配置Skill。",
@@ -1049,7 +1203,7 @@
       "displaySerial": 26,
       "chineseName": "约翰·斯通斯",
       "englishName": "John Stones",
-      "position": "D",
+      "position": "M/D",
       "outfieldAttributes": {
         "SHO": 2,
         "PAS": 4,
@@ -1059,10 +1213,25 @@
         "DEF": 4
       },
       "goalkeeperAttributes": null,
-      "staminaTier": "A",
-      "rankedTraits": [],
+      "staminaTier": "B",
+      "rankedTraits": [
+        {
+          "traitId": "Trait.CrossLowRunner",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallFeetRunner",
+          "rank": "B"
+        }
+      ],
       "binaryTraits": [],
-      "skills": [],
+      "skills": [
+        {
+          "skillId": "ThroughBall",
+          "minTP": 5,
+          "maxTP": 5
+        }
+      ],
       "notes": "组织型中卫；虽能前提出球，本表仍不配置Skill。",
       "presentation": {
         "nationality": "英格兰",
@@ -1131,18 +1300,30 @@
         "CON": 5,
         "SPD": 2,
         "STR": 5,
-        "DEF": 4
+        "DEF": 5
       },
       "goalkeeperAttributes": null,
       "staminaTier": "S",
       "rankedTraits": [
         {
+          "traitId": "Trait.LongShotCarrier",
+          "rank": "B"
+        },
+        {
           "traitId": "Trait.ThroughBallCarrier",
           "rank": "B"
         },
         {
-          "traitId": "Trait.ThroughBallMarkerDefense",
+          "traitId": "Trait.LongShotBlocker",
           "rank": "B"
+        },
+        {
+          "traitId": "Trait.CrossHighHelperDefense",
+          "rank": "A"
+        },
+        {
+          "traitId": "Trait.ThroughBallMarkerDefense",
+          "rank": "A"
         }
       ],
       "binaryTraits": [],
@@ -1151,6 +1332,11 @@
           "skillId": "ThroughBall",
           "minTP": 5,
           "maxTP": 6
+        },
+        {
+          "skillId": "LongShot",
+          "minTP": 3,
+          "maxTP": 4
         }
       ],
       "notes": "中场中枢；传控与预判是两项招牌能力。",
@@ -1174,10 +1360,10 @@
       "position": "M",
       "outfieldAttributes": {
         "SHO": 4,
-        "PAS": 5,
+        "PAS": 4,
         "CON": 5,
         "SPD": 4,
-        "STR": 4,
+        "STR": 3,
         "DEF": 3
       },
       "goalkeeperAttributes": null,
@@ -1185,6 +1371,10 @@
       "rankedTraits": [
         {
           "traitId": "Trait.ThroughBallCarrier",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallFeetRunner",
           "rank": "B"
         }
       ],
@@ -1194,6 +1384,11 @@
           "skillId": "ThroughBall",
           "minTP": 5,
           "maxTP": 6
+        },
+        {
+          "skillId": "LongShot",
+          "minTP": 4,
+          "maxTP": 4
         }
       ],
       "notes": "推进型中场；持球摆脱、连续跑动与向前传递均衡。",
@@ -1221,10 +1416,10 @@
         "CON": 6,
         "SPD": 3,
         "STR": 2,
-        "DEF": 2
+        "DEF": 3
       },
       "goalkeeperAttributes": null,
-      "staminaTier": "B",
+      "staminaTier": "A",
       "rankedTraits": [
         {
           "traitId": "Trait.ThroughBallCarrier",
@@ -1237,6 +1432,11 @@
           "skillId": "ThroughBall",
           "minTP": 6,
           "maxTP": 8
+        },
+        {
+          "skillId": "CutInsideShot",
+          "minTP": 2,
+          "maxTP": 3
         }
       ],
       "notes": "技术型核心；可在中路控场，也可去边路创造机会。",
@@ -1259,22 +1459,26 @@
       "englishName": "Phil Foden",
       "position": "A/M",
       "outfieldAttributes": {
-        "SHO": 4,
-        "PAS": 5,
+        "SHO": 5,
+        "PAS": 4,
         "CON": 5,
         "SPD": 4,
         "STR": 2,
-        "DEF": 2
+        "DEF": 3
       },
       "goalkeeperAttributes": null,
       "staminaTier": "A",
       "rankedTraits": [
         {
           "traitId": "Trait.LongShotCarrier",
-          "rank": "A"
+          "rank": "B"
         },
         {
-          "traitId": "Trait.CutInsideCarrier",
+          "traitId": "Trait.CrossLowRunner",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallFeetRunner",
           "rank": "B"
         }
       ],
@@ -1283,12 +1487,12 @@
         {
           "skillId": "CutInsideShot",
           "minTP": 2,
-          "maxTP": 4
+          "maxTP": 3
         },
         {
           "skillId": "LongShot",
           "minTP": 3,
-          "maxTP": 5
+          "maxTP": 4
         }
       ],
       "notes": "左脚攻击核心；狭小空间持球、内切和远射突出。",
@@ -1314,7 +1518,7 @@
         "SHO": 3,
         "PAS": 5,
         "CON": 6,
-        "SPD": 4,
+        "SPD": 3,
         "STR": 3,
         "DEF": 2
       },
@@ -1323,6 +1527,14 @@
       "rankedTraits": [
         {
           "traitId": "Trait.ThroughBallCarrier",
+          "rank": "A"
+        },
+        {
+          "traitId": "Trait.NearFreeKickTaker",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.LongFreeKickTaker",
           "rank": "B"
         }
       ],
@@ -1363,9 +1575,32 @@
       },
       "goalkeeperAttributes": null,
       "staminaTier": "A",
-      "rankedTraits": [],
+      "rankedTraits": [
+        {
+          "traitId": "Trait.ThroughBallCarrier",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallFeetRunner",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.CrossHighHelperDefense",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallMarkerDefense",
+          "rank": "B"
+        }
+      ],
       "binaryTraits": [],
-      "skills": [],
+      "skills": [
+        {
+          "skillId": "ThroughBall",
+          "minTP": 5,
+          "maxTP": 6
+        }
+      ],
       "notes": "后腰轮换；身材、控球与防守覆盖相对均衡。",
       "presentation": {
         "nationality": "西班牙",
@@ -1389,13 +1624,18 @@
         "SHO": 3,
         "PAS": 4,
         "CON": 4,
-        "SPD": 5,
+        "SPD": 4,
         "STR": 4,
         "DEF": 4
       },
       "goalkeeperAttributes": null,
       "staminaTier": "S",
-      "rankedTraits": [],
+      "rankedTraits": [
+        {
+          "traitId": "Trait.ThroughBallBehindHelperDefense",
+          "rank": "B"
+        }
+      ],
       "binaryTraits": [],
       "skills": [
         {
@@ -1433,9 +1673,33 @@
       },
       "goalkeeperAttributes": null,
       "staminaTier": "A",
-      "rankedTraits": [],
+      "rankedTraits": [
+        {
+          "traitId": "Trait.LongShotCarrier",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallCarrier",
+          "rank": "B"
+        },
+        {
+          "traitId": "Trait.ThroughBallMarkerDefense",
+          "rank": "B"
+        }
+      ],
       "binaryTraits": [],
-      "skills": [],
+      "skills": [
+        {
+          "skillId": "LongShot",
+          "minTP": 3,
+          "maxTP": 3
+        },
+        {
+          "skillId": "ThroughBall",
+          "minTP": 5,
+          "maxTP": 6
+        }
+      ],
       "notes": "抗压中场；擅长转身摆脱并把球送入前场。",
       "presentation": {
         "nationality": "克罗地亚",
@@ -1458,20 +1722,30 @@
       "outfieldAttributes": {
         "SHO": 6,
         "PAS": 3,
-        "CON": 5,
+        "CON": 4,
         "SPD": 5,
-        "STR": 5,
+        "STR": 6,
         "DEF": 2
       },
       "goalkeeperAttributes": null,
       "staminaTier": "A",
       "rankedTraits": [
         {
+          "traitId": "Trait.CrossHighRunner",
+          "rank": "A"
+        },
+        {
           "traitId": "Trait.ThroughBallFeetRunner",
           "rank": "B"
+        },
+        {
+          "traitId": "Trait.CrossHighHelperDefense",
+          "rank": "A"
         }
       ],
-      "binaryTraits": [],
+      "binaryTraits": [
+        "Trait.ThroughBallAntiRunner"
+      ],
       "skills": [],
       "notes": "禁区终结核心；射门与无球跑位为两项招牌能力。",
       "presentation": {
@@ -1491,12 +1765,12 @@
       "displaySerial": 37,
       "chineseName": "奥马尔·马尔穆什",
       "englishName": "Omar Marmoush",
-      "position": "A",
+      "position": "A/M",
       "outfieldAttributes": {
-        "SHO": 4,
+        "SHO": 5,
         "PAS": 4,
-        "CON": 5,
-        "SPD": 6,
+        "CON": 3,
+        "SPD": 5,
         "STR": 3,
         "DEF": 2
       },
@@ -1504,20 +1778,22 @@
       "staminaTier": "A",
       "rankedTraits": [
         {
-          "traitId": "Trait.LongShotCarrier",
+          "traitId": "Trait.NearFreeKickTaker",
           "rank": "B"
         },
         {
-          "traitId": "Trait.ThroughBallBehindRunner",
-          "rank": "B"
+          "traitId": "Trait.PenaltyTaker",
+          "rank": "A"
         }
       ],
-      "binaryTraits": [],
+      "binaryTraits": [
+        "Trait.ThroughBallAntiRunner"
+      ],
       "skills": [
         {
           "skillId": "CutInsideShot",
           "minTP": 4,
-          "maxTP": 5
+          "maxTP": 4
         },
         {
           "skillId": "LongShot",
@@ -1545,19 +1821,19 @@
       "englishName": "Jérémy Doku",
       "position": "A",
       "outfieldAttributes": {
-        "SHO": 3,
-        "PAS": 4,
+        "SHO": 2,
+        "PAS": 3,
         "CON": 5,
         "SPD": 6,
-        "STR": 3,
+        "STR": 4,
         "DEF": 2
       },
       "goalkeeperAttributes": null,
-      "staminaTier": "A",
+      "staminaTier": "B",
       "rankedTraits": [
         {
           "traitId": "Trait.CutInsideCarrier",
-          "rank": "A"
+          "rank": "B"
         }
       ],
       "binaryTraits": [],
@@ -1594,17 +1870,33 @@
       "position": "A",
       "outfieldAttributes": {
         "SHO": 4,
-        "PAS": 4,
-        "CON": 5,
-        "SPD": 5,
+        "PAS": 3,
+        "CON": 4,
+        "SPD": 4,
         "STR": 5,
-        "DEF": 2
+        "DEF": 3
       },
       "goalkeeperAttributes": null,
       "staminaTier": "S",
-      "rankedTraits": [],
+      "rankedTraits": [
+        {
+          "traitId": "Trait.CutInsideCarrier",
+          "rank": "A"
+        }
+      ],
       "binaryTraits": [],
-      "skills": [],
+      "skills": [
+        {
+          "skillId": "CutInsideShot",
+          "minTP": 4,
+          "maxTP": 4
+        },
+        {
+          "skillId": "LongShot",
+          "minTP": 3,
+          "maxTP": 3
+        }
+      ],
       "notes": "强壮型边锋；能持球推进，也能从两侧完成终结。",
       "presentation": {
         "nationality": "加纳",
@@ -1628,7 +1920,7 @@
         "SHO": 3,
         "PAS": 4,
         "CON": 5,
-        "SPD": 6,
+        "SPD": 5,
         "STR": 2,
         "DEF": 2
       },

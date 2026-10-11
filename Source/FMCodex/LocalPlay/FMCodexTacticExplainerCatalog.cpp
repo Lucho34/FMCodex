@@ -1,4 +1,4 @@
-﻿#include "FMCodexTacticExplainerCatalog.h"
+#include "FMCodexTacticExplainerCatalog.h"
 #include "FMCodexPlayerUIPresentationText.h"
 #include "../CoreRules/PlayerTraitFormula.h"
 
@@ -76,7 +76,7 @@ FFMCodexExplainerRoute Corner(bool High)
  FFMCodexExplainerRoute P; P.Id=High?TEXT("Corner.High"):TEXT("Corner.Low"); P.Name=Text(High?TEXT("高球"):TEXT("低球"));
  P.Memory=Text(High?TEXT("高球角球强调力量。"):TEXT("进攻看控球，防守看防守。"));
  P.Rule=*FTacticalRuleDescriptionCatalog::FindCornerRoute(High?EMatchPlayCornerRouteIntent::High:EMatchPlayCornerRouteIntent::Low);
- P.Traits=High?TArray<FName>{TEXT("Trait.CornerHighThreat"),TEXT("Trait.CornerHighDefense")}:TArray<FName>{TEXT("Trait.CornerLowThreat"),TEXT("Trait.CornerLowDefense")};
+ P.Traits=High?TArray<FName>{TEXT("Trait.CrossHighRunner"),TEXT("Trait.CrossHighHelperDefense")}:TArray<FName>{TEXT("Trait.CrossLowRunner"),TEXT("Trait.CrossLowHelperDefense")};
  Arithmetic(P);
  // This is Corner's specific modifier, separate from the common tactical-player modifier.
  P.CalculationNote=Text(TEXT("角球人数修正：双方均有候选时，多 1 人的一方最终值 +2，多 2 人 +3，同数不加。"));

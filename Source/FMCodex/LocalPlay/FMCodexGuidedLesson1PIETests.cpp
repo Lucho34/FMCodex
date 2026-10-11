@@ -148,11 +148,11 @@ public:
 			if (L->IsOpponentDeploymentMoving())
 			{
 				if (OpponentMoving[Attempt]==0) OpponentMoving[Attempt]=Now;
-				T->TestEqual(TEXT("Proxy motion cannot deploy authoritative Stones early"),C->GetInteractionView().DeploymentPlacements.Num(),1);
+				T->TestEqual(TEXT("Proxy motion cannot deploy authoritative Cherki early"),C->GetInteractionView().DeploymentPlacements.Num(),1);
 				const auto Proxy=FindSlate(LessonWindow->GetContent(),TEXT("LessonOpponentProxy"));
 				T->TestTrue(TEXT("Production-style visual proxy is visible in motion"),Proxy.IsValid());
 				for(UFMCodexPlayerCardWidget* Card:S->GetOpponentRackWidget()->GetRenderedCardWidgets())
-					if(Card->GetPresentation().CardId==L->Stones()) T->TestEqual(TEXT("Source replaced by proxy without duplicate portrait"),Card->GetRenderOpacity(),0.f);
+					if(Card->GetPresentation().CardId==L->Cherki()) T->TestEqual(TEXT("Source replaced by proxy without duplicate portrait"),Card->GetRenderOpacity(),0.f);
 				if(!L->IsComparison() && !bMoveCaptured && Now-OpponentMoving[Attempt]>.3)
 				{ Capture(TEXT("09_OpponentMoving.png")); bMoveCaptured=true; }
 			}
@@ -201,7 +201,7 @@ public:
 				else
 				{
 					const auto* Card=Cast<UFMCodexPlayerCardWidget>(Targets[0]);
-					T->TestTrue(TEXT("Marker indicator points to actual deployed Stones"),Card && Card->GetPresentation().CardId==L->Stones());
+					T->TestTrue(TEXT("Marker indicator points to actual deployed Cherki"),Card && Card->GetPresentation().CardId==L->Cherki());
 				}
 				bool& Captured=Finish?bFinishCaptured:bMarkerCaptured;
 				if(!Captured && L->IsOpponentSettling()) { Capture(Finish?TEXT("10_OpponentFinish.png"):TEXT("10_OpponentMarker.png")); Captured=true; }
@@ -234,7 +234,7 @@ public:
 				T->TestEqual(TEXT("Only first pass teaches skill range; second teaches trait"),L->GetStep(),L->IsComparison()?EFMCodexLesson1Step::TraitExplanation:EFMCodexLesson1Step::SkillRangeExplanation);
 				T->AddInfo(FString::Printf(TEXT("GUIDED_CARD_DELAY attempt=%d visibleBeforeExplanation=%.3fs"),Attempt+1,CardExplainedAt[Attempt]-FullCardAt[Attempt]));
 			}
-			else if (L->GetStep()==EFMCodexLesson1Step::InspectGyokeres || L->GetStep()==EFMCodexLesson1Step::InspectOdegaard)
+			else if (L->GetStep()==EFMCodexLesson1Step::InspectRice || L->GetStep()==EFMCodexLesson1Step::InspectOdegaard)
 				T->TestFalse(TEXT("Card registration interval has no competing explanation panel"),FindSlate(LessonWindow->GetContent(),TEXT("LessonModalPanel")).IsValid());
 		}
 		if (L->GetStep()==EFMCodexLesson1Step::FormulaHover && bFormulaHovered[Attempt])
@@ -297,7 +297,7 @@ public:
 			}
 			T->TestTrue(TEXT("Real HUD hover enables Continue"),L->CanAcknowledge());
 			Capture(TEXT("01_TacticalPointValue.png")); ClickSlate(TEXT("LessonExplanationContinue")); break;
-		case Step::InspectOdegaard: case Step::InspectGyokeres:
+		case Step::InspectOdegaard: case Step::InspectRice:
 		{
 			const auto Targets=FMCodexLesson1Focus::Targets(S,*L);
 			if (!T->TestEqual(TEXT("One semantic hover target"),Targets.Num(),1)) return true;
@@ -340,7 +340,7 @@ public:
 				const auto& E=Exit->GetCachedGeometry(); const auto& D=S->GetDetailOverlayCard()->GetCachedGeometry();
 				T->TestTrue(TEXT("Modal exit stays clear of real Full Card"),E.GetAbsolutePosition().X >= D.GetAbsolutePosition().X+D.GetAbsoluteSize().X);
 			}
-			T->TestTrue(TEXT("Full Card retained beside skill explanation"),S->IsDetailOverlayVisible() && S->GetDetailOverlayCard()->FindSkillPresentationWidget(L->Skill()));
+			T->TestTrue(TEXT("Full Card retained beside skill explanation"),S->IsDetailOverlayVisible() && S->GetDetailOverlayCard()->FindSkillPresentationWidget(L->Skill(L->IsComparison())));
 			Capture(TEXT("06_SkillRangeInspection.png"));
 			C->GuidedLesson1Primary();
 			T->TestEqual(TEXT("Skill proceeds to deployment"),L->GetStep(),Step::Deploy); break;
@@ -355,7 +355,7 @@ public:
 				T->TestTrue(TEXT("Rewind live pitch empty"),C->GetInteractionView().DeploymentPlacements.IsEmpty());
 				T->TestTrue(TEXT("Rewind has no stale Formula"),C->GetInteractionView().ResolutionFacts.FormulaContests.IsEmpty());
 				T->TestEqual(TEXT("Real hand comparison has two choices"),S->GetPresentation().LocalRack.Cells.Num(),2);
-				S->RequestDeployOrdinary(FFMCodexGuidedLesson1::Gyokeres(),FFMCodexGuidedLesson1::AttackerSlot());
+				S->RequestDeployOrdinary(FFMCodexGuidedLesson1::Rice(),FFMCodexGuidedLesson1::AttackerSlot());
 				T->TestTrue(TEXT("Wrong comparison retains teaching step"),C->GetInteractionView().DeploymentPlacements.IsEmpty());
 				const auto& Cards=S->GetLocalRackWidget()->GetRenderedCardWidgets();
 				if(Cards.Num()>0)
@@ -390,7 +390,7 @@ public:
 			FocusClick(S,*L); break;
 		case Step::Carrier:
 			T->TestEqual(TEXT("Approved live carrier instruction"),L->Instruction().ToString(),L->IsComparison()
-				?FString(TEXT("点击场上的厄德高，将他选中为本进攻回合的持球队员。")):FString(TEXT("点击场上的哲凯赖什，将他选中为本进攻回合的持球队员。")));
+				?FString(TEXT("点击场上的厄德高，将他选中为本进攻回合的持球队员。")):FString(TEXT("点击场上的赖斯，将他选中为本进攻回合的持球队员。")));
 			if(!L->IsComparison()) Capture(TEXT("10_CarrierInstruction.png"));
 			FocusClick(S,*L); break;
 		case Step::Skill:
@@ -403,7 +403,7 @@ public:
 			if(!L->IsComparison()) Capture(TEXT("08_DirectShotFocus.png")); FocusClick(S,*L); break;
 		case Step::AttackRoll:
 			T->TestTrue(TEXT("Real source tooltip taught before each attack click"),bFormulaTooltip[Attempt]);
-			if(L->IsComparison()) CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("远射专家 A"));
+			if(L->IsComparison()) CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("远射专家 B"));
 			FocusClick(S,*L); break;
 		case Step::FormulaHover:
 		{
@@ -411,7 +411,7 @@ public:
 			auto* Value=S->GetWidgetFromName(TEXT("TheaterAttackBaseHover"));
 			auto* Number=Cast<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterAttackNumber")));
 			if (!T->TestNotNull(TEXT("Production attribute value"),Value) || !T->TestNotNull(TEXT("Production number"),Number)) return true;
-			T->TestEqual(TEXT("Attack base comes from production Formula"),Number->GetText().ToString(),FString(L->IsComparison()?TEXT("6"):TEXT("4")));
+			T->TestEqual(TEXT("Attack base comes from production Formula"),Number->GetText().ToString(),FString(L->IsComparison()?TEXT("5"):TEXT("4")));
 			T->TestTrue(TEXT("Semantic formula focus is the actual number hover region"),FMCodexLesson1Focus::Targets(S,*L).Contains(Value));
 			if (auto* Button=Cast<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue"))))
 				T->TestFalse(TEXT("Production CTA gated until inspection"),Button->GetIsEnabled());
@@ -425,9 +425,9 @@ public:
 			CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("射门 4"));
 			if (L->IsComparison())
 			{
-				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("远射专家 A"));
-				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("射门 4 +2"));
-				T->TestEqual(TEXT("Second formula explanation consumes actual operands"),L->Instruction().ToString(),FString(TEXT("厄德高的射门属性为 4，远射专家 A额外提供 +2，因此进攻基础值为 6。")));
+				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("远射专家 B"));
+				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("射门 4 +1"));
+				T->TestEqual(TEXT("Second formula explanation consumes actual operands"),L->Instruction().ToString(),FString(TEXT("厄德高的射门属性为 4，远射专家 B额外提供 +1，因此进攻基础值为 5。")));
 				Capture(TEXT("04_ComparisonFormula.png"));
 			}
 			const auto Panel=FindSlate(LessonWindow->GetContent(),TEXT("LessonModalPanel"));
@@ -448,7 +448,7 @@ public:
 			T->TestTrue(TEXT("Clean failure moment captured before popup"),bFailureCaptured);
 			T->TestTrue(TEXT("First production Outcome was observed"),bFirstOutcome);
 			T->TestEqual(TEXT("Explanation waits for production ResultHold"),Scene.Phase,FMCodexTacticalScene::EPhase::ResultHold);
-			CheckResult(C,9.f,10.f); OldScreen=S;
+			CheckResult(C,9.f,9.5f); OldScreen=S;
 			Capture(TEXT("02_FirstMissAndRewind.png"));
 			if (auto Panel=FindSlate(LessonWindow->GetContent(),TEXT("LessonModalPanel")))
 				T->TestTrue(TEXT("Failure exit belongs to current teaching panel"),FindSlate(Panel.ToSharedRef(),TEXT("LessonExit"))==FindSlate(LessonWindow->GetContent(),TEXT("LessonExit")));
@@ -458,11 +458,11 @@ public:
 		case Step::Summary:
 			T->TestTrue(TEXT("Natural Goal and celebration observed before summary"),bGoalOutcome && bCelebration);
 			T->TestFalse(TEXT("Summary never covers active celebration"),Scene.Celebration.IsActive());
-			CheckResult(C,11.f,10.f);
+			CheckResult(C,10.f,9.5f);
 			if(!bSummaryInspected)
 			{
-				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("射门 4 +2"));
-				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("远射专家 A"));
+				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("射门 4 +1"));
+				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("远射专家 B"));
 				auto* Base=S->GetWidgetFromName(TEXT("TheaterAttackBaseHover"));
 				if(Base) FSlateApplication::Get().SetCursorPos(Base->GetCachedGeometry().GetAbsolutePosition()
 					+Base->GetCachedGeometry().GetAbsoluteSize()*.5f);
@@ -538,7 +538,7 @@ private:
 	 const auto& Facts=C->GetInteractionView().ResolutionFacts.FormulaContests;
 	 if(!T->TestEqual(TEXT("Production contest exists"),Facts.Num(),1))return;
 	 T->TestEqual(TEXT("Production attack die"),Facts[0].ResolvedInput.Attacker.ComparePoint,5);
-	 T->TestEqual(TEXT("Production defense die"),Facts[0].ResolvedInput.Defender.ComparePoint,3);
+	 T->TestEqual(TEXT("Production defense die"),Facts[0].ResolvedInput.Defender.ComparePoint,2);
 	 T->TestEqual(TEXT("Production attack total"),Facts[0].AttackRow.FinalValue,Attack);
 	 T->TestEqual(TEXT("Production defense total"),Facts[0].DefenseRow.FinalValue,Defense);
 	}
@@ -563,7 +563,7 @@ private:
 		auto Window=GEditor->PlayWorld->GetGameViewport()->GetWindow();
 		TArray<FColor> Pixels; FIntVector Size = FIntVector::ZeroValue;
 		if(!Window || !FSlateApplication::Get().TakeScreenshot(Window->GetContent(),Pixels,Size)) { T->AddError(TEXT("PIE capture unavailable")); return; }
-		const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_26A/PIE"); IFileManager::Get().MakeDirectory(*Dir,true);
+		const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_27A/PIE"); IFileManager::Get().MakeDirectory(*Dir,true);
 		TArray64<uint8> PNG; FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
 		T->TestTrue(TEXT("Actual lesson window captured"),FFileHelper::SaveArrayToFile(PNG,*(Dir/Name)));
 	}

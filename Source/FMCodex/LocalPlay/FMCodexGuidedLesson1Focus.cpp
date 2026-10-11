@@ -112,7 +112,7 @@ TArray<UWidget*> Targets(UFMCodexLocalMatchScreenWidget* S, const FFMCodexGuided
 	{
 		if (auto* Rack = S->GetLocalRackWidget())
 			for (UFMCodexPlayerCardWidget* Card : Rack->GetRenderedCardWidgets())
-				if (Card->GetPresentation().CardId == L.Attacker() || (F == Focus::Deployment && L.IsComparison() && Card->GetPresentation().CardId == L.Gyokeres())) Add(Card);
+				if (Card->GetPresentation().CardId == L.Attacker() || (F == Focus::Deployment && L.IsComparison() && Card->GetPresentation().CardId == L.Rice())) Add(Card);
 	}
 	if (F == Focus::Deployment || F == Focus::Carrier)
 	{
@@ -125,12 +125,12 @@ TArray<UWidget*> Targets(UFMCodexLocalMatchScreenWidget* S, const FFMCodexGuided
 	{
 		if (auto* P = S->GetInteractionPanel())
 			for (UFMCodexInteractionOptionWidget* Option : P->GetRenderedOptionWidgets())
-				if (Option->IsTacticalCard() && Option->GetOptionId() == L.Skill()) Add(Option);
+				if (Option->IsTacticalCard() && Option->GetOptionId() == L.Skill(L.IsComparison())) Add(Option);
 	}
 	if (L.OpponentTarget()==EFMCodexLesson1OpponentTarget::HandCard)
 	{
 		if (auto* Rack = S->GetOpponentRackWidget())
-			for (UFMCodexPlayerCardWidget* Card : Rack->GetRenderedCardWidgets()) if (Card->GetPresentation().CardId == L.Stones()) Add(Card);
+			for (UFMCodexPlayerCardWidget* Card : Rack->GetRenderedCardWidgets()) if (Card->GetPresentation().CardId == L.Cherki()) Add(Card);
 	}
 	if (L.OpponentTarget()==EFMCodexLesson1OpponentTarget::FieldCard)
 		if (auto* Pitch = S->GetPitchWidget())
@@ -142,7 +142,7 @@ TArray<UWidget*> Targets(UFMCodexLocalMatchScreenWidget* S, const FFMCodexGuided
 	{
 	 auto* Card=S->GetDetailOverlayCard();
 	 if (F==Focus::FullCardShooting) Add(Card->FindAttributePresentationWidget(TEXT("SHO")));
-	 if (F==Focus::FullCardSkill) Add(Card->FindSkillPresentationWidget(L.Skill()));
+	 if (F==Focus::FullCardSkill) Add(Card->FindSkillPresentationWidget(L.Skill(L.IsComparison())));
 	 if (F==Focus::FullCardTrait) Add(Card->FindTraitPresentationWidget(TEXT("Trait.LongShotCarrier")));
 	}
 	if (F == Focus::DirectShot) Add(S->GetWidgetFromName(TEXT("TheaterNearDirect")));
@@ -467,7 +467,7 @@ private:
 			if(!L->CanStartOpponentDeploymentMove()) return;
 			UFMCodexPlayerCardWidget* Source=nullptr; UFMCodexPitchSlotWidget* Destination=nullptr;
 			if(auto* Rack=S->GetOpponentRackWidget())
-				for(UFMCodexPlayerCardWidget* Card:Rack->GetRenderedCardWidgets()) if(Card->GetPresentation().CardId==L->Stones()) Source=Card;
+				for(UFMCodexPlayerCardWidget* Card:Rack->GetRenderedCardWidgets()) if(Card->GetPresentation().CardId==L->Cherki()) Source=Card;
 			if(auto* Pitch=S->GetPitchWidget())
 				for(UFMCodexPitchSlotWidget* Slot:Pitch->GetRenderedSlotWidgets()) if(Slot->GetPresentation().SlotId==L->DefenderSlot()) Destination=Slot;
 			const auto From=TargetRect(Source,G,ETargetShape::Content), To=TargetRect(Destination,G,ETargetShape::Content);

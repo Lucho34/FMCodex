@@ -2906,3 +2906,20 @@ Steps 按稳定 ID 查询；配置只拥有文案、CTA、精确强调 span、�
 重演后直接检查厄德高的远射专家 A，跳过重复技能范围与独立属性讲解，保留真实部署和后续玩家选择。两轮均经原公式数值 hover／生产 tooltip／说明确认门控，比较轮用两个静态内容变体解释基础值 6；射门 4、特性 +2、基础值 6 分别只读权威投影，不在 Excel 或教学编排中计算。原 5／3、9:10／11:10、checkpoint 与生产 Goal Celebration 不变。
 
 Excel 仍是唯一内容源。schema 1 的字段结构不变，仅同步 importer／loader 的精确键白名单、HUD 语义目标、Formula operand 绑定和教学计时键。无 8.25B workflow、Lesson2、框架或规则改动。用户视觉／节奏验收与工程验证分开，最终 staging／commit 留给用户。
+
+
+## 2026-10-11 — Stage 8.27A：最新名单、20 Trait 与 Lesson 1
+
+以最新用户修改的 canonical player Excel 为唯一名单真值，保留全部未授权调整字段。确认 Eze LS3–4、Trossard LS4、Gvardiol LS Expert B、Dias Corner High Threat A；仅执行批准的四组 Cross/Corner Trait 合并。当前 12 进攻 / 8 防守、19 Ranked / 1 Binary；B+1/A+2/S+3 不变。三个同等级防守重复去重，其余扩大适用范围为用户已接受的效果，不作自动削弱或最多三特性限制。低球的 Cross/Corner 使用不同单一属性，不能泛化成双属性加成。
+
+保留四个 Cross stable IDs，独立 Corner IDs 退出当前分配；runtime schema 5、Prototype40_v4、sidecar schema 3。实际审计未发现生产磁盘存档或跨版本状态恢复入口，沿用新构建/新会话一次切换；拒绝旧 schema，不迁移历史冻结事实。未来真实旧存档需求另立兼容阶段。
+
+Lesson 1 使用 Rice → Odegaard。两次同一 Cherki + 主动 Donnarumma、TP3、骰5/2，实际总值9:9.5失败→10:9.5成功；不依赖体力平局，不改变公式/骰规则。对手在既有结束部署阶段经 typed action 安排 GK，无新增玩家点击、教学计时或动画时长。8.26A 的 TP、Full Card 延迟与取消、回放精简和 Formula 来源检查继续保留。
+
+对手 Full Card 特性公开权限明确延后；当前 DTO redaction 不改。内容概念减少不等于已测得比赛耗时减少；正式竞技平衡与用户 PIE 仍需实践验收。未授权任何额外数值平衡调整。
+
+Full Card 容量失败在同一 Stage 8.27A 内按用户后续授权定点处理。原因同时包含旧测试假设和真实布局缺陷：B.2.1 已使用至少两行、随实际分配扩展的容量，故 83/104 两种高度合法；原等高断言仅因旧名单没有第三行而通过。Eze、Rodri、Foden、Marmoush 的第三行与两技能组合使头像区缩短，资料区实际侵入姓名区 20 单位；另外补查发现 GK 的 32 单位属性行未计入头像高度预算，页脚落到卡外。
+
+只调整资料区纵向间距和 GK 头像高度预算：两技能外场卡顶距 9；需要第三行特性时资料行高 26、顶距 8，其余资料节奏保持。资料与姓名区保留至少 4 单位间隔；GK 额外扣除三行属性的 33 单位差额。既有字号、身份区、属性/技能/特性行和徽章不重设计，不隐藏分配，不按球员名分支。旧等高断言改为同容量等高，并补全内容、分组、行间隔、区块边界与页脚检查。详见 Full Card Visual Spec 的容量修正；USER PIE 仍待用户确认。
+
+定向验证：ProductionCapacityAndGeometry 逐张覆盖 40 人通过，NumberAndPurposeIsolation 与 GlobalDataAndFallback 通过；增量 Development Editor build 与 diff 检查通过。原生 Widget 渲染核对空特性门将、三条特性 Eze、四条 Merino 和五条 Rodri，不冒充真人 PIE。未改变既有数据、Trait Formula 或教学流程，复用此前验证，不重跑 broad suites、Lesson 1 或独立 Host/Remote。REGRESSION SCOPE JUSTIFIED: YES。

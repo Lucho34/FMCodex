@@ -2,11 +2,9 @@
 
 ## Status
 
-Stage 8.20A.3 锁定设计。**当前实施：B.2 已启用 23 Ranked；B.3 单事件双骰及失败文案／D6 标签微调已由用户接受并提交；B.4 集成收尾状态见 [Runtime Migration Plan](Rules_Simplification_Runtime_Migration_Plan.md)。** 下文 A.3 工作簿与迁移叙述保留为历史范围。
+Stage 8.27A 当前 taxonomy：**20 项，12 进攻 / 8 防守，19 Ranked / 1 Binary**。唯一生产分配源为 `ContentSource/PlayerContent/FMCodex_Canonical_Player_Content.xlsx`，历史 Rules Simplification Draft 不再约束当前名单。
 
-沿用 Stage 8.20A Patch 的 taxonomy v1：14 个进攻 Trait、10 个防守 Trait，共 24 个；其中 23 个 Ranked，1 个 Binary Procedural。Stage 8.20A.3 在已提交的 8.20A.2 基线 `625939ea5ee011260bba18f898cb16c6cc642bd7` 上锁定下表全部效果，取代此前 Ranked 效果 TBD / 候选加法的表述；不增删 Trait，不表示现有游戏已具备 Trait 系统，不启动 Stage 8.20B。
-
-可编辑分配位于 [Rules Simplification Draft](../../ContentSource/PlayerContent/FMCodex_Rules_Simplification_Draft.xlsx)。该工作簿是非运行时草稿，未接入 importer；本次只同步 TraitCatalog 与 README 的效果合同，用户属性、体力、Trait 分配、等级和审查记录不变。Canonical workbook、生成 JSON、importer 与全部运行时保持当前生产合同。
+保留 `Trait.CrossHighRunner`（高球接应）、`Trait.CrossLowRunner`（低球接应）、`Trait.CrossHighHelperDefense`（高球协防）、`Trait.CrossLowHelperDefense`（低球协防）。独立 CornerHighThreat / CornerLowThreat / CornerHighDefense / CornerLowDefense 退出当前 authoring 与 runtime allowlist；同级重复只保留一项，不升级，不叠加，异级必须交由用户决定。
 
 基础公式、系数、参与者、固定项、GK、D6 与特殊路径沿用 [Stage 8.20A.2 Formula Contract](Rules_Simplification_Formula_Contract.md)。六项基础属性 Shooting / Passing / Control / Speed / Strength / Defense 不重设计；Stamina 独立保留 S/A/B = 5/3/1，与 Trait 等级加成不是同一数值模型。PassControl / 传控仍暂时移出目标范围。
 
@@ -18,13 +16,13 @@ Stage 8.20A.3 锁定设计。**当前实施：B.2 已启用 23 Ranked；B.3 单�
 - 参与事实必须来自当前权威结算；不得由 UI、叙事、球场位置或 Trait 持有情况反推参与资格。
 - 不得为了激活 Trait 而新增进攻者、防守者、Marker、Helper、GK 或 Formula 参与者。
 - 不得制造攻防对称：canonical 路径没有防守 Roll / Formula 时，不因存在进攻 Trait 而补上。AntiOffside 与 OneOnOne Chip 保持非对称，除非以后独立批准玩法重设计。
-- 显示名可调整，必须与未来 Stable Trait ID 分离。`TraitKeyDraft` 仅为临时机器键，不是 runtime / save / schema 稳定合同；最终 ID 在真实迁移阶段锁定。
+- 显示名与稳定 ID 分离；下表为当前生产身份。
 
 ## Trait Models
 
 ### Ranked Additive Trait
 
-- 全部 23 项使用唯一已锁定映射：**S = +3、A = +2、B = +1**；空白表示未分配。
+- 全部 19 项使用唯一已锁定映射：**S = +3、A = +2、B = +1**；空白表示未分配。
 - B 为有意义的小幅专长，A 为强专长，S 为顶尖专长。当前名单可以没有 S，不因此自动调等级、分配或球队平衡。
 - `EffectiveAttribute = BaseAttribute + TraitBonus`，先加到下表指定的既有属性，再进入原 Formula 系数或 `max()`。基础卡面数值不被永久改写，不建立第二套隐藏战术评分。
 - 不设 Trait 特有等级尺度、+0.5 等级、百分比、系数修改、Ranked 重掷或独立的 Formula 最终值加成。既有 0.5 系数使 +1/+2/+3 对最终值贡献 0.5/1/1.5 是正常乘法结果，并非另一套等级尺度。
@@ -33,13 +31,13 @@ Stage 8.20A.3 锁定设计。**当前实施：B.2 已启用 23 Ranked；B.3 单�
 
 ### 同一 Formula 中的多个 Trait
 
-不同实际参与者可以同时贡献各自匹配的 Trait。例如 Low Cross 的 Carrier 传中专家 A、Runner 低球传中接应 B、Marker 传中封堵 B、Helper 低球传中协防 A 可全部生效。属性项分别为 `0.5×(C.Passing+2) + 0.5×(R.Speed+1)` 和 `0.5×(M.Defense+1) + 0.5×(H.Speed+2)`，其余既有项保持原规则。没有每公式仅一个 Trait、优先级、最高等级独占、递减收益或 Formula 总上限。
+不同实际参与者可以同时贡献各自匹配的 Trait。例如 Low Cross 的 Carrier 传中专家 A、Runner 低球接应 B、Marker 传中封堵 B、Helper 低球协防 A 可全部生效。属性项分别为 `0.5×(C.Passing+2) + 0.5×(R.Speed+1)` 和 `0.5×(M.Defense+1) + 0.5×(H.Speed+2)`，其余既有项保持原规则。没有每公式仅一个 Trait、优先级、最高等级独占、递减收益或 Formula 总上限。
 
 当前 taxonomy 通过 **Tactic + Route / Method + Actual Gameplay Role** 自然约束同一实际参与者在同一权威 Formula 至多匹配一个 Ranked Trait。未来内容若导致该参与者同时匹配多个 Ranked，视为**内容／配置验证错误**，不支持常规叠加，也不建立 first-wins、最高等级、排序等 runtime 仲裁系统。近任意球大师与点球专家各自是**一个 Trait 修改两个候选属性**，不违反此约束。
 
 ### Binary Procedural Trait
 
-- 只表示有／无，不使用 S / A / B；草稿填写“有”或空白。
+- 只表示有／无，不使用 S / A / B；源表填写“有”或空白。
 - 必须稀少且经过明确产品批准，可修改一个既有权威事件的程序行为。
 - 不得自动增加玩家动作、CTA、流程阶段或参与者；任何额外变化均需单独批准。
 - 不得把一个已批准例外泛化到其他 Trait。除下文明确例外外，未经独立批准，不改变 RNG 范围、不提供重掷、不重写 tie-break、不新增流程步骤。
@@ -57,36 +55,32 @@ Stage 8.20A.3 锁定设计。**当前实施：B.2 已启用 23 Ranked；B.3 单�
 
 无该 Trait 时保留普通 1D6、仅 6 成功。B.3 在同一 PrimaryAttack 记录中保存可选 `AntiOffsideSecondD6`（0 表示无第二骰）；实际 Runner 权威 snapshot 决定是否需要双骰。两次 provider 返回均验证通过后才提交记录，第一枚为 6 也必须消费第二枚。重建读取已存记录，重复／过期请求不新增 RNG；第二次 provider 失败不提交部分状态，已尝试的熵不回滚。共享安全投影按同一事件披露两枚结果，沿用单刀或越位终结。
 
-## Trait Taxonomy v1
+## Trait Taxonomy v2
 
 下表为完整 canonical 效果表，每项仅列一次。效果设计已锁定，Ranked 已在 B.2、Binary 已在 B.3 实施，角色均指本次实际权威角色；Ranked 为 Additive，Binary 为 Procedural。`S+3/A+2/B+1` 表示对 Modified Attribute 中**每项属性**使用相同等级加成。
 
-| Trait | Category | Rank Type | Tactic | Route/Method | Actual Role | Modified Attribute | Rank Effect | Notes | TraitKeyDraft（临时） |
+| Trait | Category | Rank Type | Tactic | Route/Method | Actual Role | Modified Attribute | Rank Effect | Notes | Stable ID（前缀 Trait.） |
 |---|---|---|---|---|---|---|---|---|---|
 | 远射专家 | Offensive | Ranked | LongShot | Direct | Carrier | Shooting | S+3/A+2/B+1 | 无 DeadCorner 效果 | LongShotCarrier |
 | 内切专家 | Offensive | Ranked | CutInside | Direct | Carrier | Control | S+3/A+2/B+1 | 不增加 Shooting；同一 Carrier 的平均公式不变 | CutInsideCarrier |
 | 传中专家 | Offensive | Ranked | Cross | High / Low | Carrier | Passing | S+3/A+2/B+1 | 两条实际路线共用同一 Trait | CrossCarrier |
-| 高球传中接应 | Offensive | Ranked | Cross | High | Runner | Strength | S+3/A+2/B+1 | 仅实际高球接应 | CrossHighRunner |
-| 低球传中接应 | Offensive | Ranked | Cross | Low | Runner | Speed | S+3/A+2/B+1 | 不使用 Shooting 或 Control | CrossLowRunner |
+| 高球接应 | Offensive | Ranked | Cross / Corner | High | Runner | Strength | S+3/A+2/B+1 | 传中与角球；仅实际参与者 | CrossHighRunner |
+| 低球接应 | Offensive | Ranked | Cross / Corner | Low | Runner | Cross: Speed / Corner: Control | S+3/A+2/B+1 | 按上下文只增强一项，不同时增强速度和控球 | CrossLowRunner |
 | 直塞大师 | Offensive | Ranked | ThroughBall | Feet / BehindDefense P1 | Carrier | Passing | S+3/A+2/B+1 | 仅普通属性 Formula，不延续至单刀 | ThroughBallCarrier |
 | 反越位专家 | Offensive | Binary Procedural | ThroughBall | AntiOffside | Runner | None | 一个权威事件内 2D6，任一 6 成功，否则越位 | 有／空白；一次动作，无新增防守流程或 Formula | ThroughBallAntiRunner |
 | 身后球接应 | Offensive | Ranked | ThroughBall | BehindDefense P1 | Runner | Speed | S+3/A+2/B+1 | 出界无 Formula；不延续至单刀 | ThroughBallBehindRunner |
 | 脚下球接应 | Offensive | Ranked | ThroughBall | Feet | Runner | Control | S+3/A+2/B+1 | 不增加 Speed | ThroughBallFeetRunner |
-| 高球角球威胁 | Offensive | Ranked | Corner | High | 实际选中的 Runner | Strength | S+3/A+2/B+1 | 未选中的候选不贡献 | CornerHighThreat |
-| 低球角球威胁 | Offensive | Ranked | Corner | Low | 实际选中的 Runner | Control | S+3/A+2/B+1 | 不增加 Speed；候选不贡献 | CornerLowThreat |
 | 近距离任意球大师 | Offensive | Ranked | Near Free Kick | Direct | Taker | Shooting + Passing | S+3/A+2/B+1 | 两项各加同一 Bonus，再取 max | NearFreeKickTaker |
 | 远距离任意球大师 | Offensive | Ranked | Long Free Kick | Direct | Taker | Shooting | S+3/A+2/B+1 | 不恢复 LS，不影响 Power | LongFreeKickTaker |
 | 点球专家 | Offensive | Ranked | Penalty | Direct | Taker | Shooting + Passing | S+3/A+2/B+1 | 两项各加同一 Bonus，再取 max；不影响 Panenka | PenaltyTaker |
 | 远射封堵 | Defensive | Ranked | LongShot | Direct | Marker | Defense | S+3/A+2/B+1 | 仅实际防守 Formula 参与者 | LongShotBlocker |
 | 内切封锁 | Defensive | Ranked | CutInside | Direct | Marker | Defense | S+3/A+2/B+1 | 不增加同一 Marker 的 Speed | CutInsideStopper |
 | 传中封堵 | Defensive | Ranked | Cross | High / Low | Marker | Defense | S+3/A+2/B+1 | Marker 与 Helper 协防区分 | CrossMarkerBlocker |
-| 高球传中协防 | Defensive | Ranked | Cross | High | Helper | Strength | S+3/A+2/B+1 | 缺席 Helper 不贡献 | CrossHighHelperDefense |
-| 低球传中协防 | Defensive | Ranked | Cross | Low | Helper | Speed | S+3/A+2/B+1 | 不改为 Defense；缺席不贡献 | CrossLowHelperDefense |
+| 高球协防 | Defensive | Ranked | Cross / Corner | High | Helper | Strength | S+3/A+2/B+1 | 传中与角球；缺席或未选中的候选不贡献 | CrossHighHelperDefense |
+| 低球协防 | Defensive | Ranked | Cross / Corner | Low | Helper | Cross: Speed / Corner: Defense | S+3/A+2/B+1 | 按上下文只增强一项，不同时增强速度和防守 | CrossLowHelperDefense |
 | 直塞盯防 | Defensive | Ranked | ThroughBall | Feet / BehindDefense P1 | Marker | Defense | S+3/A+2/B+1 | 无属性比较的路径不制造 Marker Formula | ThroughBallMarkerDefense |
 | 脚下球协防 | Defensive | Ranked | ThroughBall | Feet | Helper | Defense | S+3/A+2/B+1 | 不增加 Strength；缺席不贡献 | ThroughBallFeetHelperDefense |
 | 身后球协防 | Defensive | Ranked | ThroughBall | BehindDefense P1 | Helper | Speed | S+3/A+2/B+1 | 出界无 Formula；缺席不贡献 | ThroughBallBehindHelperDefense |
-| 高球角球防守 | Defensive | Ranked | Corner | High | 实际选中的 Helper | Strength | S+3/A+2/B+1 | 非 GK；未选中的候选不贡献 | CornerHighDefense |
-| 低球角球防守 | Defensive | Ranked | Corner | Low | 实际选中的 Helper | Defense | S+3/A+2/B+1 | 不增加 Speed；未选中的候选不贡献 | CornerLowDefense |
 
 ### 近任意球与点球的双属性例外
 

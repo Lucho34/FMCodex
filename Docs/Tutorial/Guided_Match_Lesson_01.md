@@ -1,15 +1,21 @@
 # Guided Match Lesson 1 — 第一次进攻：找到适合远射的球员
 
-## Stage 8.26A — 教学顺序与检查节奏（当前合同）
+## Stage 8.27A — 赖斯与厄德高（当前合同）
+
+首轮赖斯（射门 4、远射 TP3、无远射专家），对照厄德高（射门 4、远射 TP3–5、远射专家 B）。两次使用各自真实 Skill Rule ID，不改球员技能。盯人均为谢尔基（防守 2），多纳鲁马通过既有 typed goalkeeper deployment 主动参与（站位 5）；玩家结束部署后，对手先部署门将再结束，无新增玩家点击或延时。
+
+TP3，进攻骰 5、防守骰 2：赖斯 4+5=9；厄德高 (4+1)+5=10；共同防守 2+3+5×0.5+2=9.5。前者严格失败、后者严格获胜；无直接射偏、快速压制或平局参与。门将场次消耗随既有全新 runtime checkpoint 重建，非任意状态回滚。所有结果、来源事实与 Goal 均来自生产路径。启动校验保护名单与技能假设。
+
+以下保留 8.26A 的教学顺序与检查节奏，历史数值场景由本节替代。
 
 本节替代下文历史教学顺序；文案仍只在 canonical Excel 中维护，生成 JSON 不手工编辑。
 
-- 掷出 TP 后，独立说明进攻战术点，聚焦 Header 左侧真实数值区。鼠标移至数值区后才能点击继续，再进入哲凯赖什的 Full Card 检查。普通部署不按技能范围限制；战术点决定持球球员可选的技能范围，不是所有球员的上场门槛。
+- 掷出 TP 后，独立说明进攻战术点，聚焦 Header 左侧真实数值区。鼠标移至数值区后才能点击继续，再进入赖斯的 Full Card 检查。普通部署不按技能范围限制；战术点决定持球球员可选的技能范围，不是所有球员的上场门槛。
 - 两次指定球员检查均先显示生产 Full Card，再从实际可见观察起等待 `FullCardExplanationDelay`，默认 1 秒。离开卡牌（包括两次轮询之间快速离开）、隐藏、退出确认、步骤改变和重演均取消旧计时；不改变生产 Full Card 的通用行为。
-- 首轮继续解释远射范围，然后部署。重演后明确提示换厄德高，Full Card 直接聚焦远射专家 A 特性，跳过独立技能范围／射门属性说明；部署、持球、技能、分支选择仍通过原 typed actions。
-- 两次进攻都须在生产 Tactical Scene 的稳定 FormulaHold 阶段 hover 真实进攻基础值，等生产来源 tooltip 显示后进入说明，再点击继续才能掷骰。比较轮使用独立呈现变体；射门、特性加成和基础值逐项读取已投影 FormulaFacts，不在教学层相加。5／3、9:10 失败、checkpoint、11:10 Goal 与生产庆祝不变。
+- 首轮继续解释远射范围，然后部署。重演后明确提示换厄德高，Full Card 直接聚焦远射专家 B 特性，跳过独立技能范围／射门属性说明；部署、持球、技能、分支选择仍通过原 typed actions。
+- 两次进攻都须在生产 Tactical Scene 的稳定 FormulaHold 阶段 hover 真实进攻基础值，等生产来源 tooltip 显示后进入说明，再点击继续才能掷骰。比较轮使用独立呈现变体；射门、特性加成和基础值逐项读取已投影 FormulaFacts，不在教学层相加。当前固定骰 5／2、9:9.5 失败、checkpoint、10:9.5 Goal，沿用生产庆祝。
 
-验证范围限内容生成／校验、内容绑定、Lesson1 流程／门控／隔离、一次增量 Editor build 和一条真实 `FMCodex.PIE.GuidedLesson1.FullFlow`。不触及 CoreRules、RNG 或 Network 合同，不跑 broad suites 或 Host/Remote。视觉节奏与连续性仍须 **USER PIE REQUIRED**；工程自动化不替代用户验收。
+验证范围限内容生成／校验、内容绑定、Lesson1 流程／门控／隔离、一次增量 Editor build 和一条真实 `FMCodex.PIE.GuidedLesson1.FullFlow`。本阶段 Trait applicability 的 CoreRules 验证另行覆盖；RNG 与 Network 合同不变，不跑 broad suites 或 Host/Remote。视觉节奏与连续性仍须 **USER PIE REQUIRED**；工程自动化不替代用户验收。
 
 ## Stage 8.25A — canonical 内容源（当前维护合同）
 
@@ -19,7 +25,7 @@
 
 每次启动重新加载 canonical JSON；丢失、版本不匹配、未知键、缺失必需步骤或非法数据时在变更比赛前明确拒绝 launch，无旧文案 fallback。标题／正文用已校验模板绑定现有 preferred display name、射门、技能范围、特性名称和 live TP／Formula base；不执行表达式、不重新计算 Formula。
 
-Stage 8.24B 已接受的呈现与两次进攻流程保持。C++ 继续拥有状态／推进、手牌及参与者、input gating、typed actions、固定 TP3／5／3、checkpoint、终局和退出；配置只能描述当前步骤。原 Full Card 几何、逐字点绘制、对手代理曲线与真实落位、生产揭示／庆祝均复用。下文历史数值／文案是行为背景，维护时以工作簿为准，不能当作另一个内容源。
+Stage 8.24B 已接受的呈现与两次进攻流程保持。C++ 继续拥有状态／推进、手牌及参与者、input gating、typed actions、固定教学骰（当前 TP3／攻5／防2）、checkpoint、终局和退出；配置只能描述当前步骤。原 Full Card 几何、逐字点绘制、对手代理曲线与真实落位、生产揭示／庆祝均复用。下文历史数值／文案是行为背景，维护时以工作簿为准，不能当作另一个内容源。
 
 本阶段验证预算：1 项 Python 源验证，2 项 C++ 内容等价／绑定检查，原 `FlowAndCheckpoint`，1 次增量 Development Editor build，1 条真实 `FullFlow` PIE 与 `git diff --check`。不触及规则、玩家源、Network authority 或全局生命周期，省略 broad suites／Host-Remote／Game／Shipping／cook。**USER PIE REQUIRED**：确认迁移后文案、逐字点、焦点、节奏和流程无变化。
 
