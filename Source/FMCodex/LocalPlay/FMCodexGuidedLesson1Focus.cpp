@@ -101,6 +101,8 @@ TArray<UWidget*> Targets(UFMCodexLocalMatchScreenWidget* S, const FFMCodexGuided
 	auto Add = [&](UWidget* W) { if (W && W->IsVisible()) Result.AddUnique(W); };
 	using Focus = EFMCodexLesson1Focus;
 	const auto F = L.FocusTarget();
+	if (F == Focus::AttackTacticPointValue && S->GetMatchHeader())
+		Add(S->GetMatchHeader()->GetWidgetFromName(TEXT("LeftTacticalPointValueBay")));
 	if (F == Focus::TacticPoint || F == Focus::FinishDeployment)
 	{
 		if (auto* P = S->GetInteractionPanel()) Add(P->GetWidgetFromName(F == Focus::TacticPoint
@@ -268,6 +270,14 @@ public:
 		VisualSeconds+=Delta;
 		auto* L=Lesson();
 		auto* S=Controller.IsValid()?Controller->GetPlayerMatchScreen():nullptr;
+		if (L && S && L->GetStep()==EFMCodexLesson1Step::TacticPointExplanation && !Confirming() && !Yielding())
+		{
+			// This read-only HUD is HitTestInvisible. Observe its live arranged geometry,
+			// including while the modal blocks gameplay clicks; do not change production hit testing.
+			for (UWidget* W : Targets(S,*L))
+				if (const auto R=TargetRect(W,G,ETargetShape::Content); R.IsSet())
+					L->InspectTacticPoint(R->ContainsPoint(G.AbsoluteToLocal(FSlateApplication::Get().GetCursorPos())));
+		}
 		UpdateProxy(G,Delta);
 		// Motion changes during Tick, after Slate's bound-attribute update. Apply the
 		// proxy layout together now, so card, spotlight and pointer paint the same frame.
@@ -633,6 +643,7 @@ private:
 				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
 				[
 					SNew(SButton).Tag(TEXT("LessonExplanationContinue")).Visibility_Lambda([this](){ return Lesson() && !Lesson()->PrimaryLabel().IsEmpty()?EVisibility::Visible:EVisibility::Collapsed; }).ButtonStyle(&Skin().Primary)
+					.IsEnabled_Lambda([this](){ return Lesson() && Lesson()->CanAcknowledge(); })
 					.OnClicked_Lambda([this](){ if(Controller.IsValid()) Controller->GuidedLesson1Primary(); return FReply::Handled(); })
 					[
 						SNew(SHorizontalBox)
@@ -664,6 +675,7 @@ private:
 			]
             + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
             [SNew(SButton).ButtonStyle(&Skin().Primary).ContentPadding(16)
+             .IsEnabled_Lambda([this](){ return Lesson() && Lesson()->CanAcknowledge(); })
              .Visibility_Lambda([this](){ return Lesson() && !Lesson()->PrimaryLabel().IsEmpty()?EVisibility::Visible:EVisibility::Collapsed; })
              .OnClicked_Lambda([this](){ if(Controller.IsValid()) Controller->GuidedLesson1Primary(); return FReply::Handled(); })
              [SNew(STextBlock).Text_Lambda([this](){ return Lesson()?Lesson()->PrimaryLabel():FText(); }).ColorAndOpacity(FVisuals::Color(4,30,39))]]

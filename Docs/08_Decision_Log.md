@@ -2898,3 +2898,11 @@ Lesson01 的已接受内容迁入版本控制的 `ContentSource/Tutorial/FMCodex
 Steps 按稳定 ID 查询；配置只拥有文案、CTA、精确强调 span、已注册语义目标、既有面板／动作条、箭头偏好、退出显示和教学计时。Emphasis 按字段、完整短语及显式 occurrence 在模板插值前定位，重叠／缺失直接报错；逐字白点仍由既有 FontMeasure 渲染。动态变量白名单读取 canonical 玩家资料和当前 safe View 的 TP／Formula 基础值，未知／缺失绑定拒绝；不做表达式或 Formula 计算。固定特性规则说明不是计算配置，场景前置校验继续保护既定条件。
 
 原状态推进、等待生产揭示、输入门控、真实对手 typed command、5／3、9 对 10／11 对 10、rewind、Goal／score／scorer、GK 与 Network 均不变。启动先校验候选内容再创建教学 runtime；失败保留现有对局并记录具体错误。仅 Lesson1，无 Lesson2、脚本语言、localization 扩展或教学框架重写。最小验证为源校验、迁移等价、配置绑定、原 FlowAndCheckpoint、一次增量 Editor build 和一次 FullFlow PIE；表现等价仍须 USER PIE，staging/commit 留给用户。
+
+### Stage 8.26A — Guided Match Lesson 1 teaching flow polish
+
+首轮将 TP 讲解与球员技能检查拆开：真实左侧战术点数值区 hover 后继续，再检查哲凯赖什。生产普通部署不以 TP／技能范围为统一门槛，文案只说明 TP 与持球球员技能可用性的关系。两次 Full Card 检查均复用教学 Timings 增加可取消的可见后等待，默认 1 秒；生产卡面立即显示，隐藏／退出确认／步骤改变取消旧等待。
+
+重演后直接检查厄德高的远射专家 A，跳过重复技能范围与独立属性讲解，保留真实部署和后续玩家选择。两轮均经原公式数值 hover／生产 tooltip／说明确认门控，比较轮用两个静态内容变体解释基础值 6；射门 4、特性 +2、基础值 6 分别只读权威投影，不在 Excel 或教学编排中计算。原 5／3、9:10／11:10、checkpoint 与生产 Goal Celebration 不变。
+
+Excel 仍是唯一内容源。schema 1 的字段结构不变，仅同步 importer／loader 的精确键白名单、HUD 语义目标、Formula operand 绑定和教学计时键。无 8.25B workflow、Lesson2、框架或规则改动。用户视觉／节奏验收与工程验证分开，最终 staging／commit 留给用户。

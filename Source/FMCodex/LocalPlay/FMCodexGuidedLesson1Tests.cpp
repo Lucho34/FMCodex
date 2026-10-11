@@ -16,6 +16,12 @@ namespace
 using Lesson = FFMCodexGuidedLesson1;
 using Side = EInitialTurnOrderPlayer;
 using Kind = EMatchPlayAuthoritativeCommandKind;
+// Headless visibility observations only; real hover, layout and timing are covered by FullFlow PIE.
+bool InspectVisibleCard(Lesson& L, FName Card)
+{
+ L.InspectCard(Card,true,0.);
+ return L.InspectCard(Card,true,L.Timing(TEXT("FullCardExplanationDelay")));
+}
 struct FLessonWorld
 {
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false);
@@ -86,11 +92,14 @@ struct FLessonWorld
 		T.TestTrue(TEXT("Removed secondary direct lecture"),Host->GetGuidedLesson1()->Explanation().IsEmpty());
 		auto Branch=Request<FMatchPlayAuthoritativeSubmitBranchIntentRequest>(); Branch.Intent=EMatchPlayElectiveBranchIntent::DirectShot;
 		if (!T.TestTrue(TEXT("Production Direct method"),Submit(Kind::SubmitBranchIntent,Branch))) return false;
-		if (!Host->GetGuidedLesson1()->IsComparison())
-		{
-			T.TestTrue(TEXT("First formula requires inspection"),Host->GetGuidedLesson1()->InspectFormula(true));
-			Host->GetGuidedLesson1()->Primary();
-		}
+		T.TestEqual(TEXT("Both attempts require formula inspection"),Host->GetGuidedLesson1()->GetStep(),EFMCodexLesson1Step::FormulaHover);
+		T.TestFalse(TEXT("Authoritative roll blocked before formula inspection"),Submit(Kind::ResolveLongShotDirectAttackRoll,Request<FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest>()));
+		T.TestTrue(TEXT("Production source inspected"),Host->GetGuidedLesson1()->InspectFormula(true));
+		if (Host->GetGuidedLesson1()->IsComparison())
+			T.TestEqual(TEXT("Comparison explains production operands"),Host->GetGuidedLesson1()->Instruction().ToString(),
+				FString(TEXT("厄德高的射门属性为 4，远射专家 A额外提供 +2，因此进攻基础值为 6。")));
+		T.TestFalse(TEXT("Acknowledgement still required after hover"),Submit(Kind::ResolveLongShotDirectAttackRoll,Request<FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest>()));
+		Host->GetGuidedLesson1()->Primary();
 		if (!T.TestTrue(TEXT("Authoritative attack roll"),Submit(Kind::ResolveLongShotDirectAttackRoll,Request<FMatchPlayAuthoritativeResolveLongShotDirectAttackRollRequest>()))) return false;
 		if (!T.TestTrue(TEXT("Authoritative defense roll"),Submit(Kind::ResolveLongShotDirectDefenseRoll,Request<FMatchPlayAuthoritativeResolveLongShotDirectDefenseRollRequest>(Side::PlayerB),true,false))) return false;
 		return true;
@@ -120,14 +129,17 @@ bool FLessonFlowTest::RunTest(const FString&)
 	TestEqual(TEXT("TP = 3"),F.View().ActionPoint,3);
 	TestEqual(TEXT("Explain TP before deployment"),L->GetStep(),EFMCodexLesson1Step::TacticPointExplanation);
 	L->Primary();
+	TestEqual(TEXT("TP value inspection precedes the card instruction"),L->GetStep(),EFMCodexLesson1Step::TacticPointExplanation);
+	L->InspectTacticPoint(true);
+	L->Primary();
 	TestEqual(TEXT("Inspect real card"),L->GetStep(),EFMCodexLesson1Step::InspectGyokeres);
 	F.Observe(true,60.f);
 	TestEqual(TEXT("Timer cannot bypass inspection"),L->GetStep(),EFMCodexLesson1Step::InspectGyokeres);
-	TestFalse(TEXT("Unrelated hover cannot advance"),L->InspectCard(Lesson::Stones(),true));
-	TestFalse(TEXT("Invisible Full Card cannot advance"),L->InspectCard(Lesson::Gyokeres(),false));
+	TestFalse(TEXT("Unrelated hover cannot advance"),L->InspectCard(Lesson::Stones(),true,0.));
+	TestFalse(TEXT("Invisible Full Card cannot advance"),L->InspectCard(Lesson::Gyokeres(),false,0.));
 	auto EarlyDeploy=F.Request<FMatchPlayAuthoritativeDeployOrdinaryRequest>(); EarlyDeploy.CardId=Lesson::Gyokeres(); EarlyDeploy.SlotId=Lesson::AttackerSlot();
 	TestFalse(TEXT("Even correct deployment blocked during inspection"),F.Submit(Kind::DeployOrdinary,EarlyDeploy));
-	TestTrue(TEXT("Real intended card visible"),L->InspectCard(Lesson::Gyokeres(),true));
+	TestTrue(TEXT("Real intended card visible"),InspectVisibleCard(*L,Lesson::Gyokeres()));
 	TestEqual(TEXT("Skill taught first"),L->GetStep(),EFMCodexLesson1Step::SkillRangeExplanation);
 	TestTrue(TEXT("Range explanation"),L->Instruction().ToString().Contains(TEXT("远射技能范围为 3–5")));
 	TestTrue(TEXT("Range explanation is modal"),L->IsExplanationMode());
@@ -166,9 +178,8 @@ bool FLessonFlowTest::RunTest(const FString&)
 	Model=FFMCodexLocalMatchUMGPresentationBuilder::Build(Clean,{},TEXT(""),Side::PlayerA); L->ApplyPresentation(Model);
 	TestEqual(TEXT("Two real comparison cards unlocked"),Model.LocalRack.Cells.Num(),2);
 	TestEqual(TEXT("Comparison requires real card inspection"),L->GetStep(),EFMCodexLesson1Step::InspectOdegaard);
-	TestFalse(TEXT("Gyokeres cannot satisfy Odegaard inspection"),L->InspectCard(Lesson::Gyokeres(),true));
-	TestTrue(TEXT("Odegaard inspected"),L->InspectCard(Lesson::Odegaard(),true));
-	L->Primary(); L->Primary();
+	TestFalse(TEXT("Gyokeres cannot satisfy Odegaard inspection"),InspectVisibleCard(*L,Lesson::Gyokeres()));
+	TestTrue(TEXT("Odegaard inspected"),InspectVisibleCard(*L,Lesson::Odegaard()));
 	TestEqual(TEXT("Trait teaching before deployment"),L->GetStep(),EFMCodexLesson1Step::TraitExplanation);
 	L->Primary();
 	Invalid=F.Request<FMatchPlayAuthoritativeDeployOrdinaryRequest>(); Invalid.CardId=Lesson::Gyokeres(); Invalid.SlotId=Lesson::AttackerSlot();
@@ -204,7 +215,7 @@ bool FLessonIsolationTest::RunTest(const FString&)
 	auto* L=F.Host->GetGuidedLesson1(); L->Primary(); F.Observe();
 	TestTrue(TEXT("Consume tutorial TP"),F.Submit(Kind::RequestInitialActionPointRoll,F.Request<FMatchPlayFullD12EntryRequest>()));
 	// Hint timing is lesson state only, driven by real elapsed game time in the controller.
-	L->EnterComparison(); L->InspectCard(Lesson::Odegaard(),true); L->Primary(); L->Primary(); L->Primary(); L->Update(F.View(),true,12.f); TestEqual(TEXT("Hint 1"),L->GetHintLevel(),1);
+	L->EnterComparison(); InspectVisibleCard(*L,Lesson::Odegaard()); L->Primary(); L->Update(F.View(),true,12.f); TestEqual(TEXT("Hint 1"),L->GetHintLevel(),1);
 	L->Update(F.View(),true,13.f); TestEqual(TEXT("Hint 2"),L->GetHintLevel(),2);
 	TestTrue(TEXT("Hint names Trait"),L->Instruction().ToString().Contains(TEXT("远射专家")));
 	auto Demo=FFMCodexLocalMatchDemoConfigurationFactory::Create();
@@ -269,11 +280,11 @@ bool FLessonFocusTest::RunTest(const FString&)
 	TestTrue(TEXT("Intro is explanatory"),L.IsExplanationMode());
 	TestEqual(TEXT("Concept belongs to the actual sentence"),L.EmphasizeKeywords(L.Instruction()).ToString(),FString(TEXT("先掷出本回合的<concept>进攻战术点</>。")));
 	TestEqual(TEXT("Title has its own deliberate phrase"),L.EmphasizeKeywords(FText::FromString(TEXT("进行一次远射")),Surface::Heading).ToString(),FString(TEXT("进行一次<concept>远射</>")));
-	TestEqual(TEXT("Title keyword does not spill into body"),L.EmphasizeKeywords(FText::FromString(TEXT("远射"))).ToString(),FString(TEXT("远射")));
+	TestFalse(TEXT("Title emphasis does not spill into canonical body"),L.EmphasizeKeywords(L.Instruction()).ToString().Contains(TEXT("<concept>远射</>")));
 	TestEqual(TEXT("Blue section label never gets dots"),L.EmphasizeKeywords(FText::FromString(TEXT("进攻战术点")),Surface::Section).ToString(),FString(TEXT("进攻战术点")));
 	TestEqual(TEXT("Blue secondary copy never gets dots"),L.EmphasizeKeywords(L.Instruction(),Surface::Secondary).ToString(),L.Instruction().ToString());
-	TestEqual(TEXT("Approved phrase marks only its first occurrence"),L.EmphasizeKeywords(FText::FromString(TEXT("进攻战术点，进攻战术点"))).ToString(),FString(TEXT("<concept>进攻战术点</>，进攻战术点")));
-	TestEqual(TEXT("Ordinary words stay ordinary"),L.EmphasizeKeywords(FText::FromString(TEXT("开始操作"))).ToString(),FString(TEXT("开始操作")));
+	TestEqual(TEXT("Only configured body span is emphasized"),L.EmphasizeKeywords(L.Instruction()).ToString(),FString(TEXT("先掷出本回合的<concept>进攻战术点</>。")));
+	TestEqual(TEXT("CTA remains ordinary copy"),L.PrimaryLabel().ToString(),FString(TEXT("开始操作")));
 	TestFalse(TEXT("Modal blocks real roll even via keyboard/backend"),L.AllowsScreen(Roll));
 	L.Primary();
 	TestEqual(TEXT("Focus is real TP control"),L.FocusTarget(),Focus::TacticPoint);
@@ -281,14 +292,30 @@ bool FLessonFocusTest::RunTest(const FString&)
 	TestFalse(TEXT("Unrelated deployment blocked"),L.AllowsScreen(Deploy));
 	FFMCodexLocalMatchInteractionView V; V.ActionPoint=3; V.InteractionCategory=EFMCodexLocalMatchInteractionCategory::Deploy; V.ExpectedActingPlayer=Side::PlayerA;
 	L.Update(V,true,.1f);
-	TestEqual(TEXT("TP concept has no active target"),L.FocusTarget(),Focus::None);
+	TestEqual(TEXT("TP concept focuses the real HUD value"),L.FocusTarget(),Focus::AttackTacticPointValue);
 	TestFalse(TEXT("Explanation blocks deployment"),L.AllowsScreen(Deploy));
+	TestFalse(TEXT("Continue waits for value inspection"),L.CanAcknowledge());
+	L.InspectTacticPoint(false); L.Primary();
+	TestEqual(TEXT("Off-target cursor cannot skip TP teaching"),L.GetStep(),Step::TacticPointExplanation);
+	L.RequestExitConfirmation(); L.InspectTacticPoint(true); L.CancelExitConfirmation();
+	TestFalse(TEXT("Exit confirmation cannot satisfy TP hover"),L.CanAcknowledge());
+	L.InspectTacticPoint(true);
 	L.Primary();
 	TestEqual(TEXT("Hover semantic target"),L.FocusTarget(),Focus::HandCard);
 	TestTrue(TEXT("Intended card inspection allowed"),L.AllowsInspection(Lesson::Gyokeres()));
 	TestFalse(TEXT("Unrelated card inspection gated"),L.AllowsInspection(Lesson::Stones()));
 	TestFalse(TEXT("Inspection cannot submit gameplay"),L.AllowsScreen(Deploy));
-	L.InspectCard(Lesson::Gyokeres(),true);
+	TestFalse(TEXT("Visible Full Card starts delay without entering explanation"),L.InspectCard(Lesson::Gyokeres(),true,100.));
+	TestFalse(TEXT("No explanation before configured delay"),L.InspectCard(Lesson::Gyokeres(),true,100.9));
+	L.CancelCardInspection(); // Production dismissal cancels even a rapid leave/re-entry between polls.
+	TestFalse(TEXT("Re-entry starts a fresh delay"),L.InspectCard(Lesson::Gyokeres(),true,101.));
+	TestFalse(TEXT("Prior hover time is not accumulated"),L.InspectCard(Lesson::Gyokeres(),true,101.5));
+	L.InspectCard(Lesson::Gyokeres(),false,101.6);
+	TestFalse(TEXT("Hidden card cancels pending explanation"),L.InspectCard(Lesson::Gyokeres(),true,200.));
+	L.RequestExitConfirmation(); L.CancelExitConfirmation();
+	TestFalse(TEXT("Exit confirmation cancels pending delay"),L.InspectCard(Lesson::Gyokeres(),true,201.));
+	TestTrue(TEXT("Continuous visible interval completes exactly once"),L.InspectCard(Lesson::Gyokeres(),true,202.));
+	TestFalse(TEXT("Later observation cannot replay transition"),L.InspectCard(Lesson::Gyokeres(),true,204.));
 	TestEqual(TEXT("Inspection targets the configured live Full Card skill row"),L.FocusTarget(),Focus::FullCardSkill);
 	TestEqual(TEXT("Skill before Shooting"),L.GetStep(),Step::SkillRangeExplanation);
 	TestTrue(TEXT("Skill phrase is deliberate, not separate substring rules"),L.ConceptKeywords().ContainsByPredicate([](const FText& T){return T.ToString()==TEXT("远射技能");}));
@@ -362,12 +389,10 @@ bool FLessonFocusTest::RunTest(const FString&)
 	TestFalse(TEXT("Follow-up can now render"),L.YieldsToProduction(Scene,false,V.InteractionCategory));
 	V.bTerminalPendingAdvance=false; V.ResolutionFacts.FormulaContests.Reset();
 	L.EnterComparison();
-	L.InspectCard(Lesson::Odegaard(),true);
-	TestEqual(TEXT("Comparison skill first"),L.GetStep(),Step::SkillRangeExplanation);
-	L.Primary(); TestEqual(TEXT("Comparison Shooting second"),L.GetStep(),Step::ShootingExplanation);
-	L.Primary(); TestEqual(TEXT("Comparison Trait third"),L.GetStep(),Step::TraitExplanation);
-	TestEqual(TEXT("Trait concept"),L.ConceptKeywords()[0].ToString(),FString(TEXT("特性")));
-	TestEqual(TEXT("Expert concept"),L.ConceptKeywords()[1].ToString(),FString(TEXT("远射专家 A")));
+	InspectVisibleCard(L,Lesson::Odegaard());
+	TestEqual(TEXT("Comparison goes directly to trait without skill or attribute repetition"),L.GetStep(),Step::TraitExplanation);
+	TestTrue(TEXT("Trait concept is configured independent of JSON sort order"),L.ConceptKeywords().ContainsByPredicate([](const FText& Text){return Text.ToString()==TEXT("特性");}));
+	TestTrue(TEXT("Expert concept is configured"),L.ConceptKeywords().ContainsByPredicate([](const FText& Text){return Text.ToString()==TEXT("远射专家 A");}));
 	const auto Before=L.GetStep();
 	L.RequestExitConfirmation(); L.Primary(); L.Update(V,true,10.f);
 	TestEqual(TEXT("Confirmation freezes teaching only"),L.GetStep(),Before);
@@ -410,7 +435,7 @@ bool FLessonFocusTest::RunTest(const FString&)
 	TestFalse(TEXT("Carrier concept still gates selection"),P.AllowsScreen(Carrier)); P.Primary();
 	TestEqual(TEXT("Exact approved carrier instruction"),P.Instruction().ToString(),FString(TEXT("点击场上的哲凯赖什，将他选中为本进攻回合的持球队员。")));
 	TestTrue(TEXT("Carrier action unlocks only after explanation"),P.AllowsScreen(Carrier));
-	Lesson Repeat; Repeat.EnterComparison(); Repeat.InspectCard(Lesson::Odegaard(),true); Repeat.Primary(); Repeat.Primary(); Repeat.Primary();
+	Lesson Repeat; Repeat.EnterComparison(); InspectVisibleCard(Repeat,Lesson::Odegaard()); Repeat.Primary();
 	V.InteractionCategory=EFMCodexLocalMatchInteractionCategory::Deploy; V.ExpectedActingPlayer=Side::PlayerB;
 	Repeat.Update(V,true,0.f);
 	Repeat.Update(V,true,L.Timing(TEXT("OpponentDeployAttention"))*.80f+.01f);

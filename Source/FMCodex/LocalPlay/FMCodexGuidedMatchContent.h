@@ -8,13 +8,13 @@ enum class EFMCodexGuideTarget : uint8
 {
  None, TacticPoint, HandCard, Deployment, FinishDeployment, Carrier, Skill, DirectShot,
  FormulaValue, AttackRoll, FullCardSkill, FullCardShooting, FullCardTrait,
- OpponentDeployment, OpponentStatus, OpponentMarker
+ OpponentDeployment, OpponentStatus, OpponentMarker, AttackTacticPointValue
 };
 enum class EFMCodexGuideVariable : uint8
 {
  CarrierName, CarrierShooting, FirstCarrierName, FirstCarrierShooting,
  ComparisonCarrierName, ComparisonCarrierShooting, MarkerName, CurrentAttackTP,
- SkillMin, SkillMax, TraitName, FormulaAttackBase
+ SkillMin, SkillMax, TraitName, FormulaAttackBase, FormulaAttackShooting, FormulaAttackTraitBonus
 };
 
 struct FFMCodexGuideEmphasis

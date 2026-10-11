@@ -45,6 +45,8 @@
 | LongShot.SkillMin / LongShot.SkillMax | 当前球员 canonical SkillAssignment 的真实范围 |
 | LongShot.TraitName | 现有生产特性显示名与 canonical rank |
 | Formula.AttackBaseValue | 已投影 Formula AttackRow.KnownNonRollSubtotal；不重新相加 |
+| Formula.AttackShooting | 已投影进攻 Carrier 射门 AttributeOperand.BaseValue |
+| Formula.AttackTraitBonus | 比较轮已投影 Carrier 远射特性 AttributeOperand.Bonus；仅用于 FormulaExplanation.Comparison |
 
 用 `{变量名}` 原样填写。未知变量、拼错字段、缺少绑定会报错，绝不把花括号原文或旧文案当 fallback。TP 在掷点前不可用，Formula 值只能用于已有 Formula 的步骤；全局标签只允许静态绑定。
 
@@ -52,13 +54,17 @@
 
 ## 语义目标与箭头
 
-允许目标：`None`、`Button.TacticalPoint`、`PlayerHand.Carrier`、`Deployment.Carrier`、`Button.EndDeployment`、`Field.Carrier`、`Button.LongShot`、`Theater.DirectShot`、`Formula.AttackBaseValue`、`Button.AttackRoll`、`FullCard.Skill.LongShot`、`FullCard.Attribute.SHO`、`FullCard.Trait.LongShotCarrier`、`Opponent.Deployment`、`Header.Opponent`、`Field.Marker`。
+允许目标：`None`、`Button.TacticalPoint`、`Header.AttackTacticalPoint`、`PlayerHand.Carrier`、`Deployment.Carrier`、`Button.EndDeployment`、`Field.Carrier`、`Button.LongShot`、`Theater.DirectShot`、`Formula.AttackBaseValue`、`Button.AttackRoll`、`FullCard.Skill.LongShot`、`FullCard.Attribute.SHO`、`FullCard.Trait.LongShotCarrier`、`Opponent.Deployment`、`Header.Opponent`、`Field.Marker`。
+
+`Header.AttackTacticalPoint` 绑定本课进攻方 Player A 的左侧真实数值区，与掷点按钮分开。`FormulaHover.Comparison`／`FormulaExplanation.Comparison` 是同一公式检查状态在比较轮使用的文案变体；没有可执行内容分支。`ShootingExplanation` 保留稳定键但当前两轮流程均不进入。
 
 loader 将 TargetId 映射到教学专属 enum；原 resolver 再取得真实控件和实时 Slate 几何。Opponent.Deployment 根据既有呈现阶段指向来源卡、移动代理或真实落位卡；末尾干净停留清除箭头。配置不选择 gameplay participants，不搜索中文、不猜控件名、不包含坐标。ArrowPlacement 只支持 Auto／Above／Side／None，实际可用空间与防遮挡仍由 renderer 处理。ShowExit 不能覆盖生产动画期间的既有让出规则。
 
 ## 教学时间
 
 Timings 配置源注意、代理移动、目标强调、结束停留、防守起手、失败后讲解、重演等待、提示递进和反馈存续。除 ComparisonPace 为倍率外，单位均为秒。保留已接受的首轮 0.75／0.80／1.05／1.20 与比较前段 ×0.80、失败 1.60；具体可编辑数值以工作簿为准。
+
+`FullCardExplanationDelay` 默认 1 秒，仅用于哲凯赖什与厄德高的 Full Card 检查。计时从真实卡片可见后开始，离开／隐藏、退出确认与步骤切换即取消。不会延迟卡片显示或其他教学步骤。
 
 校验要求有限非负值，普通项 0–60；移动时长 0.05–10，倍率 0.05–2；两级提示时间必须递增。计时只消费真实 elapsed time。生产 Reel、Formula reveal、Tactical Scene、Outcome、Goal Celebration、score disclosure 均不读取这些参数。
 

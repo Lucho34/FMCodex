@@ -51,6 +51,8 @@ TMap<EFMCodexGuideVariable,FString> FFMCodexGuidedLesson1::Bindings() const
  }
  if(CurrentTP.IsSet()) Result.Add(Var::CurrentAttackTP,FString::FromInt(CurrentTP.GetValue()));
  if(DisplayedAttackBase.IsSet()) Result.Add(Var::FormulaAttackBase,FText::AsNumber(DisplayedAttackBase.GetValue()).ToString());
+ if(DisplayedAttackShooting.IsSet()) Result.Add(Var::FormulaAttackShooting,FString::FromInt(DisplayedAttackShooting.GetValue()));
+ if(DisplayedAttackTraitBonus.IsSet()) Result.Add(Var::FormulaAttackTraitBonus,FString::FromInt(DisplayedAttackTraitBonus.GetValue()));
  return Result;
 }
 FText FFMCodexGuidedLesson1::Resolve(const FString& Template) const
@@ -68,6 +70,7 @@ FString FFMCodexGuidedLesson1::ContentStepId() const
   TEXT("DirectExplanation"),TEXT("DirectShot"),TEXT("FormulaHover"),TEXT("FormulaExplanation"),TEXT("AttackRoll"),TEXT("OpponentDefense"),TEXT("ResultReveal"),TEXT("FailurePause"),TEXT("Rewind"),TEXT("RewindTransition"),TEXT("Summary"),TEXT("Complete")};
  static_assert(UE_ARRAY_COUNT(Ids)==static_cast<int32>(StepType::Complete)+1,"Each code step needs a stable content key");
  FString Id=Ids[static_cast<int32>(Step)];
+ if(bComparison && (Step==StepType::FormulaHover || Step==StepType::FormulaExplanation)) Id+=TEXT(".Comparison");
  if(Step==StepType::Deploy && bComparison) Id+=HintLevel==2?TEXT(".Hint2"):HintLevel==1?TEXT(".Hint1"):TEXT(".Comparison");
  if(bOpponentSubmitted && (Step==StepType::OpponentDeploy || Step==StepType::OpponentFinish || Step==StepType::OpponentMarker)) Id+=TEXT(".After");
  if((Step==StepType::Rewind && bResolvedGoal) || (Step==StepType::Summary && !bResolvedGoal)) Id+=TEXT(".Unexpected");
@@ -112,6 +115,7 @@ FName FFMCodexGuidedLesson1::Skill() { return TEXT("Canonical.Skill.LongShot.3.5
 void FFMCodexGuidedLesson1::SetStep(StepType NewStep)
 {
 	if (Step == NewStep) return;
+	CancelCardInspection();
 	bOpponentMoveStarted = false; bOpponentMoveArrived = false;
 	bExitConfirmation = false; bOpponentSubmitted = false; OpponentSettledSeconds = 0.f;
 	Step = NewStep; StepSeconds = 0; HintLevel = 0; Feedback = FText();
@@ -123,8 +127,25 @@ bool FFMCodexGuidedLesson1::Update(const FFMCodexLocalMatchInteractionView& V, b
  if (!IsContentReady() || bExitConfirmation) return false;
  CurrentTP=V.ActionPoint;
  DisplayedAttackBase.Reset();
+ DisplayedAttackShooting.Reset(); DisplayedAttackTraitBonus.Reset();
  for(const auto& Contest:V.ResolutionFacts.FormulaContests)
-  if(Contest.AttackRow.bKnownNonRollSubtotalResolved) { DisplayedAttackBase=Contest.AttackRow.KnownNonRollSubtotal; break; }
+  if(Contest.AttackRow.bKnownNonRollSubtotalResolved)
+  {
+   DisplayedAttackBase=Contest.AttackRow.KnownNonRollSubtotal;
+   for(const auto& Term:Contest.AttackRow.Terms)
+   {
+    const auto& Operand=Term.AttributeOperand;
+    if(Operand.bValid && Operand.CardId==Attacker() && Operand.Role==EMatchPlayResolutionParticipantRole::Carrier
+     && Operand.Attribute==EMatchPlayResolutionFormulaAttribute::Shooting)
+    {
+     // Explain projected production operands; never recompute the subtotal or trait bonus.
+     DisplayedAttackShooting=Operand.BaseValue;
+     if(Operand.TraitId==FName(TEXT("Trait.LongShotCarrier"))) DisplayedAttackTraitBonus=Operand.Bonus;
+     break;
+    }
+   }
+   break;
+  }
  if (bOpponentSubmitted && Step != StepType::OpponentDefense)
 	{
 		OpponentSettledSeconds += FMath::Max(0.f, DeltaSeconds);
@@ -186,7 +207,7 @@ bool FFMCodexGuidedLesson1::Update(const FFMCodexLocalMatchInteractionView& V, b
 	case Category::SelectLongShotBranch:
 	case Category::SelectBranchIntent:
 		if (Step != StepType::DirectShot) SetStep(bComparison ? StepType::DirectShot : StepType::DirectExplanation); break;
-	case Category::RollLongShotDirectAttack: SetStep(!bComparison && !bFormulaInspected ? StepType::FormulaHover : StepType::AttackRoll); break;
+	case Category::RollLongShotDirectAttack: SetStep(!bFormulaInspected ? StepType::FormulaHover : StepType::AttackRoll); break;
 	case Category::RollLongShotDirectDefense: SetStep(StepType::OpponentDefense); break;
 	default: break;
 	}
@@ -197,10 +218,10 @@ bool FFMCodexGuidedLesson1::Update(const FFMCodexLocalMatchInteractionView& V, b
 
 void FFMCodexGuidedLesson1::Primary()
 {
-	if (!IsContentReady() || bExitConfirmation) return;
+	if (!IsContentReady() || !CanAcknowledge()) return;
 	if (Step == StepType::Intro) SetStep(StepType::TacticPoint);
 	else if (Step == StepType::TacticPointExplanation) SetStep(StepType::InspectGyokeres);
-	else if (Step == StepType::SkillRangeExplanation) SetStep(bComparison ? StepType::ShootingExplanation : StepType::Deploy);
+	else if (Step == StepType::SkillRangeExplanation) SetStep(StepType::Deploy);
 	else if (Step == StepType::ShootingExplanation) SetStep(StepType::TraitExplanation);
 	else if (Step == StepType::TraitExplanation) SetStep(StepType::Deploy);
 	else if (Step == StepType::FinishExplanation) SetStep(StepType::FinishDeployment);
@@ -214,6 +235,7 @@ void FFMCodexGuidedLesson1::Primary()
 void FFMCodexGuidedLesson1::EnterComparison()
 {
 	DisplayedAttackBase.Reset();
+	DisplayedAttackShooting.Reset(); DisplayedAttackTraitBonus.Reset(); CancelCardInspection();
 	bComparison = true; bDispatchingOpponent = false; bResolvedGoal = false; bFormulaInspected = false;
 	bExitConfirmation = false; bOpponentSubmitted = false; OpponentSettledSeconds = 0.f;
 	FeedbackSeconds = 0; Feedback = FText();
@@ -435,11 +457,22 @@ bool FFMCodexGuidedLesson1::RequiresAcknowledgement() const
 	}
 }
 EFMCodexLesson1Focus FFMCodexGuidedLesson1::FocusTarget() const { return Presentation().Target; }
-bool FFMCodexGuidedLesson1::InspectCard(FName CardId, bool bFullCardVisible)
+void FFMCodexGuidedLesson1::InspectTacticPoint(bool bValueHovered)
 {
-	if (!IsContentReady() || bExitConfirmation) return false;
-	if ((Step != StepType::InspectGyokeres && Step != StepType::InspectOdegaard) || CardId != Attacker() || !bFullCardVisible) return false;
-	SetStep(StepType::SkillRangeExplanation);
+	if (IsContentReady() && !bExitConfirmation && Step==StepType::TacticPointExplanation && bValueHovered)
+		bTacticPointInspected=true;
+}
+bool FFMCodexGuidedLesson1::InspectCard(FName CardId, bool bFullCardVisible, double NowSeconds)
+{
+	if (!IsContentReady() || bExitConfirmation || (Step != StepType::InspectGyokeres && Step != StepType::InspectOdegaard)
+		|| CardId != Attacker() || !bFullCardVisible)
+	{
+		CancelCardInspection(); return false;
+	}
+	// Begin at the first visible observation, never at step entry or before normal Full Card layout.
+	if (!FullCardVisibleSince.IsSet()) FullCardVisibleSince=NowSeconds;
+	if (NowSeconds-FullCardVisibleSince.GetValue()<Timing(TEXT("FullCardExplanationDelay"))) return false;
+	SetStep(bComparison ? StepType::TraitExplanation : StepType::SkillRangeExplanation);
 	return true;
 }
 bool FFMCodexGuidedLesson1::AllowsInspection(FName CardId) const

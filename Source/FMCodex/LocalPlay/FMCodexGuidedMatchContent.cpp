@@ -14,10 +14,12 @@ const TMap<FString, EFMCodexGuideVariable> Variables = {
  {TEXT("ComparisonCarrier.DisplayName"),EFMCodexGuideVariable::ComparisonCarrierName}, {TEXT("ComparisonCarrier.Shooting"),EFMCodexGuideVariable::ComparisonCarrierShooting},
  {TEXT("Marker.DisplayName"),EFMCodexGuideVariable::MarkerName}, {TEXT("CurrentAttackTP"),EFMCodexGuideVariable::CurrentAttackTP},
  {TEXT("LongShot.SkillMin"),EFMCodexGuideVariable::SkillMin}, {TEXT("LongShot.SkillMax"),EFMCodexGuideVariable::SkillMax},
- {TEXT("LongShot.TraitName"),EFMCodexGuideVariable::TraitName}, {TEXT("Formula.AttackBaseValue"),EFMCodexGuideVariable::FormulaAttackBase}
+ {TEXT("LongShot.TraitName"),EFMCodexGuideVariable::TraitName}, {TEXT("Formula.AttackBaseValue"),EFMCodexGuideVariable::FormulaAttackBase},
+ {TEXT("Formula.AttackShooting"),EFMCodexGuideVariable::FormulaAttackShooting}, {TEXT("Formula.AttackTraitBonus"),EFMCodexGuideVariable::FormulaAttackTraitBonus}
 };
 const TMap<FString, EFMCodexGuideTarget> Targets = {
  {TEXT("None"),EFMCodexGuideTarget::None}, {TEXT("Button.TacticalPoint"),EFMCodexGuideTarget::TacticPoint},
+ {TEXT("Header.AttackTacticalPoint"),EFMCodexGuideTarget::AttackTacticPointValue},
  {TEXT("PlayerHand.Carrier"),EFMCodexGuideTarget::HandCard}, {TEXT("Deployment.Carrier"),EFMCodexGuideTarget::Deployment},
  {TEXT("Button.EndDeployment"),EFMCodexGuideTarget::FinishDeployment}, {TEXT("Field.Carrier"),EFMCodexGuideTarget::Carrier},
  {TEXT("Button.LongShot"),EFMCodexGuideTarget::Skill}, {TEXT("Theater.DirectShot"),EFMCodexGuideTarget::DirectShot},
@@ -131,7 +133,7 @@ TSharedPtr<const FFMCodexGuidedMatchContent> FFMCodexGuidedMatchContent::Parse(c
   Result->Lessons.Add(Id,MoveTemp(L));
  }
  const TSet<FString> Ack={TEXT("Intro"),TEXT("TacticPointExplanation"),TEXT("ShootingExplanation"),TEXT("SkillRangeExplanation"),TEXT("TraitExplanation"),TEXT("FinishExplanation"),
-  TEXT("CarrierExplanation"),TEXT("SkillExplanation"),TEXT("DirectExplanation"),TEXT("FormulaExplanation"),TEXT("Rewind"),TEXT("Rewind.Unexpected"),TEXT("Summary"),TEXT("Summary.Unexpected"),TEXT("Complete")};
+  TEXT("CarrierExplanation"),TEXT("SkillExplanation"),TEXT("DirectExplanation"),TEXT("FormulaExplanation"),TEXT("FormulaExplanation.Comparison"),TEXT("Rewind"),TEXT("Rewind.Unexpected"),TEXT("Summary"),TEXT("Summary.Unexpected"),TEXT("Complete")};
  for(const auto& V:*StepRows)
  {
   const auto O=V->Type==EJson::Object?V->AsObject():nullptr;
@@ -160,8 +162,10 @@ TSharedPtr<const FFMCodexGuidedMatchContent> FFMCodexGuidedMatchContent::Parse(c
   if(Id==TEXT("Lesson01"))
   {
    const bool BeforeTP=P.StepId==TEXT("Intro") || P.StepId==TEXT("TacticPoint");
-   const TSet<FString> FormulaSteps={TEXT("FormulaHover"),TEXT("FormulaExplanation"),TEXT("AttackRoll"),TEXT("OpponentDefense"),TEXT("ResultReveal"),TEXT("FailurePause"),TEXT("Rewind"),TEXT("Rewind.Unexpected"),TEXT("Summary"),TEXT("Summary.Unexpected"),TEXT("Complete")};
-   if((BeforeTP && BoundKeys.Contains(TEXT("CurrentAttackTP"))) || (!FormulaSteps.Contains(P.StepId) && BoundKeys.Contains(TEXT("Formula.AttackBaseValue"))))
+   const TSet<FString> FormulaSteps={TEXT("FormulaHover"),TEXT("FormulaHover.Comparison"),TEXT("FormulaExplanation"),TEXT("FormulaExplanation.Comparison"),TEXT("AttackRoll"),TEXT("OpponentDefense"),TEXT("ResultReveal"),TEXT("FailurePause"),TEXT("Rewind"),TEXT("Rewind.Unexpected"),TEXT("Summary"),TEXT("Summary.Unexpected"),TEXT("Complete")};
+   const bool UsesFormula=BoundKeys.Contains(TEXT("Formula.AttackBaseValue")) || BoundKeys.Contains(TEXT("Formula.AttackShooting")) || BoundKeys.Contains(TEXT("Formula.AttackTraitBonus"));
+   if((BeforeTP && BoundKeys.Contains(TEXT("CurrentAttackTP"))) || (!FormulaSteps.Contains(P.StepId) && UsesFormula)
+    || (BoundKeys.Contains(TEXT("Formula.AttackTraitBonus")) && P.StepId!=TEXT("FormulaExplanation.Comparison")))
    { Fail(Error,TEXT("Binding unavailable at step: ")+P.StepId); return nullptr; }
   }
   const FString StepId=P.StepId; L->Steps.Add(StepId,MoveTemp(P));
@@ -206,13 +210,14 @@ TSharedPtr<const FFMCodexGuidedMatchContent> FFMCodexGuidedMatchContent::Parse(c
   auto* L=Result->Lessons.Find(Id);
   if(!L || !Identifier(Key) || L->Labels.Contains(Key)) { Fail(Error,TEXT("Invalid/duplicate label: ")+Key); return nullptr; }
   TArray<FString> BoundKeys; TemplateKeys(Text,BoundKeys,Error);
-  if(BoundKeys.Contains(TEXT("CurrentAttackTP")) || BoundKeys.Contains(TEXT("Formula.AttackBaseValue"))) { Fail(Error,TEXT("Global labels require static bindings")); return nullptr; }
+  if(BoundKeys.Contains(TEXT("CurrentAttackTP")) || BoundKeys.Contains(TEXT("Formula.AttackBaseValue"))
+   || BoundKeys.Contains(TEXT("Formula.AttackShooting")) || BoundKeys.Contains(TEXT("Formula.AttackTraitBonus"))) { Fail(Error,TEXT("Global labels require static bindings")); return nullptr; }
   L->Labels.Add(Key,Text);
  }
  const auto* L=Result->Lessons.Find(TEXT("Lesson01"));
  if(!L || !L->bEnabled) { Fail(Error,TEXT("Enabled Lesson01 required")); return nullptr; }
- if(!ExactKeys(KeysOf(L->Steps),TEXT("Intro TacticPoint TacticPointExplanation InspectGyokeres InspectOdegaard ShootingExplanation SkillRangeExplanation TraitExplanation Deploy Deploy.Comparison Deploy.Hint1 Deploy.Hint2 OpponentDeploy OpponentDeploy.After FinishExplanation FinishDeployment OpponentFinish OpponentFinish.After CarrierExplanation Carrier OpponentMarker OpponentMarker.After SkillExplanation Skill DirectExplanation DirectShot FormulaHover FormulaExplanation AttackRoll OpponentDefense ResultReveal FailurePause Rewind Rewind.Unexpected RewindTransition Summary Summary.Unexpected Complete"),Error)
-  || !ExactKeys(KeysOf(L->Timings),TEXT("OpponentPreAction OpponentDeployAttention OpponentDeployMove OpponentDeploySettledHold OpponentChoiceFocus OpponentFinishFocus OpponentDestinationHold OpponentSettledHold OpponentDefenseLead FailureFollowupDelay ComparisonPace RewindDelay HintFirstDelay HintSecondDelay FeedbackDuration"),Error)
+ if(!ExactKeys(KeysOf(L->Steps),TEXT("Intro TacticPoint TacticPointExplanation InspectGyokeres InspectOdegaard ShootingExplanation SkillRangeExplanation TraitExplanation Deploy Deploy.Comparison Deploy.Hint1 Deploy.Hint2 OpponentDeploy OpponentDeploy.After FinishExplanation FinishDeployment OpponentFinish OpponentFinish.After CarrierExplanation Carrier OpponentMarker OpponentMarker.After SkillExplanation Skill DirectExplanation DirectShot FormulaHover FormulaHover.Comparison FormulaExplanation FormulaExplanation.Comparison AttackRoll OpponentDefense ResultReveal FailurePause Rewind Rewind.Unexpected RewindTransition Summary Summary.Unexpected Complete"),Error)
+  || !ExactKeys(KeysOf(L->Timings),TEXT("OpponentPreAction OpponentDeployAttention OpponentDeployMove OpponentDeploySettledHold OpponentChoiceFocus OpponentFinishFocus OpponentDestinationHold OpponentSettledHold OpponentDefenseLead FailureFollowupDelay ComparisonPace RewindDelay HintFirstDelay HintSecondDelay FeedbackDuration FullCardExplanationDelay"),Error)
   || !ExactKeys(KeysOf(L->Labels),TEXT("ExitTitle ExitBody ExitCancel ExitConfirm OpponentPointer LocalRack OpponentRack UnavailableChoice DeploymentTarget FeedbackCompare FeedbackUnavailable ProgressFirst ProgressComparison"),Error)) return nullptr;
  if(L->Timings[TEXT("HintFirstDelay")]>L->Timings[TEXT("HintSecondDelay")]) { Fail(Error,TEXT("Hint delays out of order")); return nullptr; }
  for(const auto& Pair:Result->Lessons)

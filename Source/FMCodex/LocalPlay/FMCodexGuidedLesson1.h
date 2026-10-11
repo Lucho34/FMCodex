@@ -55,6 +55,8 @@ public:
 	FName Attacker() const { return bComparison ? Odegaard() : Gyokeres(); }
 	bool Update(const FFMCodexLocalMatchInteractionView& View, bool bRevealReady, float DeltaSeconds);
 	void Primary();
+	bool CanAcknowledge() const { return !bExitConfirmation && (Step != EFMCodexLesson1Step::TacticPointExplanation || bTacticPointInspected); }
+	void InspectTacticPoint(bool bValueHovered);
 	void EnterComparison();
 	bool IsCheckpointDue() const;
 	bool IsOpponentActionDue() const;
@@ -75,7 +77,7 @@ public:
 	bool InspectFormula(bool bProductionTooltipVisible);
 	bool IsFormulaTeaching() const;
 	bool IsExitConfirmationOpen() const { return bExitConfirmation; }
-	void RequestExitConfirmation() { bExitConfirmation = true; }
+	void RequestExitConfirmation() { bExitConfirmation = true; CancelCardInspection(); }
 	void CancelExitConfirmation() { bExitConfirmation = false; }
 	bool ConfirmExit() { const bool WasOpen = bExitConfirmation; bExitConfirmation = false; return WasOpen; }
 	FFMCodexMatchScreenRequest OpponentAction() const;
@@ -89,7 +91,8 @@ public:
 	FText ProgressLabel() const;
 	bool IsExplanationMode() const;
 	EFMCodexLesson1Focus FocusTarget() const;
-	bool InspectCard(FName CardId, bool bFullCardVisible);
+	bool InspectCard(FName CardId, bool bFullCardVisible, double NowSeconds);
+	void CancelCardInspection() { FullCardVisibleSince.Reset(); }
 	bool AllowsInspection(FName CardId) const;
 	bool KeepsFullCardOpen() const;
 	bool YieldsToProduction(const FMCodexTacticalScene::FState& Scene, bool bRevealBlocked, EFMCodexLocalMatchInteractionCategory CurrentAction) const;
@@ -106,6 +109,9 @@ private:
 	TMap<EFMCodexGuideVariable,FString> StaticBindings;
 	TOptional<int32> CurrentTP;
 	TOptional<float> DisplayedAttackBase;
+	TOptional<int32> DisplayedAttackShooting, DisplayedAttackTraitBonus;
+	TOptional<double> FullCardVisibleSince;
+	bool bTacticPointInspected = false;
 	void SetStep(EFMCodexLesson1Step NewStep);
 	EFMCodexLesson1Step Step = EFMCodexLesson1Step::Intro;
 	bool bComparison = false;

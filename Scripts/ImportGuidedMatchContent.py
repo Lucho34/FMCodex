@@ -34,14 +34,15 @@ SURFACES = {"ExplanationPanel", "CompactActionBar"}
 TARGETS = {"None", "Button.TacticalPoint", "PlayerHand.Carrier", "Deployment.Carrier", "Button.EndDeployment",
            "Field.Carrier", "Button.LongShot", "Theater.DirectShot", "Formula.AttackBaseValue", "Button.AttackRoll",
            "FullCard.Skill.LongShot", "FullCard.Attribute.SHO", "FullCard.Trait.LongShotCarrier",
-           "Opponent.Deployment", "Header.Opponent", "Field.Marker"}
+           "Opponent.Deployment", "Header.Opponent", "Field.Marker", "Header.AttackTacticalPoint"}
 ARROWS = {"Auto", "Above", "Side", "None"}
 VARIABLES = {"Carrier.DisplayName", "Carrier.Shooting", "FirstCarrier.DisplayName", "FirstCarrier.Shooting",
              "ComparisonCarrier.DisplayName", "ComparisonCarrier.Shooting", "Marker.DisplayName",
-             "CurrentAttackTP", "LongShot.SkillMin", "LongShot.SkillMax", "LongShot.TraitName", "Formula.AttackBaseValue"}
-STEPS = "Intro TacticPoint TacticPointExplanation InspectGyokeres InspectOdegaard ShootingExplanation SkillRangeExplanation TraitExplanation Deploy Deploy.Comparison Deploy.Hint1 Deploy.Hint2 OpponentDeploy OpponentDeploy.After FinishExplanation FinishDeployment OpponentFinish OpponentFinish.After CarrierExplanation Carrier OpponentMarker OpponentMarker.After SkillExplanation Skill DirectExplanation DirectShot FormulaHover FormulaExplanation AttackRoll OpponentDefense ResultReveal FailurePause Rewind Rewind.Unexpected RewindTransition Summary Summary.Unexpected Complete".split()
-ACK_STEPS = set("Intro TacticPointExplanation ShootingExplanation SkillRangeExplanation TraitExplanation FinishExplanation CarrierExplanation SkillExplanation DirectExplanation FormulaExplanation Rewind Rewind.Unexpected Summary Summary.Unexpected Complete".split())
-TIMINGS = "OpponentPreAction OpponentDeployAttention OpponentDeployMove OpponentDeploySettledHold OpponentChoiceFocus OpponentFinishFocus OpponentDestinationHold OpponentSettledHold OpponentDefenseLead FailureFollowupDelay ComparisonPace RewindDelay HintFirstDelay HintSecondDelay FeedbackDuration".split()
+             "CurrentAttackTP", "LongShot.SkillMin", "LongShot.SkillMax", "LongShot.TraitName", "Formula.AttackBaseValue",
+             "Formula.AttackShooting", "Formula.AttackTraitBonus"}
+STEPS = "Intro TacticPoint TacticPointExplanation InspectGyokeres InspectOdegaard ShootingExplanation SkillRangeExplanation TraitExplanation Deploy Deploy.Comparison Deploy.Hint1 Deploy.Hint2 OpponentDeploy OpponentDeploy.After FinishExplanation FinishDeployment OpponentFinish OpponentFinish.After CarrierExplanation Carrier OpponentMarker OpponentMarker.After SkillExplanation Skill DirectExplanation DirectShot FormulaHover FormulaHover.Comparison FormulaExplanation FormulaExplanation.Comparison AttackRoll OpponentDefense ResultReveal FailurePause Rewind Rewind.Unexpected RewindTransition Summary Summary.Unexpected Complete".split()
+ACK_STEPS = set("Intro TacticPointExplanation ShootingExplanation SkillRangeExplanation TraitExplanation FinishExplanation CarrierExplanation SkillExplanation DirectExplanation FormulaExplanation FormulaExplanation.Comparison Rewind Rewind.Unexpected Summary Summary.Unexpected Complete".split())
+TIMINGS = "OpponentPreAction OpponentDeployAttention OpponentDeployMove OpponentDeploySettledHold OpponentChoiceFocus OpponentFinishFocus OpponentDestinationHold OpponentSettledHold OpponentDefenseLead FailureFollowupDelay ComparisonPace RewindDelay HintFirstDelay HintSecondDelay FeedbackDuration FullCardExplanationDelay".split()
 LABELS = "ExitTitle ExitBody ExitCancel ExitConfirm OpponentPointer LocalRack OpponentRack UnavailableChoice DeploymentTarget FeedbackCompare FeedbackUnavailable ProgressFirst ProgressComparison".split()
 IDENTIFIER = re.compile(r"^[A-Za-z][A-Za-z0-9.]*$")
 TOKEN = re.compile(r"\{([A-Za-z][A-Za-z0-9.]*)\}")
@@ -104,7 +105,8 @@ def validate(data):
             keys = placeholders(row[field])
             if row["LessonId"] == "Lesson01":
                 require("CurrentAttackTP" not in keys or sid not in {"Intro", "TacticPoint"}, f"{sid}: CurrentAttackTP not yet available")
-                require("Formula.AttackBaseValue" not in keys or sid in {"FormulaHover", "FormulaExplanation", "AttackRoll", "OpponentDefense", "ResultReveal", "FailurePause", "Rewind", "Rewind.Unexpected", "Summary", "Summary.Unexpected", "Complete"}, f"{sid}: Formula binding not yet available")
+                require(not any(key.startswith("Formula.") for key in keys) or sid in {"FormulaHover", "FormulaHover.Comparison", "FormulaExplanation", "FormulaExplanation.Comparison", "AttackRoll", "OpponentDefense", "ResultReveal", "FailurePause", "Rewind", "Rewind.Unexpected", "Summary", "Summary.Unexpected", "Complete"}, f"{sid}: Formula binding not yet available")
+                require("Formula.AttackTraitBonus" not in keys or sid == "FormulaExplanation.Comparison", f"{sid}: comparison trait operand not available")
         # This is an orchestration compatibility contract, never executable data.
         if row["LessonId"] == "Lesson01":
             require(bool(row["CTA_CN"]) == (sid in ACK_STEPS), f"{sid}: CTA must match code-owned acknowledgement")
@@ -129,7 +131,7 @@ def validate(data):
             require(0.05 <= value <= (2 if row["TimingId"] == "ComparisonPace" else 10), "Movement/pace must be positive and bounded")
     for row in data["labels"]:
         require(bool(row["TextCN"]), f"{row['LabelId']}: text required")
-        require(not set(placeholders(row["TextCN"])) & {"CurrentAttackTP", "Formula.AttackBaseValue"}, "Global labels require static bindings")
+        require(not set(placeholders(row["TextCN"])) & {"CurrentAttackTP", "Formula.AttackBaseValue", "Formula.AttackShooting", "Formula.AttackTraitBonus"}, "Global labels require static bindings")
     require("Lesson01" in lessons and lessons["Lesson01"]["Enabled"], "Enabled Lesson01 is required")
     for group, expected in (("steps", STEPS), ("timings", TIMINGS), ("labels", LABELS)):
         require({key for lid, key in indexes[group] if lid == "Lesson01"} == set(expected), f"Lesson01 {group}: missing/unknown code binding")

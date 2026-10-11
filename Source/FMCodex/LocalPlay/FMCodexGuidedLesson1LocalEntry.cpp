@@ -97,9 +97,10 @@ void AFMCodexLocalMatchPlayerController::TickGuidedLesson1()
 	const float Now = GetWorld()->GetTimeSeconds();
 	const bool bReady = FFMCodexGuidedLesson1::CanProgress(InteractionView, PlayerMatchScreen->GetTacticalScene(), PlayerMatchScreen->IsInlineFormulaRevealInputBlocked());
 	const auto* Detail = PlayerMatchScreen->GetDetailOverlayCard();
-	const bool bInspected = bReady && Detail && L->InspectCard(Detail->GetPresentation().CardId,
-		PlayerMatchScreen->IsDetailOverlayVisible() && Detail->FindAttributePresentationWidget(TEXT("SHO")) && Detail->FindSkillPresentationWidget(L->Skill())
-		&& (!L->IsComparison() || Detail->FindTraitPresentationWidget(TEXT("Trait.LongShotCarrier"))));
+	const bool bInspected = L->InspectCard(Detail ? Detail->GetPresentation().CardId : NAME_None,
+		bReady && Detail && PlayerMatchScreen->IsDetailOverlayVisible() && !Detail->GetTickSpaceGeometry().GetLocalSize().IsNearlyZero()
+		&& (L->IsComparison() ? Detail->FindTraitPresentationWidget(TEXT("Trait.LongShotCarrier")) != nullptr
+			: Detail->FindSkillPresentationWidget(L->Skill()) != nullptr), Now);
 	bool bChanged = L->Update(InteractionView, bReady, Now-GuidedLesson1LastTime) || bInspected;
 	if (bReady && L->GetStep()==EFMCodexLesson1Step::FormulaHover
 		&& PlayerMatchScreen->GetTacticalScene().Phase==FMCodexTacticalScene::EPhase::FormulaHold)

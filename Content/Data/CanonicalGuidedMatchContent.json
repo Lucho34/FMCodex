@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "sourceWorkbook": "FMCodex_Guided_Match.xlsx",
-  "sourceWorkbookSha256": "d537c66c637ece38cb84640820302f13d9def8c8cf2d96f55476e58b8961f547",
+  "sourceWorkbookSha256": "ca01fbad167882524bf26deee0a7293cfc11fbdf5890a158ed2635eb0922caba",
   "lessons": [
     {
       "LessonId": "Lesson01",
@@ -211,6 +211,20 @@
     },
     {
       "LessonId": "Lesson01",
+      "StepId": "FormulaExplanation.Comparison",
+      "SurfaceType": "ExplanationPanel",
+      "TitleCN": "特性如何影响公式",
+      "BodyCN": "{ComparisonCarrier.DisplayName}的射门属性为 {Formula.AttackShooting}，{LongShot.TraitName}额外提供 +{Formula.AttackTraitBonus}，因此进攻基础值为 {Formula.AttackBaseValue}。",
+      "SecondaryCN": "",
+      "CTA_CN": "继续",
+      "FocusTargetId": "Formula.AttackBaseValue",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": "三个数值均只读当前权威 FormulaFacts，不在教学中相加。"
+    },
+    {
+      "LessonId": "Lesson01",
       "StepId": "FormulaHover",
       "SurfaceType": "CompactActionBar",
       "TitleCN": "公式",
@@ -225,9 +239,23 @@
     },
     {
       "LessonId": "Lesson01",
+      "StepId": "FormulaHover.Comparison",
+      "SurfaceType": "CompactActionBar",
+      "TitleCN": "数值来源",
+      "BodyCN": "鼠标移至进攻公式中的 {Formula.AttackBaseValue}，查看数值来源。",
+      "SecondaryCN": "",
+      "CTA_CN": "",
+      "FocusTargetId": "Formula.AttackBaseValue",
+      "ArrowPlacement": "Auto",
+      "ShowExit": true,
+      "PointerCN": "",
+      "Notes": "第二次进攻掷骰前，观察真实生产公式 tooltip。"
+    },
+    {
+      "LessonId": "Lesson01",
       "StepId": "InspectGyokeres",
       "SurfaceType": "CompactActionBar",
-      "TitleCN": "查看球员",
+      "TitleCN": "观察球员技能",
       "BodyCN": "鼠标移动至本方球员区{FirstCarrier.DisplayName}处悬停，查看技能。",
       "SecondaryCN": "",
       "CTA_CN": "",
@@ -241,8 +269,8 @@
       "LessonId": "Lesson01",
       "StepId": "InspectOdegaard",
       "SurfaceType": "CompactActionBar",
-      "TitleCN": "查看球员",
-      "BodyCN": "鼠标移动至本方球员区{ComparisonCarrier.DisplayName}处悬停，查看技能。",
+      "TitleCN": "换个人，观察特性",
+      "BodyCN": "这次换{ComparisonCarrier.DisplayName}试试。鼠标移至本方球员区的{ComparisonCarrier.DisplayName}处悬停，查看他的特性。",
       "SecondaryCN": "",
       "CTA_CN": "",
       "FocusTargetId": "PlayerHand.Carrier",
@@ -431,7 +459,7 @@
       "ArrowPlacement": "Auto",
       "ShowExit": true,
       "PointerCN": "",
-      "Notes": ""
+      "Notes": "保留稳定 ID；Lesson 1 两轮均不进入这个独立属性讲解步骤。"
     },
     {
       "LessonId": "Lesson01",
@@ -521,15 +549,15 @@
       "LessonId": "Lesson01",
       "StepId": "TacticPointExplanation",
       "SurfaceType": "ExplanationPanel",
-      "TitleCN": "观察球员技能",
-      "BodyCN": "本回合进攻战术点为 {CurrentAttackTP}。鼠标移动至本方球员区{FirstCarrier.DisplayName}处悬停，查看技能。",
+      "TitleCN": "确认进攻战术点",
+      "BodyCN": "本回合进攻战术点为 {CurrentAttackTP}。请将鼠标移至左上角高亮的战术点数值处查看。进攻战术点决定本回合持球球员可以使用哪些技能。",
       "SecondaryCN": "",
       "CTA_CN": "继续",
-      "FocusTargetId": "None",
+      "FocusTargetId": "Header.AttackTacticalPoint",
       "ArrowPlacement": "Auto",
       "ShowExit": true,
       "PointerCN": "",
-      "Notes": ""
+      "Notes": "先观察真实 HUD 数值，再点击继续；战术点匹配技能范围，不是普通球员部署资格。"
     },
     {
       "LessonId": "Lesson01",
@@ -677,9 +705,49 @@
     },
     {
       "LessonId": "Lesson01",
+      "StepId": "FormulaExplanation.Comparison",
+      "Field": "BodyCN",
+      "MatchText": "{LongShot.TraitName}",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FormulaExplanation.Comparison",
+      "Field": "BodyCN",
+      "MatchText": "射门属性",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FormulaExplanation.Comparison",
+      "Field": "BodyCN",
+      "MatchText": "进攻基础值",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FormulaExplanation.Comparison",
+      "Field": "TitleCN",
+      "MatchText": "特性",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
       "StepId": "FormulaHover",
       "Field": "BodyCN",
       "MatchText": "属性值",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
+      "StepId": "FormulaHover.Comparison",
+      "Field": "BodyCN",
+      "MatchText": "{Formula.AttackBaseValue}",
       "Occurrence": 1,
       "Style": "PerGlyphDots"
     },
@@ -695,7 +763,7 @@
       "LessonId": "Lesson01",
       "StepId": "InspectOdegaard",
       "Field": "BodyCN",
-      "MatchText": "技能",
+      "MatchText": "特性",
       "Occurrence": 1,
       "Style": "PerGlyphDots"
     },
@@ -845,6 +913,14 @@
     },
     {
       "LessonId": "Lesson01",
+      "StepId": "TacticPointExplanation",
+      "Field": "TitleCN",
+      "MatchText": "进攻战术点",
+      "Occurrence": 1,
+      "Style": "PerGlyphDots"
+    },
+    {
+      "LessonId": "Lesson01",
       "StepId": "TraitExplanation",
       "Field": "BodyCN",
       "MatchText": "{LongShot.TraitName}",
@@ -894,6 +970,12 @@
       "TimingId": "FeedbackDuration",
       "Value": 6,
       "Notes": "秒；仅教学表现，不控制生产揭示"
+    },
+    {
+      "LessonId": "Lesson01",
+      "TimingId": "FullCardExplanationDelay",
+      "Value": 1,
+      "Notes": "秒；真实 Full Card 可见后计时，离开卡牌或退出确认立即取消；仅用于两次卡牌检查。"
     },
     {
       "LessonId": "Lesson01",

@@ -1,5 +1,16 @@
 # Guided Match Lesson 1 — 第一次进攻：找到适合远射的球员
 
+## Stage 8.26A — 教学顺序与检查节奏（当前合同）
+
+本节替代下文历史教学顺序；文案仍只在 canonical Excel 中维护，生成 JSON 不手工编辑。
+
+- 掷出 TP 后，独立说明进攻战术点，聚焦 Header 左侧真实数值区。鼠标移至数值区后才能点击继续，再进入哲凯赖什的 Full Card 检查。普通部署不按技能范围限制；战术点决定持球球员可选的技能范围，不是所有球员的上场门槛。
+- 两次指定球员检查均先显示生产 Full Card，再从实际可见观察起等待 `FullCardExplanationDelay`，默认 1 秒。离开卡牌（包括两次轮询之间快速离开）、隐藏、退出确认、步骤改变和重演均取消旧计时；不改变生产 Full Card 的通用行为。
+- 首轮继续解释远射范围，然后部署。重演后明确提示换厄德高，Full Card 直接聚焦远射专家 A 特性，跳过独立技能范围／射门属性说明；部署、持球、技能、分支选择仍通过原 typed actions。
+- 两次进攻都须在生产 Tactical Scene 的稳定 FormulaHold 阶段 hover 真实进攻基础值，等生产来源 tooltip 显示后进入说明，再点击继续才能掷骰。比较轮使用独立呈现变体；射门、特性加成和基础值逐项读取已投影 FormulaFacts，不在教学层相加。5／3、9:10 失败、checkpoint、11:10 Goal 与生产庆祝不变。
+
+验证范围限内容生成／校验、内容绑定、Lesson1 流程／门控／隔离、一次增量 Editor build 和一条真实 `FMCodex.PIE.GuidedLesson1.FullFlow`。不触及 CoreRules、RNG 或 Network 合同，不跑 broad suites 或 Host/Remote。视觉节奏与连续性仍须 **USER PIE REQUIRED**；工程自动化不替代用户验收。
+
 ## Stage 8.25A — canonical 内容源（当前维护合同）
 
 `ContentSource/Tutorial/FMCodex_Guided_Match.xlsx` 是教学文案／表现配置的唯一可编辑来源；`Scripts/ImportGuidedMatchContent.py --write` 验证并生成受版本控制的 `Content/Data/CanonicalGuidedMatchContent.json`，再由 `FFMCodexGuidedMatchContent` 只读加载，供 `FFMCodexGuidedLesson1` 与原 `SLessonFocus` 消费。沿用球员内容的 XLSX→标准库 Python→Content/Data JSON→fail-closed 模型约定，教学 schema 独立为 1。

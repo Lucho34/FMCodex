@@ -26,6 +26,8 @@ class GuidedContentSourceTest(unittest.TestCase):
             "negative delay": lambda d: d["timings"][0].update(Value=-1),
             "infinite delay": lambda d: d["timings"][0].update(Value=float("inf")),
             "missing lesson": lambda d: d["steps"][0].update(LessonId="Unknown"),
+            "premature operand": lambda d: next(r for r in d["steps"] if r["StepId"] == "InspectOdegaard").update(SecondaryCN="{Formula.AttackTraitBonus}"),
+            "dynamic global label": lambda d: d["labels"][0].update(TextCN="{Formula.AttackShooting}"),
         }
         for name, mutate in cases.items():
             with self.subTest(name=name):

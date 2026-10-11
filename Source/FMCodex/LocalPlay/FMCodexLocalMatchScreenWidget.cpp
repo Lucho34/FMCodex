@@ -2319,6 +2319,11 @@ void UFMCodexLocalMatchScreenWidget::ShowDetailOverlay(
 
 void UFMCodexLocalMatchScreenWidget::HideDetailOverlay()
 {
+#if !UE_BUILD_SHIPPING
+	// Cancel immediately, including a leave/re-enter between lesson observation ticks.
+	if (auto* Lesson = MatchController ? MatchController->GetGuidedLesson1() : nullptr)
+		Lesson->CancelCardInspection();
+#endif
 	DetailHoverSource = nullptr;
 	if (DetailOverlayCard != nullptr)
 	{

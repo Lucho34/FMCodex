@@ -8,8 +8,8 @@
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGuidedContentEquivalenceTest,"FMCodex.LocalPlay.GuidedContent.MigrationEquivalence",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
-bool FGuidedContentEquivalenceTest::RunTest(const FString&)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGuidedContentTeachingTest,"FMCodex.LocalPlay.GuidedContent.TeachingFlowContent",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGuidedContentTeachingTest::RunTest(const FString&)
 {
  FString Error; const auto Content=FFMCodexGuidedMatchContent::Load(Error);
  if(!TestTrue(TEXT("Canonical generated content loads: ")+Error,Content.IsValid())) return false;
@@ -21,7 +21,8 @@ bool FGuidedContentEquivalenceTest::RunTest(const FString&)
  L.Primary(); TestEqual(TEXT("TP instruction"),L.Instruction().ToString(),FString(TEXT("掷出本回合的进攻战术点。")));
  FFMCodexLocalMatchInteractionView View; View.ActionPoint=3; View.InteractionCategory=EFMCodexLocalMatchInteractionCategory::Deploy;
  View.ExpectedActingPlayer=EInitialTurnOrderPlayer::PlayerA;
- L.Update(View,true,.1f); L.Primary(); L.InspectCard(L.Gyokeres(),true);
+ L.Update(View,true,.1f); L.InspectTacticPoint(true); L.Primary();
+ L.InspectCard(L.Gyokeres(),true,0.); L.InspectCard(L.Gyokeres(),true,L.Timing(TEXT("FullCardExplanationDelay")));
  TestEqual(TEXT("Skill range comes from production catalog and live TP"),L.Instruction().ToString(),FString(TEXT("远射技能范围为 3–5。当前进攻战术点为 3，落在范围内，因此可以使用远射。")));
  const auto* Lesson=Content->FindLesson(TEXT("Lesson01"));
  TestEqual(TEXT("End Deployment copy"),Lesson->Steps[TEXT("FinishDeployment")].Body,FString(TEXT("点击“结束部署”，结束本次部署。")));
@@ -36,6 +37,9 @@ bool FGuidedContentEquivalenceTest::RunTest(const FString&)
  TestEqual(TEXT("Failure delay"),L.Timing(TEXT("FailureFollowupDelay")),1.6f);
  TestEqual(TEXT("Proxy duration"),L.Timing(TEXT("OpponentDeployMove")),.8f);
  TestEqual(TEXT("Final board hold"),L.Timing(TEXT("OpponentDeploySettledHold")),1.2f);
+ TestEqual(TEXT("Full Card explanation delay is tutorial configuration"),L.Timing(TEXT("FullCardExplanationDelay")),1.f);
+ TestEqual(TEXT("TP explanation targets HUD value"),Lesson->Steps[TEXT("TacticPointExplanation")].Target,EFMCodexGuideTarget::AttackTacticPointValue);
+ TestEqual(TEXT("Comparison formula retains real value focus"),Lesson->Steps[TEXT("FormulaHover.Comparison")].Target,EFMCodexGuideTarget::FormulaValue);
  return true;
 }
 
@@ -71,6 +75,10 @@ bool FGuidedContentBindingTest::RunTest(const FString&)
  FString Text;
  TestTrue(TEXT("Whitelist interpolation responds to production binding values"),FFMCodexGuidedMatchContent::Interpolate(TEXT("{Carrier.DisplayName}的射门 {Carrier.Shooting}"),Bindings,Text,Error));
  TestEqual(TEXT("No stale numeric copy"),Text,FString(TEXT("测试球员的射门 5")));
+ Bindings.Add(Var::FormulaAttackShooting,TEXT("7")); Bindings.Add(Var::FormulaAttackTraitBonus,TEXT("3")); Bindings.Add(Var::FormulaAttackBase,TEXT("12"));
+ TestTrue(TEXT("Formula values are independent projections, not tutorial arithmetic"),FFMCodexGuidedMatchContent::Interpolate(
+  TEXT("{Formula.AttackShooting} / {Formula.AttackTraitBonus} / {Formula.AttackBaseValue}"),Bindings,Text,Error));
+ TestEqual(TEXT("Subtotal is consumed verbatim without adding operands"),Text,FString(TEXT("7 / 3 / 12")));
  TestFalse(TEXT("Missing binding rejected"),FFMCodexGuidedMatchContent::Interpolate(TEXT("{CurrentAttackTP}"),Bindings,Text,Error));
  TestFalse(TEXT("Unknown placeholder rejected"),FFMCodexGuidedMatchContent::Interpolate(TEXT("{Unknown.Field}"),Bindings,Text,Error));
  TArray<FFMCodexGuideEmphasis> Spans={{TEXT("BodyCN"),TEXT("{Carrier.DisplayName}"),2}};
@@ -88,6 +96,9 @@ bool FGuidedContentBindingTest::RunTest(const FString&)
   Root=ParseObject(); Root->GetArrayField(TEXT("steps"))[0]->AsObject()->SetStringField(Pair.Key,Pair.Value);
   TestFalse(TEXT("Runtime rejects malformed field: ")+Pair.Key,FFMCodexGuidedMatchContent::Parse(Encode(Root),Error).IsValid());
  }
+ Root=ParseObject(); Steps=Root->GetArrayField(TEXT("steps"));
+ StepObject(TEXT("InspectOdegaard"))->SetStringField(TEXT("SecondaryCN"),TEXT("{Formula.AttackTraitBonus}"));
+ TestFalse(TEXT("Operand binding cannot be used before Formula exists"),FFMCodexGuidedMatchContent::Parse(Encode(Root),Error).IsValid());
  return true;
 }
 #endif

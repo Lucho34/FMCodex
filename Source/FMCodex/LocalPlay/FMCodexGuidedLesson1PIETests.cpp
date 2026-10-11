@@ -224,12 +224,25 @@ public:
 			T->TestTrue(TEXT("Failure hold leaves the disclosed production result unobstructed"),L->YieldsToProduction(Scene,false,C->GetInteractionView().InteractionCategory));
 			if (!bFailureCaptured && Now-FailureVisibleAt>.25) { Capture(TEXT("11_CleanFailureHold.png")); bFailureCaptured=true; }
 		}
-		if (L->GetStep()==EFMCodexLesson1Step::FormulaHover && bFormulaHovered)
+		const int32 Attempt=L->IsComparison()?1:0;
+		if (FullCardAt[Attempt]>0 && CardExplainedAt[Attempt]==0)
+		{
+			if (L->KeepsFullCardOpen())
+			{
+				CardExplainedAt[Attempt]=GEditor->PlayWorld->GetTimeSeconds();
+				T->TestTrue(TEXT("Full Card visible for configured delay before explanation"),CardExplainedAt[Attempt]-FullCardAt[Attempt]>=L->Timing(TEXT("FullCardExplanationDelay")));
+				T->TestEqual(TEXT("Only first pass teaches skill range; second teaches trait"),L->GetStep(),L->IsComparison()?EFMCodexLesson1Step::TraitExplanation:EFMCodexLesson1Step::SkillRangeExplanation);
+				T->AddInfo(FString::Printf(TEXT("GUIDED_CARD_DELAY attempt=%d visibleBeforeExplanation=%.3fs"),Attempt+1,CardExplainedAt[Attempt]-FullCardAt[Attempt]));
+			}
+			else if (L->GetStep()==EFMCodexLesson1Step::InspectGyokeres || L->GetStep()==EFMCodexLesson1Step::InspectOdegaard)
+				T->TestFalse(TEXT("Card registration interval has no competing explanation panel"),FindSlate(LessonWindow->GetContent(),TEXT("LessonModalPanel")).IsValid());
+		}
+		if (L->GetStep()==EFMCodexLesson1Step::FormulaHover && bFormulaHovered[Attempt])
 		{
 			FSlateApplication::Get().UpdateToolTip(true); // Normal native tooltip update after real pointer hover.
 			// Retain evidence while the transient tooltip is actually visible, before
 			// the controller switches to its modal and Slate may close the tooltip.
-			bFormulaTooltip |= FormulaTooltipVisible(S);
+			bFormulaTooltip[Attempt] |= FormulaTooltipVisible(S);
 		}
 		if (L->GetStep()==EFMCodexLesson1Step::Rewind && FailurePopupAt==0)
 		{
@@ -273,7 +286,17 @@ public:
 			FocusClick(S,*L); break;
 		case Step::TacticPointExplanation:
 			T->TestTrue(TEXT("TP explanation before deployment"),L->Instruction().ToString().Contains(TEXT("战术点为 3")));
-			C->GuidedLesson1Primary(); break;
+			if (!bTacticPointHovered)
+			{
+				C->GuidedLesson1Primary();
+				T->TestEqual(TEXT("Continue cannot bypass actual TP hover"),L->GetStep(),Step::TacticPointExplanation);
+				const auto Targets=FMCodexLesson1Focus::Targets(S,*L);
+				if(!T->TestEqual(TEXT("Single tactical point value focus"),Targets.Num(),1)) return true;
+				T->TestTrue(TEXT("Focus is precise left value bay, not player panel"),Targets[0]==S->GetMatchHeader()->GetWidgetFromName(TEXT("LeftTacticalPointValueBay")));
+				Pointer(Center(Targets[0])); bTacticPointHovered=true; LastActedStep=Step::Intro; return false;
+			}
+			T->TestTrue(TEXT("Real HUD hover enables Continue"),L->CanAcknowledge());
+			Capture(TEXT("01_TacticalPointValue.png")); ClickSlate(TEXT("LessonExplanationContinue")); break;
 		case Step::InspectOdegaard: case Step::InspectGyokeres:
 		{
 			const auto Targets=FMCodexLesson1Focus::Targets(S,*L);
@@ -290,18 +313,17 @@ public:
 			if (!L->IsComparison()) Capture(TEXT("07_HandFocus.png"));
 			Pointer(Center(Targets[0]));
 			T->TestTrue(TEXT("Real pointer opens Full Card"),S->IsDetailOverlayVisible());
+			FullCardAt[Attempt]=GEditor->PlayWorld->GetTimeSeconds();
 			break;
 		}
 		case Step::ShootingExplanation:
-			T->TestTrue(TEXT("Standalone Shooting teaching occurs only after rewind and Skill"),L->IsComparison() && bSecondSkill);
-			T->TestTrue(TEXT("Real Shooting row retained"),S->IsDetailOverlayVisible() && S->GetDetailOverlayCard()->FindAttributePresentationWidget(TEXT("SHO")));
-			Capture(TEXT("06_ShootingInspection.png"));
-			C->GuidedLesson1Primary(); break;
+			T->AddError(TEXT("Lesson must not repeat standalone attribute teaching")); return true;
 		case Step::TraitExplanation:
 			T->TestTrue(TEXT("Real Trait A row retained"),S->IsDetailOverlayVisible() && S->GetDetailOverlayCard()->FindTraitPresentationWidget(TEXT("Trait.LongShotCarrier")));
 			Capture(TEXT("03_OdegaardTrait.png")); C->GuidedLesson1Primary(); break;
 		case Step::SkillRangeExplanation:
-			(L->IsComparison()?bSecondSkill:bFirstSkill)=true;
+			T->TestFalse(TEXT("No redundant comparison skill-range explanation"),L->IsComparison());
+			bFirstSkill=true;
 			if (const auto Panel=FindSlate(LessonWindow->GetContent(),TEXT("LessonModalPanel")); Panel.IsValid())
 			{
 				const auto& P=Panel->GetCachedGeometry(); const auto& W=LessonWindow->GetContent()->GetCachedGeometry();
@@ -321,7 +343,7 @@ public:
 			T->TestTrue(TEXT("Full Card retained beside skill explanation"),S->IsDetailOverlayVisible() && S->GetDetailOverlayCard()->FindSkillPresentationWidget(L->Skill()));
 			Capture(TEXT("06_SkillRangeInspection.png"));
 			C->GuidedLesson1Primary();
-			T->TestEqual(TEXT("Skill proceeds to first deployment or comparison Shooting"),L->GetStep(),L->IsComparison()?Step::ShootingExplanation:Step::Deploy); break;
+			T->TestEqual(TEXT("Skill proceeds to deployment"),L->GetStep(),Step::Deploy); break;
 		case Step::FinishExplanation: case Step::CarrierExplanation: case Step::SkillExplanation: case Step::DirectExplanation:
 			T->TestTrue(TEXT("New concepts use explanation mode"),L->IsExplanationMode());
 			if (Current==Step::DirectExplanation) T->TestTrue(TEXT("No secondary method lecture"),L->Explanation().IsEmpty());
@@ -380,7 +402,7 @@ public:
 				T->TestFalse(TEXT("Other method visibly disabled"),Other->GetIsEnabled());
 			if(!L->IsComparison()) Capture(TEXT("08_DirectShotFocus.png")); FocusClick(S,*L); break;
 		case Step::AttackRoll:
-			if (!L->IsComparison()) T->TestTrue(TEXT("Real source tooltip taught before attack click"),bFormulaTooltip);
+			T->TestTrue(TEXT("Real source tooltip taught before each attack click"),bFormulaTooltip[Attempt]);
 			if(L->IsComparison()) CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("远射专家 A"));
 			FocusClick(S,*L); break;
 		case Step::FormulaHover:
@@ -389,18 +411,25 @@ public:
 			auto* Value=S->GetWidgetFromName(TEXT("TheaterAttackBaseHover"));
 			auto* Number=Cast<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterAttackNumber")));
 			if (!T->TestNotNull(TEXT("Production attribute value"),Value) || !T->TestNotNull(TEXT("Production number"),Number)) return true;
-			T->TestEqual(TEXT("First attack base really is 4"),Number->GetText().ToString(),FString(TEXT("4")));
+			T->TestEqual(TEXT("Attack base comes from production Formula"),Number->GetText().ToString(),FString(L->IsComparison()?TEXT("6"):TEXT("4")));
+			T->TestTrue(TEXT("Semantic formula focus is the actual number hover region"),FMCodexLesson1Focus::Targets(S,*L).Contains(Value));
 			if (auto* Button=Cast<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue"))))
 				T->TestFalse(TEXT("Production CTA gated until inspection"),Button->GetIsEnabled());
 			Capture(TEXT("12_FormulaHoverFocus.png"));
-			Pointer(Center(Value)); bFormulaHovered=true; break;
+			Pointer(Center(Value)); bFormulaHovered[Attempt]=true; break;
 		}
 		case Step::FormulaExplanation:
 		{
-			bFormulaTooltip |= FormulaTooltipVisible(S);
-			T->TestTrue(TEXT("Real mouse opened native production tooltip"),bFormulaTooltip);
+			bFormulaTooltip[Attempt] |= FormulaTooltipVisible(S);
+			T->TestTrue(TEXT("Real mouse opened native production tooltip"),bFormulaTooltip[Attempt]);
 			CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("射门 4"));
-			Capture(TEXT("13_FormulaSourceTeaching.png"));
+			if (L->IsComparison())
+			{
+				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("远射专家 A"));
+				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("射门 4 +2"));
+				T->TestEqual(TEXT("Second formula explanation consumes actual operands"),L->Instruction().ToString(),FString(TEXT("厄德高的射门属性为 4，远射专家 A额外提供 +2，因此进攻基础值为 6。")));
+				Capture(TEXT("04_ComparisonFormula.png"));
+			}
 			const auto Panel=FindSlate(LessonWindow->GetContent(),TEXT("LessonModalPanel"));
 			T->TestTrue(TEXT("Formula reuses the same explanation component"),L->IsExplanationMode() && Panel.IsValid());
 			if (Panel.IsValid())
@@ -528,13 +557,13 @@ private:
 	}
 	void Capture(const TCHAR* Name)
 	{
-		// Two representative migration views; behavioral assertions cover the rest.
+		// Four changed visual moments; logs/assertions cover delay, results and celebration.
 		const FString N(Name);
-		if(N!=TEXT("01_Intro.png") && N!=TEXT("13_FormulaSourceTeaching.png") && N!=TEXT("NormalHoverFailure.png")) return;
+		if(N!=TEXT("01_TacticalPointValue.png") && N!=TEXT("06_SkillRangeInspection.png") && N!=TEXT("03_OdegaardTrait.png") && N!=TEXT("04_ComparisonFormula.png") && N!=TEXT("NormalHoverFailure.png")) return;
 		auto Window=GEditor->PlayWorld->GetGameViewport()->GetWindow();
 		TArray<FColor> Pixels; FIntVector Size = FIntVector::ZeroValue;
 		if(!Window || !FSlateApplication::Get().TakeScreenshot(Window->GetContent(),Pixels,Size)) { T->AddError(TEXT("PIE capture unavailable")); return; }
-		const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_25A/PIE"); IFileManager::Get().MakeDirectory(*Dir,true);
+		const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_26A/PIE"); IFileManager::Get().MakeDirectory(*Dir,true);
 		TArray64<uint8> PNG; FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
 		T->TestTrue(TEXT("Actual lesson window captured"),FFileHelper::SaveArrayToFile(PNG,*(Dir/Name)));
 	}
@@ -548,14 +577,15 @@ private:
 	double OpponentObserved[2]={},OpponentSampleGap[2]={};
 	double OpponentMoving[2]={};
 	bool bMoveCaptured=false,bFinishCaptured=false,bMarkerCaptured=false,bHandoffCaptured=false,bDefenseHandoff[2]={};
-	bool bFormulaHovered=false,bFormulaTooltip=false,bFailureCaptured=false;
+	bool bFormulaHovered[2]={},bFormulaTooltip[2]={},bFailureCaptured=false,bTacticPointHovered=false;
+	double FullCardAt[2]={},CardExplainedAt[2]={};
 	bool bStarted=false,bCompared=false,bLastComparison=false,bSummaryInspected=false,bExited=false;
 	bool bSkipChecked=false,bFirstOutcome=false,bGoalOutcome=false,bCelebration=false;
 	TWeakObjectPtr<UFMCodexLocalMatchScreenWidget> OldScreen;
 	int32 DragPhase=0,ExitPhase=0;
 	int64 ExitSequence=0;
 	TWeakObjectPtr<UFMCodexLocalMatchScreenWidget> ExitScreen;
-	bool bExitCancelChecked=false,bFirstSkill=false,bSecondSkill=false,bOpponentSource=false,bOpponentPlaced=false,bSourceCaptured=false,bPlacedCaptured=false;
+	bool bExitCancelChecked=false,bFirstSkill=false,bOpponentSource=false,bOpponentPlaced=false,bSourceCaptured=false,bPlacedCaptured=false;
 	EFMCodexLesson1Step LastActedStep=EFMCodexLesson1Step::Complete;
 };
 }
