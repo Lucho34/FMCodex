@@ -1761,7 +1761,7 @@ namespace FMCodexLocalMatchInteractionView
 		FFMCodexLocalMatchInteractionView& View)
 	{
 		const bool bValidViewer = IsPlayerSide(ViewerSide);
-		FFMCodexLocalMatchInteractionViewBuilder::RedactFullCardTraitAssignments(View, ViewerSide);
+		FFMCodexLocalMatchInteractionViewBuilder::ClearFullCardTraitsForInvalidViewer(View, ViewerSide);
 		if (!Disclosure.bRevealInitialActionPointRoll)
 		{
 			View.ActionPoint = 0;
@@ -3255,13 +3255,15 @@ FString FFMCodexLocalMatchInteractionViewBuilder::ToString(
 	}
 }
 
-void FFMCodexLocalMatchInteractionViewBuilder::RedactFullCardTraitAssignments(
+void FFMCodexLocalMatchInteractionViewBuilder::ClearFullCardTraitsForInvalidViewer(
  FFMCodexLocalMatchInteractionView& View, const EInitialTurnOrderPlayer ViewerSide)
 {
- auto Redact = [ViewerSide](FFMCodexLocalMatchCardView& Card)
+ // Both hands contain public player properties. This guard is only for invalid
+ // viewer contexts; ownership never controls disclosure of card assignments.
+ if (FMCodexLocalMatchInteractionView::IsPlayerSide(ViewerSide)) return;
+ auto Redact = [](FFMCodexLocalMatchCardView& Card)
  {
-  if (ViewerSide == EInitialTurnOrderPlayer::None || Card.Side != ViewerSide)
-  { Card.RankedTraits.Reset(); Card.BinaryTraits.Reset(); }
+  Card.RankedTraits.Reset(); Card.BinaryTraits.Reset();
  };
  for (auto* Roster : {&View.PlayerACardRoster, &View.PlayerBCardRoster}) for (auto& Card : *Roster) Redact(Card);
  for (auto& Group : View.DeploymentGroups) Redact(Group.Card);

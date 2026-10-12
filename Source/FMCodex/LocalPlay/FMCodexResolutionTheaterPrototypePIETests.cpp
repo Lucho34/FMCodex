@@ -1890,23 +1890,25 @@ public:
   if (!S->GetLocalRackWidget() || S->GetLocalRackWidget()->GetRenderedCardWidgets().IsEmpty()) return false;
   if (!CapturedPending)
   {
-   const TCHAR* Arsenal[]={TEXT("BukayoSaka"),TEXT("WilliamSaliba"),TEXT("GabrielMagalhaes"),TEXT("MylesLewisSkelly"),TEXT("MikelMerino")};
-   const TCHAR* City[]={TEXT("PhilFoden"),TEXT("RubenDias"),TEXT("Rodri"),TEXT("NathanAke")};
-   const bool IsArsenal=S->GetLocalRackWidget()->GetRenderedCardWidgets()[0]->GetPresentation().CardId.ToString().Contains(TEXT("Arsenal"));
-   const int32 Count=IsArsenal?5:4;
+   const TCHAR* Players[]={TEXT("ViktorGyokeres"),TEXT("OmarMarmoush"),TEXT("Rodri"),TEXT("EberechiEze"),TEXT("MikelMerino"),TEXT("PhilFoden"),TEXT("DavidRaya")};
+   const int32 Count=UE_ARRAY_COUNT(Players);
    if (Index>=Count)
    {
-    for (auto& Ref:S->GetOpponentRackWidget()->GetRenderedCardWidgets())
-     if (auto* Card=Ref.Get()) Test->TestTrue(TEXT("Live opponent card has no assignment payload"),Card->GetPresentation().RankedTraits.IsEmpty() && Card->GetPresentation().BinaryTraits.IsEmpty());
-    Test->AddInfo(FString::Printf(TEXT("FULL_CARD_TRAIT_PIE_SMOKE representativeCards=%d; readonly native hover; actual window captures; aesthetic acceptance remains USER PIE REQUIRED"),Count));
+    Test->AddInfo(FString::Printf(TEXT("FULL_CARD_TRAIT_PIE_SMOKE representativeCards=%d; own/opponent native hover and card switching; aesthetic acceptance remains USER PIE REQUIRED"),Count));
     return true;
    }
-   const FString Key=IsArsenal?Arsenal[Index]:City[Index];UFMCodexPlayerCardWidget* Card=nullptr;
-   for (auto& Ref:S->GetLocalRackWidget()->GetRenderedCardWidgets())
-    if (Ref->GetPresentation().CardId.ToString().EndsWith(Key)) Card=Ref.Get();
-   if (!Test->TestNotNull(TEXT("Representative own card exists"),Card)) return true;
+   const FString Key=Players[Index];UFMCodexPlayerCardWidget* Card=nullptr;
+   for (auto* Rack:{S->GetLocalRackWidget(),S->GetOpponentRackWidget()})
+    for (auto& Ref:Rack->GetRenderedCardWidgets())
+     if (Ref->GetPresentation().CardId.ToString().EndsWith(Key)) Card=Ref.Get();
+   if (!Test->TestNotNull(TEXT("Representative public hand card exists"),Card)) return true;
    Before=C->GetLastDiagnostic().CommandName;Id=Card->GetPresentation().CardId;
-   Card->TakeWidget()->OnMouseEnter(Card->GetCachedGeometry(),FPointerEvent());
+   // Route a real pointer move so Slate's subsequent hover/leave events agree
+   // with the inspected card while switching between the two hands.
+   auto& App=FSlateApplication::Get();const auto& G=Card->GetCachedGeometry();
+   const FVector2D Pos=G.LocalToAbsolute(G.GetLocalSize()*.5f),Old=App.GetCursorPos();
+   App.SetCursorPos(Pos);
+   App.ProcessMouseMoveEvent(FPointerEvent(0,Pos,Old,TSet<FKey>(),EKeys::Invalid,0,FModifierKeysState()),false);
    Test->TestTrue(TEXT("Existing PIE hover opens Full Card"),S->IsDetailOverlayVisible());
    CapturedPending=true;Changed=GEditor->PlayWorld->GetTimeSeconds();return false;
   }
@@ -1916,10 +1918,32 @@ public:
   Test->TestEqual(TEXT("Inspector retains hovered identity"),Detail->GetPresentation().CardId,Id);
   Test->TestEqual(TEXT("Live inspector shows six base attributes"),Detail->GetRenderedAttributeCount(),6);
   Test->TestEqual(TEXT("Inspection submits no gameplay action"),C->GetLastDiagnostic().CommandName,Before);
-  TArray<FColor> Pixels;FIntVector Size;
-  if (Test->TestTrue(TEXT("Native PIE card screenshot"),FSlateApplication::Get().TakeScreenshot(Detail->TakeWidget(),Pixels,Size)))
+  const auto& V=C->GetInteractionView();
+  const auto* Source=V.PlayerACardRoster.FindByPredicate([&](const auto& P){return P.CardId==Id;});
+  if (!Source) Source=V.PlayerBCardRoster.FindByPredicate([&](const auto& P){return P.CardId==Id;});
+  if (!Test->TestNotNull(TEXT("Live card has authority projection"),Source)) return true;
+  const auto& Model=Detail->GetPresentation();
+  Test->TestEqual(TEXT("Live Full Card has all Ranked assignments"),Model.RankedTraits.Num(),Source->RankedTraits.Num());
+  Test->TestTrue(TEXT("Live Full Card has all Binary assignments"),Model.BinaryTraits==Source->BinaryTraits);
+  int32 Off=0,Def=0;
+  auto CheckTrait=[&](FName Trait,const FString& Rank)
   {
-   const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_20B_2_1");IFileManager::Get().MakeDirectory(*Dir,true);
+   const bool Offensive=FPlayerTraitFormula::Category(Trait)==EPlayerTraitCategory::Offensive;
+   const FString Base=FString(Offensive?TEXT("FullCardOffensiveTraits"):TEXT("FullCardDefensiveTraits"))+FString::FromInt(Offensive?Off++:Def++);
+   const auto* Name=Cast<UTextBlock>(Detail->GetWidgetFromName(*(Base+TEXT("Name"))));
+   if (Test->TestNotNull(TEXT("Live Trait row exists"),Name))
+    Test->TestEqual(TEXT("Live complete Chinese Trait name"),Name->GetText().ToString(),FPlayerTraitFormula::DisplayName(Trait).ToString());
+   const auto* Grade=Cast<UTextBlock>(Detail->GetWidgetFromName(*(Base+TEXT("Value"))));
+   if (Rank.IsEmpty()) Test->TestNull(TEXT("Binary has no rank badge"),Grade);
+   else if (Test->TestNotNull(TEXT("Live Ranked badge exists"),Grade)) Test->TestEqual(TEXT("Live authoritative grade"),Grade->GetText().ToString(),Rank);
+  };
+  for (const auto& T:Source->RankedTraits) CheckTrait(T.TraitId,T.Rank==EPlayerTraitRank::S?TEXT("S"):T.Rank==EPlayerTraitRank::A?TEXT("A"):TEXT("B"));
+  for (FName Trait:Source->BinaryTraits) CheckTrait(Trait,FString());
+  Test->AddInfo(FString::Printf(TEXT("PUBLIC_CARD_PIE %s ranked=%d binary=%d"),*Id.ToString(),Source->RankedTraits.Num(),Source->BinaryTraits.Num()));
+  TArray<FColor> Pixels;FIntVector Size=FIntVector::ZeroValue;
+  if ((Index==1 || Index==2) && Test->TestTrue(TEXT("Native PIE card screenshot"),FSlateApplication::Get().TakeScreenshot(Detail->TakeWidget(),Pixels,Size)))
+  {
+   const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_27B");IFileManager::Get().MakeDirectory(*Dir,true);
    TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
    Test->TestTrue(TEXT("Saved native PIE card"),FFileHelper::SaveArrayToFile(PNG,*(Dir/(Id.ToString()+TEXT(".png")))));
    Test->AddInfo(FString::Printf(TEXT("LIVE_FULL_CARD_PIE_CAPTURE %s %dx%d"),*Id.ToString(),Size.X,Size.Y));
@@ -1930,7 +1954,7 @@ public:
    if (Test->TestTrue(TEXT("Native PIE context screenshot"),TheaterPIEWindow.IsValid() && FSlateApplication::Get().TakeScreenshot(TheaterPIEWindow->GetContent(),Pixels,Size)))
    {
     TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
-    Test->TestTrue(TEXT("Saved native PIE context"),FFileHelper::SaveArrayToFile(PNG,*(FPaths::ProjectSavedDir()/TEXT("Stage8_20B_2_1/LivePIEWindow.png"))));
+    Test->TestTrue(TEXT("Saved native PIE context"),FFileHelper::SaveArrayToFile(PNG,*(FPaths::ProjectSavedDir()/TEXT("Stage8_27B/LivePIEWindow.png"))));
    }
   }
   ++Index;CapturedPending=false;return false;

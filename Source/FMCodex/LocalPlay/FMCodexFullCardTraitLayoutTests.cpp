@@ -19,9 +19,12 @@
 #include "ImageUtils.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Serialization/ObjectAndNameAsStringProxyArchive.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFullCardTraitProjection,
- "FMCodex.LocalPlay.UI.FullCardTraits.AuthoritativeOwnerProjection",
+ "FMCodex.LocalPlay.UI.FullCardTraits.AuthoritativePublicProjection",
  EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FFullCardTraitProjection::RunTest(const FString&)
 {
@@ -31,35 +34,103 @@ bool FFullCardTraitProjection::RunTest(const FString&)
  auto& State=Opening.MatchPlayState;
  auto& Saka=*State.CardSnapshotAuthority.PlayerACardSnapshots.Cards.FindByPredicate(
   [](const auto& C){return C.CardId==TEXT("Prototype.Arsenal.BukayoSaka");});
- Saka.RankedTraits[0].Rank=EPlayerTraitRank::S; // Different from catalog B: proves snapshot ownership.
- for (auto Viewer:{EInitialTurnOrderPlayer::PlayerA,EInitialTurnOrderPlayer::PlayerB,EInitialTurnOrderPlayer::None})
+ Saka.RankedTraits[0].Rank=EPlayerTraitRank::S; // Different from catalog B: proves authoritative provenance.
+ const auto Raw=FFMCodexLocalMatchInteractionViewBuilder::Build(State,Demo.SkillRuleSet);
+ UWorld* World=UWorld::CreateWorld(EWorldType::Game,false);
+ GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(World);
+ auto* Widget=CreateWidget<UFMCodexPlayerCardWidget>(World);auto Slate=Widget->TakeWidget();
+ for (auto Viewer:{EInitialTurnOrderPlayer::PlayerA,EInitialTurnOrderPlayer::PlayerB,
+  EInitialTurnOrderPlayer::None,static_cast<EInitialTurnOrderPlayer>(255)})
  {
+  const bool Valid=Viewer==EInitialTurnOrderPlayer::PlayerA || Viewer==EInitialTurnOrderPlayer::PlayerB;
+  auto CheckAssignments=[&](const auto& C)
+  {
+   const auto& Cards=Raw.PlayerACardRoster.ContainsByPredicate([&](const auto& P){return P.CardId==C.CardId;})
+    ?State.CardSnapshotAuthority.PlayerACardSnapshots.Cards:State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards;
+   const auto* Snapshot=Cards.FindByPredicate([&](const auto& P){return P.CardId==C.CardId;});
+   if (!TestNotNull(TEXT("Public card has authoritative snapshot"),Snapshot)) return;
+   TestEqual(TEXT("Both participants receive every ranked assignment; invalid viewers fail closed"),C.RankedTraits.Num(),Valid?Snapshot->RankedTraits.Num():0);
+   TestEqual(TEXT("Both participants receive every binary assignment"),C.BinaryTraits.Num(),Valid?Snapshot->BinaryTraits.Num():0);
+   for (int32 I=0;Valid && I<FMath::Min(C.RankedTraits.Num(),Snapshot->RankedTraits.Num());++I)
+   {
+    TestEqual(TEXT("Exact authoritative Trait ID"),C.RankedTraits[I].TraitId,Snapshot->RankedTraits[I].TraitId);
+    TestEqual(TEXT("Exact authoritative S/A/B grade, never catalog fallback"),C.RankedTraits[I].Rank,Snapshot->RankedTraits[I].Rank);
+   }
+   if (Valid) TestTrue(TEXT("Exact authoritative Binary IDs/presence"),C.BinaryTraits==Snapshot->BinaryTraits);
+  };
   auto V=FFMCodexLocalMatchInteractionViewBuilder::BuildForViewer(State,Demo.SkillRuleSet,Viewer);
   for (const auto* Roster:{&V.PlayerACardRoster,&V.PlayerBCardRoster}) for (const auto& C:*Roster)
+   CheckAssignments(C);
+  // Exercise every nested card-bearing surface, including the invalid-viewer guard.
+  auto Surfaces=Raw;
+  for (const auto* Roster:{&Raw.PlayerACardRoster,&Raw.PlayerBCardRoster}) for (const auto& C:*Roster)
   {
-   const bool Own=Viewer!=EInitialTurnOrderPlayer::None && C.Side==Viewer;
-   const auto& Cards=C.Side==EInitialTurnOrderPlayer::PlayerA?State.CardSnapshotAuthority.PlayerACardSnapshots.Cards:State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards;
-   const auto& Snapshot=*Cards.FindByPredicate([&](const auto& P){return P.CardId==C.CardId;});
-   TestEqual(TEXT("Owner assignment count; opponent and invalid viewer receive none"),C.RankedTraits.Num(),Own?Snapshot.RankedTraits.Num():0);
-   TestEqual(TEXT("Binary assignments are owner-safe too"),C.BinaryTraits.Num(),Own?Snapshot.BinaryTraits.Num():0);
-   if (Own && C.CardId==Saka.CardId) TestEqual(TEXT("Snapshot rank overrides catalog"),C.RankedTraits[0].Rank,EPlayerTraitRank::S);
+   Surfaces.DeploymentGroups.AddDefaulted_GetRef().Card=C;
+   Surfaces.SelectionOptions.AddDefaulted_GetRef().Card=C;
+   Surfaces.PitchRegions.AddDefaulted_GetRef().Slots.AddDefaulted_GetRef().Card=C;
   }
-  if (Viewer!=EInitialTurnOrderPlayer::None)
+  FFMCodexLocalMatchInteractionViewBuilder::ClearFullCardTraitsForInvalidViewer(Surfaces,Viewer);
+  for (const auto& G:Surfaces.DeploymentGroups) CheckAssignments(G.Card);
+  for (const auto& O:Surfaces.SelectionOptions) CheckAssignments(O.Card);
+  for (const auto& R:Surfaces.PitchRegions) for (const auto& S:R.Slots) if (!S.Card.CardId.IsNone()) CheckAssignments(S.Card);
+  auto CheckScreen=[&](const FFMCodexUMGMatchScreenViewModel& M)
   {
-   const auto Net=FFMCodexNetworkMatchPresentationAdapter::Project(V,Viewer);
-   TestTrue(TEXT("Safe network presentation produced"),Net.bAvailable);
-   const auto Read=FFMCodexNetworkMatchPresentationAdapter::Read(Net,false);
-   for (const auto& Cell:Read.OpponentRack.Cells)
-    TestTrue(TEXT("Network read does not restore opponent traits"),Cell.Card.RankedTraits.IsEmpty() && Cell.Card.BinaryTraits.IsEmpty());
-   int32 OwnCount=0;for (const auto& Cell:Read.LocalRack.Cells) OwnCount+=Cell.Card.RankedTraits.Num()+Cell.Card.BinaryTraits.Num();
-   TestTrue(TEXT("Network catalog strip/hydration retains owner assignment facts"),OwnCount>0);
+   TestEqual(TEXT("Both complete hands projected"),M.LocalRack.Cells.Num()+M.OpponentRack.Cells.Num(),40);
+   for (const auto* Rack:{&M.LocalRack,&M.OpponentRack}) for (const auto& Cell:Rack->Cells)
+   {
+    const auto& C=Cell.Card;CheckAssignments(C);
+    const auto* Source=Raw.PlayerACardRoster.FindByPredicate([&](const auto& P){return P.CardId==C.CardId;});
+    if (!Source) Source=Raw.PlayerBCardRoster.FindByPredicate([&](const auto& P){return P.CardId==C.CardId;});
+    if (!TestNotNull(TEXT("Stable public identity"),Source)) continue;
+    const auto Expected=FFMCodexLocalMatchUMGPresentationBuilder::BuildCard(*Source);
+    TestEqual(TEXT("Public name"),C.IdentityLabel,Expected.IdentityLabel);
+    TestEqual(TEXT("Public position"),C.RoleLabel,Expected.RoleLabel);
+    TestEqual(TEXT("Public OVR"),C.OverallRating,Expected.OverallRating);
+    TestEqual(TEXT("Public outfield/GK attributes and stamina"),C.AttributeValues.Num(),Expected.AttributeValues.Num());
+    for (int32 I=0;I<FMath::Min(C.AttributeValues.Num(),Expected.AttributeValues.Num());++I)
+    {
+     TestEqual(TEXT("Attribute identity"),C.AttributeValues[I].CanonicalLabel,Expected.AttributeValues[I].CanonicalLabel);
+     TestEqual(TEXT("Attribute value"),C.AttributeValues[I].Value,Expected.AttributeValues[I].Value);
+     TestEqual(TEXT("Stamina tier"),C.AttributeValues[I].ValueLabel,Expected.AttributeValues[I].ValueLabel);
+    }
+    TestEqual(TEXT("Every public Skill"),C.Skills.Num(),Expected.Skills.Num());
+    for (int32 I=0;I<FMath::Min(C.Skills.Num(),Expected.Skills.Num());++I)
+    {
+     TestEqual(TEXT("Skill identity"),C.Skills[I].SkillId,Expected.Skills[I].SkillId);
+     TestEqual(TEXT("Skill TP minimum"),C.Skills[I].MinTriggerActionPoint,Expected.Skills[I].MinTriggerActionPoint);
+     TestEqual(TEXT("Skill TP maximum"),C.Skills[I].MaxTriggerActionPoint,Expected.Skills[I].MaxTriggerActionPoint);
+    }
+    Widget->RefreshFromPresentation(C,EFMCodexPlayerCardPresentationMode::InteractionChoice);
+    int32 Off=0,Def=0;
+    auto CheckRow=[&](FName Id,const FString& Grade)
+    {
+     const bool Offensive=FPlayerTraitFormula::Category(Id)==EPlayerTraitCategory::Offensive;
+     const FString Base=FString(Offensive?TEXT("FullCardOffensiveTraits"):TEXT("FullCardDefensiveTraits"))+FString::FromInt(Offensive?Off++:Def++);
+     const auto* Name=Cast<UTextBlock>(Widget->GetWidgetFromName(*(Base+TEXT("Name"))));
+     if (TestNotNull(TEXT("Every public assignment reaches existing renderer"),Name))
+      TestEqual(TEXT("Complete Chinese Trait name"),Name->GetText().ToString(),FPlayerTraitFormula::DisplayName(Id).ToString());
+     const auto* Rank=Cast<UTextBlock>(Widget->GetWidgetFromName(*(Base+TEXT("Value"))));
+     if (Grade.IsEmpty()) TestNull(TEXT("Binary has no invented rank"),Rank);
+     else if (TestNotNull(TEXT("Rank badge exists"),Rank)) TestEqual(TEXT("Rendered authoritative grade"),Rank->GetText().ToString(),Grade);
+    };
+    for (const auto& T:C.RankedTraits) CheckRow(T.TraitId,T.Rank==EPlayerTraitRank::S?TEXT("S"):T.Rank==EPlayerTraitRank::A?TEXT("A"):TEXT("B"));
+    for (const auto Id:C.BinaryTraits) CheckRow(Id,FString());
+   }
+  };
+  CheckScreen(FFMCodexLocalMatchUMGPresentationBuilder::Build(Raw,{},TEXT(""),Viewer));
+  if (Valid)
+  {
+   auto Net=FFMCodexNetworkMatchPresentationAdapter::Project(V,Viewer);
+   TestTrue(TEXT("Safe network presentation produced for either participant"),Net.bAvailable);
+   TArray<uint8> Bytes;FMemoryWriter Writer(Bytes);FObjectAndNameAsStringProxyArchive Save(Writer,false);
+   FFMCodexNetworkMatchPresentation::StaticStruct()->SerializeItem(Save,&Net,nullptr);
+   FFMCodexNetworkMatchPresentation Restored;FMemoryReader Reader(Bytes);FObjectAndNameAsStringProxyArchive Load(Reader,false);
+   FFMCodexNetworkMatchPresentation::StaticStruct()->SerializeItem(Load,&Restored,nullptr);
+   TestFalse(TEXT("Reflected DTO round trip succeeds"),Save.IsError()||Load.IsError());
+   for (bool Pending:{false,true}) CheckScreen(FFMCodexNetworkMatchPresentationAdapter::Read(Restored,Pending));
   }
-  // Local hot-seat consumes the same complete authority projection but gates at its read adapter.
-  const auto Raw=FFMCodexLocalMatchInteractionViewBuilder::Build(State,Demo.SkillRuleSet);
-  const auto UMG=FFMCodexLocalMatchUMGPresentationBuilder::Build(Raw,{},TEXT(""),Viewer);
-  for (const auto& Cell:UMG.OpponentRack.Cells)
-   TestTrue(TEXT("Opponent UMG carries no static Trait payload"),Cell.Card.RankedTraits.IsEmpty() && Cell.Card.BinaryTraits.IsEmpty());
  }
+ Widget->RemoveFromParent();GEngine->DestroyWorldContext(World);World->DestroyWorld(false);
  return true;
 }
 

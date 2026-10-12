@@ -2877,7 +2877,7 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 	const FFMCodexUMGSidePrimaryColors& SidePrimaryColors)
 {
 	auto InteractionView = SourceInteractionView;
-	FFMCodexLocalMatchInteractionViewBuilder::RedactFullCardTraitAssignments(InteractionView, LocalViewerSide);
+	FFMCodexLocalMatchInteractionViewBuilder::ClearFullCardTraitsForInvalidViewer(InteractionView, LocalViewerSide);
 	using namespace FMCodexLocalMatchUMGPresentation;
 	FFMCodexUMGMatchScreenViewModel Result;
 	if (InteractionView.SetPieceType == ESetPieceSelectedType::ShortFreeKick

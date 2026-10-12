@@ -2923,3 +2923,17 @@ Full Card 容量失败在同一 Stage 8.27A 内按用户后续授权定点处理
 只调整资料区纵向间距和 GK 头像高度预算：两技能外场卡顶距 9；需要第三行特性时资料行高 26、顶距 8，其余资料节奏保持。资料与姓名区保留至少 4 单位间隔；GK 额外扣除三行属性的 33 单位差额。既有字号、身份区、属性/技能/特性行和徽章不重设计，不隐藏分配，不按球员名分支。旧等高断言改为同容量等高，并补全内容、分组、行间隔、区块边界与页脚检查。详见 Full Card Visual Spec 的容量修正；USER PIE 仍待用户确认。
 
 定向验证：ProductionCapacityAndGeometry 逐张覆盖 40 人通过，NumberAndPurposeIsolation 与 GlobalDataAndFallback 通过；增量 Development Editor build 与 diff 检查通过。原生 Widget 渲染核对空特性门将、三条特性 Eze、四条 Merino 和五条 Rodri，不冒充真人 PIE。未改变既有数据、Trait Formula 或教学流程，复用此前验证，不重跑 broad suites、Lesson 1 或独立 Host/Remote。REGRESSION SCOPE JUSTIFIED: YES。
+
+## 2026-10-12 — Stage 8.27B：双方球员卡完整公开
+
+用户确认 FMCodex 没有隐藏身份的球员卡：双方全部手牌及其他既有可检查球员卡的身份、基础／GK 属性、OVR、体力、技能与 TP 范围、全部 Ranked Trait 分配与 S/A/B 等级、Binary Trait 均为双方公开信息。此决策明确取代 2026-10-03 Stage 8.20B.2.1 的 owner-only Trait 披露规则；旧日志保留历史，不再作为当前隐藏特性的依据。Stage 8.27A 已由用户完成真实 PIE 验收并手动提交；本阶段须独立 USER PIE。
+
+MakeCardView 继续从权威 card snapshot 复制分配，静态 Trait registry 仅提供名称与类别。共享安全 View 和 Local UMG 中的 Trait 清除函数改为只拒绝非法 viewer（包括 None 和未知 enum）；有效 A/B viewer 均保留双方数组。手牌、部署／选择选项、Pitch 与既有 Full Card 共用原路径，不加对手专用 renderer。Network 既有卡片叶节点已拥有反射的 Ranked/Binary 字段，投影、序列化与客户端静态资料恢复保持这些权威值，无新 RPC、字段或消息格式。
+
+卡片信息公开与命令权限、决策披露分离：未公开战术选择、角球提名、未来骰子与 raw authority 状态继续沿用现有保护；owner-only View 的投递方式不等于对手球员属性私密。未改玩法、20 Trait taxonomy、球员数据、Excel／JSON、Lesson 1、Full Card 样式／几何或检查入口 allowlist。
+
+最小验证完成：`FMCodex.LocalPlay.UI.FullCardTraits.AuthoritativePublicProjection` 覆盖全部 40 张卡、A/B/非法 viewer、精确权威分配与等级、双方 UMG、现有 DTO 反射序列化／恢复及 pending；`FMCodex.LocalPlay.UI.FullCardTraits.ProductionCapacityAndGeometry` 保留全名单容量／几何；`FMCodex.NetworkPlay.Corner.PublicCardsAndSealedNominations` 在双 controller 夹具中交换先攻方，核对双方卡片与未公开角球提名、未来骰子及等待方权限；三项均通过。
+
+真实 Local PIE 的 `FMCodex.PIE.FullCard.TraitLayoutSmoke` 通过：在原生悬浮入口连续检查哲凯赖什、马尔穆什、罗德里、埃泽、梅里诺、福登、拉亚，验证完整特性与等级、Binary、空特性及切换不提交命令。首轮沿用直接 OnMouseEnter 的旧测试方式与实际光标事件冲突，改用现有 Slate 指针移动路径后单独重跑通过；未为测试更改生产 hover。两张对手卡截图及一张窗口截图为工程证据，不能代替用户验收。最终增量 Development Editor build 与 git diff --check 通过。
+
+Network 证据为生产双 controller／Screen 夹具和 DTO 往返，不冒充真实独立 Host/Remote 视觉验证。未改 RPC、wire schema、规则、RNG 或 lifecycle，省略独立 Host/Remote Golden Path、full NetworkPlay／LocalPlay／Runtime／CoreRules、内容重导入、平衡审查与 Lesson 1 全流程。REGRESSION SCOPE JUSTIFIED: YES。USER PIE REQUIRED，包含真实 Host/Remote 双向检查；通过之前不可最终提交，staging/commit 由用户手动执行。

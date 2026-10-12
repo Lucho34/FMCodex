@@ -7,6 +7,52 @@ namespace FMCodexCornerNetworkUI
 using namespace FMCodexSetPieceSelectionTests;
 using namespace FMCodexPlayerFacingOrdinaryUITests;
 using Outcome = EFMCodexNetworkTerminalOutcome;
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPublicCardsSealedNominations,
+ "FMCodex.NetworkPlay.Corner.PublicCardsAndSealedNominations",
+ EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FPublicCardsSealedNominations::RunTest(const FString&)
+{
+ // In-process production controller/presentation harness, not a real remote connection.
+ for (bool BFirst:{false,true})
+ {
+  FUIFixture F(BFirst);Access::SetPiecePresentation(*F.Mode,false);
+  auto* Actor=F.Attacker();auto* Other=F.Defender();
+  F.Entropy->Word=8;Actor->GetPlayerMatchScreen()->RequestRollTacticalPoints();F.Settle();
+  F.Entropy->Word=0;Actor->GetPlayerMatchScreen()->DevSetPieceAction(TEXT("SetPieceType"),NAME_None);F.Settle();
+  const auto Options=Actor->GetOwnerView().SetPiece.CornerOptions;
+  if (!TestTrue(TEXT("Real Corner supplies three nominees"),Options.Num()>=3)) return false;
+  for (int32 I=0;I<3;++I) Actor->GetPlayerMatchScreen()->DevSetPieceAction(TEXT("CornerCandidate"),Options[I]);
+  Actor->GetPlayerMatchScreen()->DevSetPieceAction(TEXT("SetPieceConfirm"),NAME_None);
+  if (!TestEqual(TEXT("Real nomination accepted"),F.Backend(Actor).LastCode,Code::Accepted)) return false;
+  const auto State=Access::Session(*F.Mode).GetStateSnapshot();
+  TestEqual(TEXT("Authority contains sealed nominations"),State.CurrentAttack.SetPieceRoute.Corner.AttackerNominees.Num(),3);
+  for (auto* PC:{F.A,F.B})
+  {
+   const auto& Owner=PC->GetOwnerView();const auto& M=PC->GetPlayerMatchScreen()->GetPresentation();
+   TestEqual(TEXT("Full public hands in both network screens"),M.LocalRack.Cells.Num()+M.OpponentRack.Cells.Num(),40);
+   for (const auto* Rack:{&M.LocalRack,&M.OpponentRack}) for (const auto& Cell:Rack->Cells)
+   {
+    const auto& C=Cell.Card;
+    const auto* Snapshot=State.CardSnapshotAuthority.PlayerACardSnapshots.Cards.FindByPredicate([&](const auto& P){return P.CardId==C.CardId;});
+    if (!Snapshot) Snapshot=State.CardSnapshotAuthority.PlayerBCardSnapshots.Cards.FindByPredicate([&](const auto& P){return P.CardId==C.CardId;});
+    if (!TestNotNull(TEXT("Network card comes from authoritative snapshot"),Snapshot)) continue;
+    TestEqual(TEXT("Network own/opposing Ranked count"),C.RankedTraits.Num(),Snapshot->RankedTraits.Num());
+    for (int32 I=0;I<FMath::Min(C.RankedTraits.Num(),Snapshot->RankedTraits.Num());++I)
+    {
+     TestEqual(TEXT("Network public Trait identity"),C.RankedTraits[I].TraitId,Snapshot->RankedTraits[I].TraitId);
+     TestEqual(TEXT("Network public Trait grade"),C.RankedTraits[I].Rank,Snapshot->RankedTraits[I].Rank);
+    }
+    TestTrue(TEXT("Network Binary presence preserved"),C.BinaryTraits==Snapshot->BinaryTraits);
+   }
+   TestTrue(TEXT("Future participant/route/contest dice absent"),Owner.SetPiece.CornerSharedD6==0 && Owner.SetPiece.CornerRouteD6==0 && Owner.AcceptedContestRolls.IsEmpty());
+   TestEqual(TEXT("No future outcome"),Owner.Terminal.Outcome,Outcome::None);
+  }
+  TestTrue(TEXT("Opponent sees cards but not sealed attacker nominations"),Other->GetPlayerMatchScreen()->GetPresentation().SetPiece.CornerAttackers.IsEmpty());
+  TestTrue(TEXT("Defender still owns nomination input"),Other->GetPlayerMatchScreen()->GetPresentation().SetPiece.bCornerDraft);
+  TestFalse(TEXT("Public cards do not grant the waiting actor a command"),Actor->GetPlayerMatchScreen()->GetPresentation().Interaction.PrimaryAction.bAvailable);
+ }
+ return true;
+}
 IMPLEMENT_COMPLEX_AUTOMATION_TEST(FCornerUI,"FMCodex.NetworkPlay.Corner.SharedUI",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
 void FCornerUI::GetTests(TArray<FString>& N,TArray<FString>& C) const
 {for(const TCHAR* P:{TEXT("A.OpposedGoal.Next"),TEXT("B.AttackZero.Next"),TEXT("B.DefenseZero.Final")}){N.Add(P);C.Add(P);}}

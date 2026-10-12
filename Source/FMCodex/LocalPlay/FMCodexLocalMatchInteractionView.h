@@ -521,7 +521,8 @@ public:
 	static FFMCodexLocalMatchScreenPresentation BuildScreenPresentation(
 		const FFMCodexLocalMatchInteractionView& View);
 
-	static void RedactFullCardTraitAssignments(FFMCodexLocalMatchInteractionView& View, EInitialTurnOrderPlayer ViewerSide);
+	/** Public assignments survive either participant's view; invalid viewers fail closed. */
+	static void ClearFullCardTraitsForInvalidViewer(FFMCodexLocalMatchInteractionView& View, EInitialTurnOrderPlayer ViewerSide);
 
 	static TArray<FFMCodexLocalMatchCardView::FSkill>
 	ProjectEligibleTacticalSkills(
