@@ -47,10 +47,75 @@ TSharedRef<SWidget> UFMCodexCardRackWidget::RebuildWidget()
 }
 
 void UFMCodexCardRackWidget::RefreshFromPresentation(
-	const FFMCodexUMGCardRackViewModel& InPresentation)
+	const FFMCodexUMGCardRackViewModel& InPresentation,
+	const int64 TacticalPointSequence, const int32 TacticalPoint,
+	const bool bAllowSkillReveal, const FString& MatchPhase)
 {
+	bHandSkillRevealAllowed = bAllowSkillReveal;
+	if (HandSkillSequence != TacticalPointSequence || HandSkillTacticalPoint != TacticalPoint
+		|| Presentation.SideLabel != InPresentation.SideLabel)
+	{
+		SeenHandSkillLabels.Reset();
+		HandSkillRevealElapsed.Reset();
+	}
+	else if (HandSkillMatchPhase != MatchPhase)
+	{
+		// Compare the canonical presentation phase as an opaque identity only.
+		// Retain seen labels so a phase change cancels rather than replays them.
+		HandSkillRevealElapsed.Reset();
+	}
+	HandSkillMatchPhase = MatchPhase;
+	HandSkillSequence = TacticalPointSequence;
+	HandSkillTacticalPoint = TacticalPoint;
+	TSet<FName> VisibleMatches;
+	for (const auto& Cell : InPresentation.Cells)
+	{
+		if (Cell.bPlayed || !Cell.Card.bHasHandMicroTacticalMatch
+			|| Cell.Card.HandMicroVisibleTacticalSkills.IsEmpty()) continue;
+		const FName Id = Cell.Card.CardId;
+		VisibleMatches.Add(Id);
+		FString Signature;
+		for (const auto& Skill : Cell.Card.HandMicroVisibleTacticalSkills)
+			Signature += Skill.SkillId.ToString() + TEXT("|") + Skill.CanonicalLabel + TEXT(";");
+		const FString* Seen = SeenHandSkillLabels.Find(Id);
+		if (!Seen || *Seen != Signature)
+		{
+			SeenHandSkillLabels.Add(Id, Signature);
+			if (TacticalPointSequence != INDEX_NONE && TacticalPoint > 0)
+				HandSkillRevealElapsed.Add(Id, -1.f); // Await first unobscured tick.
+		}
+	}
+	for (auto It = HandSkillRevealElapsed.CreateIterator(); It; ++It)
+		if (!VisibleMatches.Contains(It.Key())) It.RemoveCurrent();
 	Presentation = InPresentation;
 	RefreshVisuals();
+}
+
+void UFMCodexCardRackWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	// The screen releases this gate only after the TP result surface collapses.
+	// Pending labels retain their initial phase; no dismissal-time guess or timer.
+	if (!bHandSkillRevealAllowed || HandSkillRevealElapsed.IsEmpty()) return;
+	for (auto& Entry : HandSkillRevealElapsed)
+	{
+		// This tick's delta can span the preceding modal/child reconstruction.
+		// Establish time zero on the first allowed frame, then count only later
+		// intervals. Never spend pre-dismissal time on the fresh reveal.
+		Entry.Value = Entry.Value < 0.f ? 0.f : Entry.Value + FMath::Max(0.f, InDeltaTime);
+	}
+	for (auto& Card : RenderedCardWidgets)
+		if (const float* Elapsed = HandSkillRevealElapsed.Find(Card->GetPresentation().CardId))
+			Card->SetHandSkillRevealProgress(*Elapsed / UFMCodexPlayerCardWidget::HandSkillRevealDuration);
+	for (auto It = HandSkillRevealElapsed.CreateIterator(); It; ++It)
+		if (It.Value() >= UFMCodexPlayerCardWidget::HandSkillRevealDuration) It.RemoveCurrent();
+}
+
+void UFMCodexCardRackWidget::NativeDestruct()
+{
+	HandSkillRevealElapsed.Reset();
+	for (auto& Card : RenderedCardWidgets) Card->SetHandSkillRevealProgress(1.f);
+	Super::NativeDestruct();
 }
 
 const FFMCodexUMGCardRackViewModel&
@@ -399,6 +464,9 @@ void UFMCodexCardRackWidget::RefreshVisuals()
 						TEXT("StableRackCard%d"), Cell.StableIndex)));
 			Card->RefreshFromPresentation(
 				Cell.Card, EFMCodexPlayerCardPresentationMode::HandMicro);
+			const float* RevealElapsed = HandSkillRevealElapsed.Find(Cell.Card.CardId);
+			Card->SetHandSkillRevealProgress(RevealElapsed
+				? *RevealElapsed / UFMCodexPlayerCardWidget::HandSkillRevealDuration : 1.f);
 			if (Cell.bSetPieceSelectable)
 			{
 				Card->ConfigureOnPitchSelection(Cell.Card.CardId, true);

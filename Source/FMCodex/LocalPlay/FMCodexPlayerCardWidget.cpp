@@ -370,6 +370,13 @@ void UFMCodexPlayerCardWidget::RefreshFromPresentation(
 	const FFMCodexUMGCardViewModel& InPresentation,
 	const EFMCodexPlayerCardPresentationMode InMode)
 {
+	bool bSameLabels = Presentation.CardId == InPresentation.CardId && PresentationMode == InMode
+		&& Presentation.HandMicroVisibleTacticalSkills.Num() == InPresentation.HandMicroVisibleTacticalSkills.Num();
+	if (bSameLabels)
+		for (int32 Index = 0; Index < Presentation.HandMicroVisibleTacticalSkills.Num(); ++Index)
+			bSameLabels &= Presentation.HandMicroVisibleTacticalSkills[Index].SkillId == InPresentation.HandMicroVisibleTacticalSkills[Index].SkillId
+				&& Presentation.HandMicroVisibleTacticalSkills[Index].CanonicalLabel == InPresentation.HandMicroVisibleTacticalSkills[Index].CanonicalLabel;
+	if (!bSameLabels) HandSkillRevealProgress = 1.f;
 	Presentation = InPresentation;
 	PresentationMode = InMode;
 	if (PresentationMode != EFMCodexPlayerCardPresentationMode::PitchMini
@@ -388,6 +395,19 @@ void UFMCodexPlayerCardWidget::SetPresentationMode(
 {
 	PresentationMode = InMode;
 	RefreshVisuals();
+}
+
+void UFMCodexPlayerCardWidget::SetHandSkillRevealProgress(const float Progress)
+{
+	HandSkillRevealProgress = FMath::Clamp(Progress, 0.f, 1.f);
+	if (!HandMicroSkillText) return;
+	const FLinearColor Mint = FLinearColor::FromSRGBColor(FColor(0x8F, 0xE6, 0xC2));
+	// Phase zero is also the pending state behind the TP window. It must paint
+	// no text at all; a nonzero baseline reveals the label before dismissal.
+	HandMicroSkillText->SetRenderOpacity(
+		FMath::SmoothStep(0.f, .5f, HandSkillRevealProgress));
+	HandMicroSkillText->SetColorAndOpacity(FSlateColor(FMath::Lerp(Mint,
+		FLinearColor::White, .18f * (1.f - HandSkillRevealProgress))));
 }
 
 void UFMCodexPlayerCardWidget::ConfigureDeploymentDrag(
@@ -968,20 +988,40 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 		UHorizontalBox::StaticClass(), TEXT("HandMicroPositionLine"));
 	HandMicroRoleText = MakeText(*WidgetTree, TEXT("HandMicroPosition"));
 	ConfigureBoundedSingleLine(*HandMicroRoleText);
+	HandMicroRoleText->SetShadowOffset(FVector2D::ZeroVector);
 	FFMCodexPlayerUIStyle::Get().ApplyText(
 		*HandMicroRoleText, EFMCodexPlayerUITextRole::Secondary);
 	FSlateFontInfo HandRoleFont = HandMicroRoleText->GetFont();
 	HandRoleFont.Size = 14;
 	HandRoleFont.TypefaceFontName = TEXT("Medium");
 	HandRoleFont.LetterSpacing = 0;
+	// Preserve the original metadata row height while making room for complete
+	// two-Skill labels beside mixed positions. Name/number/portrait stay put.
+	const float HandMetaHeight = FSlateApplication::Get().GetRenderer()->GetFontMeasureService()
+		->GetMaxCharacterHeight(HandRoleFont, 1.f);
+	HandRoleFont.Size = 11;
 	HandMicroRoleText->SetFont(HandRoleFont);
 	HandMicroRoleText->SetColorAndOpacity(
 		FSlateColor(FLinearColor::FromSRGBColor(
 			FColor(0xC6, 0xD3, 0xDA))));
 	HandMicroRoleText->SetJustification(ETextJustify::Left);
-	HandMeta->AddChildToHorizontalBox(HandMicroRoleText);
+	HandMeta->AddChildToHorizontalBox(HandMicroRoleText)->SetVerticalAlignment(VAlign_Center);
+	HandMicroSkillText = MakeText(*WidgetTree, TEXT("HandMicroMatchingSkills"));
+	ConfigureBoundedSingleLine(*HandMicroSkillText);
+	// No invisible shadow padding: the complete label must fit the measured lane.
+	HandMicroSkillText->SetShadowOffset(FVector2D::ZeroVector);
+	HandMicroSkillText->SetTextOverflowPolicy(ETextOverflowPolicy::Clip);
+	FFMCodexPlayerUIStyle::Get().ApplyText(
+		*HandMicroSkillText, EFMCodexPlayerUITextRole::Secondary);
+	HandMicroSkillText->SetVisibility(ESlateVisibility::Collapsed);
+	UHorizontalBoxSlot* HandSkillSlot = HandMeta->AddChildToHorizontalBox(HandMicroSkillText);
+	HandSkillSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	HandSkillSlot->SetVerticalAlignment(VAlign_Center);
+	auto* HandMetaBounds = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("HandMicroPositionRowBounds"));
+	HandMetaBounds->SetHeightOverride(HandMetaHeight);
+	HandMetaBounds->AddChild(HandMeta);
 	if (UVerticalBoxSlot* HandMetaSlot =
-		HandMicroTextHierarchy->AddChildToVerticalBox(HandMeta))
+		HandMicroTextHierarchy->AddChildToVerticalBox(HandMetaBounds))
 	{
 		HandMetaSlot->SetPadding(FMargin(0.0f));
 	}
@@ -2026,6 +2066,18 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 	PitchMiniTacticalMatchPipBottom->SetVisibility(
 		VisibleTacticalMatchPipCount == 2
 			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	TArray<FText> MatchingLabels;
+	if (HandMicroTacticalMatchCount > 0 && ensureMsgf(
+		Presentation.HandMicroVisibleTacticalSkills.Num() == HandMicroTacticalMatchCount,
+		TEXT("Hand TP-match names must agree with the projected count")))
+		for (const auto& Skill : Presentation.HandMicroVisibleTacticalSkills)
+			MatchingLabels.Add(FFMCodexPlayerUIPresentationText::Skill(Skill.CanonicalLabel));
+	const FText MatchingText = FText::Join(FText::FromString(TEXT("·")), MatchingLabels);
+	if (MatchingLabels.IsEmpty()) HandSkillRevealProgress = 1.f;
+	HandMicroSkillText->SetText(MatchingText);
+	HandMicroSkillText->SetVisibility(!MatchingLabels.IsEmpty()
+			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	SetHandSkillRevealProgress(HandSkillRevealProgress);
 
 	const FLinearColor PitchMiniPortraitBase =
 		FLinearColor::FromSRGBColor(FColor(0x14, 0x2B, 0x36));
@@ -3121,12 +3173,32 @@ void UFMCodexPlayerCardWidget::RefreshPilotSurfaces()
 	FSlateFontInfo Font=AssignedNumberText->GetFont(); Font.Size=16;
 	AssignedNumberText->SetFont(Font);
     AssignedNumberText->SetTextOverflowPolicy(Hand ? ETextOverflowPolicy::Ellipsis : ETextOverflowPolicy::Clip);
-    if (UHorizontalBoxSlot* RoleSlot=Cast<UHorizontalBoxSlot>(HandMicroRoleText->Slot))
-    {
-        RoleSlot->SetSize(FSlateChildSize(bCanonicalCardFamily ? ESlateSizeRule::Fill : ESlateSizeRule::Automatic));
-        RoleSlot->SetPadding(FMargin(0,0,Hand && !Presentation.AssignedPlayerNumber.IsEmpty() ? 36.f : 0.f,0));
-    }
-    if (UWidget* Meta=GetWidgetFromName(TEXT("HandMicroPositionLine")))
+	if (Hand)
+	{
+		// Keep the position at its natural width; reserve the actual right-aligned
+		// number glyphs, not the unused portion of its existing 32 px overlay box.
+		float RoleWidth = 0.f, NumberWidth = 0.f;
+		FMCodexPlayerCardWidget::TryMeasureHandMicroName(
+			HandMicroRoleText->GetText(), HandMicroRoleText->GetFont(), RoleWidth);
+		if (!Presentation.AssignedPlayerNumber.IsEmpty())
+			FMCodexPlayerCardWidget::TryMeasureHandMicroName(
+				AssignedNumberText->GetText(), Font, NumberWidth);
+		const float NumberReserve = NumberWidth > 0.f
+			? NumberWidth + FMath::Abs(AssignedNumberText->GetShadowOffset().X) + 2.f : 0.f;
+		const float SkillWidth = FMCodexHandMicroDiagnostics::NameSafeWidth - RoleWidth - 2.f - NumberReserve;
+		auto* SkillSlot = CastChecked<UHorizontalBoxSlot>(HandMicroSkillText->Slot);
+		SkillSlot->SetPadding(FMargin(2.f, 0.f, NumberReserve, 0.f));
+		FSlateFontInfo SkillFont = HandMicroRoleText->GetFont();
+		SkillFont.Size = FMCodexPlayerCardWidget::GetMeasuredSingleLineFontSize(
+			HandMicroSkillText->GetText(), SkillFont, SkillWidth, 11, 10);
+		HandMicroSkillText->SetFont(SkillFont);
+		float TextWidth = 0.f;
+		if (!HandMicroSkillText->GetText().IsEmpty()
+			&& FMCodexPlayerCardWidget::TryMeasureHandMicroName(HandMicroSkillText->GetText(), SkillFont, TextWidth))
+			ensureMsgf(TextWidth <= SkillWidth + .1f,
+				TEXT("Complete Hand TP Skill label exceeds its lane: %.1f > %.1f"), TextWidth, SkillWidth);
+	}
+    if (UWidget* Meta=GetWidgetFromName(TEXT("HandMicroPositionRowBounds")))
         if (UVerticalBoxSlot* MetaSlot=Cast<UVerticalBoxSlot>(Meta->Slot))
             MetaSlot->SetPadding(FMargin(0,bCanonicalCardFamily ? 4.f : 0.f,0,0));
     if (UBorder* Skin=Cast<UBorder>(GetWidgetFromName(TEXT("HandMicroSkinBackground"))))

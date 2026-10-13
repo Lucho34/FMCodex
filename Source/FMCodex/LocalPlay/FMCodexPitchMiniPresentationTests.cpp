@@ -392,8 +392,6 @@ bool FFMCodexPitchMiniSkillStateIsolationTest::RunTest(
 	UBorder* HandMicroPipBottom = HandMicro != nullptr
 		? Cast<UBorder>(HandMicro->GetWidgetFromName(
 			TEXT("PitchMiniTacticalMatchPipBottom"))) : nullptr;
-	const UOverlaySlot* HandMicroPipGroupSlot = HandMicroPipGroup != nullptr
-		? Cast<UOverlaySlot>(HandMicroPipGroup->Slot) : nullptr;
 	TestTrue(TEXT("Full Card keeps all static Skills while Hand Micro starts pip-free"),
 		FullCard != nullptr && FullCard->GetRenderedSkillCount() == 2
 			&& FullCard->GetPresentation().Skills.Num() == 2
@@ -417,16 +415,16 @@ bool FFMCodexPitchMiniSkillStateIsolationTest::RunTest(
 	Card.bHasHandMicroTacticalMatch = true;
 	HandMicro->RefreshFromPresentation(
 		Card, EFMCodexPlayerCardPresentationMode::HandMicro);
-	TestTrue(TEXT("Hand Micro one-match state uses one non-interactive shared-style pip"),
+	TestTrue(TEXT("Hand Micro retains the original one-pip treatment plus a matching label"),
 		HandMicroPipGroup->GetVisibility()
 			== ESlateVisibility::HitTestInvisible
 			&& HandMicroPipGroup->GetWidthOverride() == 4.0f
 			&& HandMicroPipGroup->GetHeightOverride() == 11.0f
-			&& HandMicroPipGroupSlot != nullptr
-			&& HandMicroPipGroupSlot->GetPadding()
-				== FMargin(9.0f, 8.0f, 0.0f, 0.0f)
 			&& HandMicroPipTop->GetVisibility()
 				== ESlateVisibility::HitTestInvisible
+			&& HandMicro->GetWidgetFromName(TEXT("HandMicroMatchingSkills"))
+				->GetVisibility() == ESlateVisibility::HitTestInvisible
+			&& CastChecked<UOverlaySlot>(HandMicroPipGroup->Slot)->GetPadding() == FMargin(9.f, 8.f, 0.f, 0.f)
 			&& HandMicroPipTop->GetBrushColor().Equals(PipTop->GetBrushColor())
 			&& HandMicroPipBottom->GetVisibility()
 				== ESlateVisibility::Collapsed
@@ -438,7 +436,7 @@ bool FFMCodexPitchMiniSkillStateIsolationTest::RunTest(
 	Card.HandMicroTacticalMatchCount = 2;
 	HandMicro->RefreshFromPresentation(
 		Card, EFMCodexPlayerCardPresentationMode::HandMicro);
-	TestTrue(TEXT("Hand Micro two-match state reveals exactly the second shared-style pip"),
+	TestTrue(TEXT("Hand Micro two-match state retains exactly the second original pip"),
 		HandMicroPipTop->GetVisibility() == ESlateVisibility::HitTestInvisible
 			&& HandMicroPipBottom->GetVisibility()
 				== ESlateVisibility::HitTestInvisible

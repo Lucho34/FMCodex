@@ -1972,4 +1972,134 @@ bool FFullCardTraitPIE::RunTest(const FString&)
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FFullCardTraitPIESmoke(this)));
  ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
 }
+
+class FHandSkillLabelPIESmoke final : public IAutomationLatentCommand
+{
+public:
+ explicit FHandSkillLabelPIESmoke(FAutomationTestBase* InTest):Test(InTest){}
+ ~FHandSkillLabelPIESmoke()
+ {
+  if (FSlateApplication::IsInitialized()) FSlateApplication::Get().GetRenderer()->OnSlateWindowRendered().Remove(RenderHandle);
+ }
+ bool Update() override
+ {
+  if (FPlatformTime::Seconds()-Start>60.) {Test->AddError(TEXT("Hand Skill label PIE timed out"));return true;}
+  if (!GEditor || !GEditor->PlayWorld) return false;
+  auto* C=Cast<AFMCodexLocalMatchPlayerController>(GEditor->PlayWorld->GetFirstPlayerController());
+  auto* S=C?C->GetPlayerMatchScreen():nullptr;if (!S) return false;
+  if (!Started)
+  {
+   const TWeakObjectPtr<UFMCodexLocalMatchScreenWidget> WeakScreen(S);
+   RenderHandle=FSlateApplication::Get().GetRenderer()->OnSlateWindowRendered().AddLambda(
+    [this,WeakScreen](SWindow& Window,void*)
+    {
+     if (&Window==TheaterPIEWindow.Get() && WeakScreen.IsValid()) SampleRenderedFrame(*WeakScreen.Get());
+    });
+   S->RequestStartNewMatch(); C->RefreshPresentation();
+   Test->TestTrue(TEXT("Existing host DEV provider accepts TP4 entry"),
+    C->SetLocalDevRollOverride({EFMCodexLocalDevRollTarget::FullD12,4}).bSuccess);
+   S->RequestRollTacticalPoints(); Started=true; return false;
+  }
+  UFMCodexCardRackWidget* ActiveRack=nullptr;
+  UFMCodexPlayerCardWidget* MatchingCard=nullptr;
+  const bool WindowOpen=S->GetWidgetFromName(TEXT("TacticalPointRollRevealSurface"))->IsVisible();
+  bool LabelsSettled=true;
+  const FLinearColor Mint=FLinearColor::FromSRGBColor(FColor(0x8F,0xE6,0xC2));
+  for (auto* Rack:{S->GetLocalRackWidget(),S->GetOpponentRackWidget()})
+   if (Rack) for (const auto& Card:Rack->GetRenderedCardWidgets())
+   {
+    const auto* Label=Cast<UTextBlock>(Card->GetWidgetFromName(TEXT("HandMicroMatchingSkills")));
+    if (Label && !Label->GetText().IsEmpty())
+    {
+     ActiveRack=Rack;
+     MatchingCard=Card;
+     if (WindowOpen)
+     {
+      SawPending=true;
+      MaxOpacityWhileWindowOpen=FMath::Max(MaxOpacityWhileWindowOpen,Label->GetRenderOpacity());
+     }
+     else SawFade|=Label->GetRenderOpacity()>0.f && Label->GetRenderOpacity()<.99f;
+     LabelsSettled&=Label->GetColorAndOpacity().GetSpecifiedColor().Equals(Mint,.0001f);
+    }
+   }
+  if (!ActiveRack) return false;
+  if (WindowOpen) return false;
+  if (DismissedTime<0) DismissedTime=FPlatformTime::Seconds();
+  if (!LabelsSettled) return false;
+  const double RevealSeconds=FPlatformTime::Seconds()-DismissedTime;
+  Test->TestTrue(TEXT("Observed pending labels during real ResultHold"),SawPending);
+  Test->TestTrue(TEXT("Actual Slate frames include visible window then fully closed zero-progress frame then painted Skill text"),LastWindowFrame>0 && FirstClosedFrame>LastWindowFrame && FirstTextFrame>FirstClosedFrame);
+  Test->TestEqual(TEXT("First fully closed window frame must not consume pre-dismissal animation time"),FirstClosedOpacity,0.f);
+  Test->TestEqual(TEXT("Skill text is completely invisible until the actual TP window closes"),MaxOpacityWhileWindowOpen,0.f);
+  Test->TestTrue(TEXT("Real PIE tick observed fade only after dismissal"),SawFade);
+  Test->TestTrue(TEXT("Real reveal lasts approximately 0.55 seconds after dismissal"),RevealSeconds>=.4 && RevealSeconds<=.85);
+  Test->TestEqual(TEXT("Real authority produced requested TP"),S->GetPresentation().Header.CurrentAttackerTacticalPoints,4);
+  for (const auto& Card:ActiveRack->GetRenderedCardWidgets())
+  {
+   const auto* Label=CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("HandMicroMatchingSkills")));
+   Test->TestEqual(TEXT("PIE reveal settles to static text"),Label->GetRenderOpacity(),1.f);
+   Test->TestTrue(TEXT("Live dots and labels share the same visibility"),
+    Label->IsVisible()==(Card->GetPresentation().HandMicroTacticalMatchCount>0));
+  }
+  Test->TestTrue(TEXT("Full Card remains inspectable after reveal"),MatchingCard->RequestFullCardDetailHover());
+  Test->TestTrue(TEXT("Actual Full Card opened"),S->IsDetailOverlayVisible());
+  MatchingCard->OnDetailHoverDismissed.Broadcast(MatchingCard);
+  Test->TestFalse(TEXT("Actual Full Card closed"),S->IsDetailOverlayVisible());
+  C->RefreshPresentation();
+  for (const auto& Card:ActiveRack->GetRenderedCardWidgets())
+   Test->TestEqual(TEXT("Live passive refresh does not replay fade"),
+    CastChecked<UTextBlock>(Card->GetWidgetFromName(TEXT("HandMicroMatchingSkills")))->GetRenderOpacity(),1.f);
+  TArray<FColor> Pixels;FIntVector Size=FIntVector::ZeroValue;
+  if (Test->TestTrue(TEXT("Native PIE hand screenshot"),FSlateApplication::Get().TakeScreenshot(ActiveRack->TakeWidget(),Pixels,Size)))
+  {
+   const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_29A");IFileManager::Get().MakeDirectory(*Dir,true);
+   TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
+   Test->TestTrue(TEXT("Saved real PIE hand evidence"),FFileHelper::SaveArrayToFile(PNG,*(Dir/TEXT("HandSkillLabelsPIE.png"))));
+  }
+  Test->AddInfo(FString::Printf(TEXT("HAND_SKILL_LABEL_PIE: actual TP4, max label opacity with TP window open=%.3f, post-dismissal reveal %.3fs, Full Card inspection and passive refresh do not replay; USER PIE REQUIRED"),MaxOpacityWhileWindowOpen,RevealSeconds));
+  Test->AddInfo(FString::Printf(TEXT("HAND_SKILL_RENDER_FRAMES: last window=%u, first closed=%u (label opacity %.6f), first painted Skill text=%u"),LastWindowFrame,FirstClosedFrame,FirstClosedOpacity,FirstTextFrame));
+  FFileHelper::SaveStringToFile(*RenderFrames,*(FPaths::ProjectSavedDir()/TEXT("Stage8_29A/HandSkillRenderFrames.csv")));
+  FSlateApplication::Get().GetRenderer()->OnSlateWindowRendered().Remove(RenderHandle);
+  return true;
+ }
+private:
+ void SampleRenderedFrame(UFMCodexLocalMatchScreenWidget& Screen)
+ {
+  auto* Window=Screen.GetWidgetFromName(TEXT("TacticalPointRollRevealSurface"));
+  const bool Open=Window->IsVisible();
+  float Opacity=0.f; bool TextPainted=false;
+  for (auto* Rack:{Screen.GetLocalRackWidget(),Screen.GetOpponentRackWidget()})
+   if (Rack) for (const auto& Card:Rack->GetRenderedCardWidgets())
+   {
+    const auto* Text=Cast<UTextBlock>(Card->GetWidgetFromName(TEXT("HandMicroMatchingSkills")));
+    if (!Text || Text->GetText().IsEmpty()) continue;
+    Opacity=FMath::Max(Opacity,Text->GetRenderOpacity());
+#if WITH_SLATE_DEBUGGING
+    const auto Slate=Text->GetCachedWidget();
+    TextPainted|=Text->GetRenderOpacity()>0.f && Slate.IsValid() && Slate->Debug_GetLastPaintFrame()==GFrameNumber;
+#endif
+   }
+  if (Open) LastWindowFrame=GFrameNumber;
+  if (!Open && LastWindowFrame && !FirstClosedFrame) {FirstClosedFrame=GFrameNumber;FirstClosedOpacity=Opacity;}
+  if (TextPainted && !FirstTextFrame) FirstTextFrame=GFrameNumber;
+  RenderFrames+=FString::Printf(TEXT("%u,%d,%.6f,%.6f,%d\n"),GFrameNumber,Open,Window->GetRenderOpacity(),Opacity,TextPainted);
+ }
+ FAutomationTestBase* Test; double Start=FPlatformTime::Seconds();
+ bool Started=false,SawFade=false,SawPending=false; double DismissedTime=-1.;
+ float MaxOpacityWhileWindowOpen=0.f;
+ FDelegateHandle RenderHandle;
+ uint32 LastWindowFrame=0,FirstClosedFrame=0,FirstTextFrame=0;
+ float FirstClosedOpacity=-1.f;
+ FString RenderFrames=TEXT("frame,window_visible,window_opacity,label_opacity,label_painted\n");
+};
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHandSkillLabelPIE,"FMCodex.PIE.HandMicro.SkillLabelRevealSmoke",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHandSkillLabelPIE::RunTest(const FString&)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FHandSkillLabelPIESmoke(this)));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
+}
 #endif

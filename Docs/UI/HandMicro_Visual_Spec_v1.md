@@ -957,3 +957,42 @@ The user accepted this family after foreground USER PIE (看下来没问题). St
 is **USER PIE ACCEPTED — ready for manual staging**, not CLOSED until manual commit
 and clean HEAD confirmation. This acceptance does not claim complete runtime
 coverage of every used/unavailable combination or authorize other card/UI redesign.
+
+# 36. Hand TP Skill Labels and State Cue — Stage 8.29A
+
+Keep the original upper-left green 0/1/2 dots. Hand Micro also shows the matching
+Chinese Skill names immediately after the position, separated by `·` for two
+matches. Use the existing projected matching-Skill order and centralized Chinese
+mapping; never copy illustrative player/Skill combinations from reference images.
+Zero hides the entire label. There is no capsule, backplate or empty placeholder.
+
+Labels use compact mint text, with a clear gap from the position and existing
+right-aligned number. Preserve portrait, name, number, rarity/hover frame and the
+220 × 68 footprint. Display complete Skill names without ellipsis. Pitch Mini
+and Full Card retain their existing presentation; drag proxies show static labels.
+The metadata row retains its height, uses position size 11 and Skill size 11
+(minimum 10 for mixed-position double matches), and reserves the measured number
+width plus a 2 px gap. Skill text uses sRGB `#8FE6C2`; name and number typography
+remain unchanged. This compact row must remain readable at the actual PIE scale.
+
+This means **current TP skill-range matching only**, never full action legality
+or a recommended move. Labels follow the dots' existing attacker, reveal and
+lifecycle gates. On a new displayed TP context or genuinely changed match list,
+the shared hand rack waits until the actual TP result surface becomes Collapsed
+(after its existing exit transition), then coordinates a 0.55-second
+fade/brightness emphasis. Pending Skill text is fully transparent (opacity 0),
+not a faint pre-reveal. The original dots keep their existing disclosure timing.
+No animation time is consumed while that surface is visible;
+the first unobscured rack tick establishes time zero without consuming its
+preceding delta (which can include time behind the modal). Subsequent frames
+advance the 0.55-second reveal, so the first closed-window frame cannot start
+partway through the animation. This is a frame handoff, not a fixed delay;
+already-dismissed or bypassed entry paths start without waiting for an
+event. No fixed dismissal delay is introduced. The label then
+settles to static text. Preserve reveal progress across child reconstruction;
+hover, same-context refresh and Full Card inspection do not replay it. Clearing
+the projected match, changing the attack/phase, or destroying the rack cancels
+pending/in-flight emphasis. No input delay, timers or looping FX.
+The selected/order overlay in section 35 remains a separate portrait-margin fact.
+The user accepted the layout, typography, color and compact Eze double-Skill row.
+The revised post-dismissal animation timing remains **USER PIE REQUIRED**.

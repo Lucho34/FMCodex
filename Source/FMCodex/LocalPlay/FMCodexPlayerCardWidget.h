@@ -118,6 +118,9 @@ public:
 	EFMCodexUMGSelectionFeedbackReason GetSelectionFeedbackReason() const;
 	bool RequestSelectionFeedback();
 	bool RequestFullCardDetailHover();
+	/** Display-only phase supplied by the rack; never starts a timer or blocks input. */
+	void SetHandSkillRevealProgress(float Progress);
+	static constexpr float HandSkillRevealDuration = .55f;
 
 	FFMCodexDeploymentCardDragStarted OnDeploymentDragStarted;
 	FFMCodexDeploymentCardDragFinished OnDeploymentDragFinished;
@@ -253,7 +256,7 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UBorder>> PitchMiniTacticalMatchStrokeSegments;
 
-	/** Shared upper-left 0/1/2 pip group for Pitch Mini and Hand Micro. */
+	/** Shared original upper-left 0/1/2 pip group for Pitch Mini and Hand Micro. */
 	UPROPERTY(Transient)
 	TObjectPtr<USizeBox> TacticalMatchPipGroupBounds;
 
@@ -262,6 +265,11 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> PitchMiniTacticalMatchPipBottom;
+
+	/** Hand-only TP range match names beside the position; never action legality. */
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> HandMicroSkillText;
+	float HandSkillRevealProgress = 1.f;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PitchMiniIdentityText;

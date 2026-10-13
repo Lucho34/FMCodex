@@ -10286,6 +10286,12 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 				return false;
 			}
 			const int32 Count = Cell->Card.HandMicroTacticalMatchCount;
+			const auto* Label = Cast<UTextBlock>(CardWidget->GetWidgetFromName(TEXT("HandMicroMatchingSkills")));
+			TArray<FString> Names;
+			for (const auto& Skill : Cell->Card.HandMicroVisibleTacticalSkills)
+				Names.Add(FFMCodexPlayerUIPresentationText::Skill(Skill.CanonicalLabel).ToString());
+			if (!Label || Label->GetText().ToString() != FString::Join(Names, TEXT("·"))
+				|| (Label->GetVisibility() == ESlateVisibility::HitTestInvisible) != (Count > 0)) return false;
 			bOutSawVisiblePip |= Count > 0;
 			if ((Count > 0) != (PipGroup->GetVisibility()
 					== ESlateVisibility::HitTestInvisible)
@@ -10313,6 +10319,7 @@ bool FFMCodexMatchScreenInteractionUXContractTest::RunTest(
 			const UWidget* PipGroup = CardWidget->GetWidgetFromName(
 				TEXT("PitchMiniTacticalMatchPipGroupBounds"));
 			if (CardWidget->GetPresentation().HandMicroTacticalMatchCount != 0
+				|| CastChecked<UTextBlock>(CardWidget->GetWidgetFromName(TEXT("HandMicroMatchingSkills")))->GetText().IsEmpty() == false
 				|| PipGroup == nullptr
 				|| PipGroup->GetVisibility() != ESlateVisibility::Collapsed)
 			{

@@ -5250,10 +5250,6 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	}
 	RefreshFullCardProductionReviewSurface();
 #endif
-	LocalRackWidget->RefreshFromPresentation(
-		BuildDisplayedHandRack(Presentation.LocalRack));
-	OpponentRackWidget->RefreshFromPresentation(
-		BuildDisplayedHandRack(Presentation.OpponentRack));
 	PitchWidget->RefreshFromPitchPresentation(Presentation.PitchRegions);
 	FFMCodexUMGInlineFormulaSurfaceViewModel DisplayedInlineFormula =
 		BuildDisplayedInlineFormula();
@@ -5360,6 +5356,17 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		&& IsInlineFormulaRevealInputBlocked();
 	TacticalPointRevealSurface->SetVisibility(bTacticalPointRevealVisible
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+	// TP facts disclose during ResultHold, but its exit still obscures the hand.
+	// Consume the actual surface dismissal, including already-dismissed entry paths.
+	const bool bAllowHandSkillReveal = TacticalPointRevealSurface->GetVisibility() == ESlateVisibility::Collapsed;
+	LocalRackWidget->RefreshFromPresentation(
+		BuildDisplayedHandRack(Presentation.LocalRack),
+		Presentation.Header.AttackSequence, Presentation.Header.CurrentAttackerTacticalPoints,
+		bAllowHandSkillReveal, Presentation.Header.CurrentPhaseLabel);
+	OpponentRackWidget->RefreshFromPresentation(
+		BuildDisplayedHandRack(Presentation.OpponentRack),
+		Presentation.Header.AttackSequence, Presentation.Header.CurrentAttackerTacticalPoints,
+		bAllowHandSkillReveal, Presentation.Header.CurrentPhaseLabel);
 	if (!bTacticalPointRevealVisible)
 	{
 		TacticalPointRollReel->RefreshFromPresentation({});

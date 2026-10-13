@@ -576,14 +576,14 @@ bool FFMCodexEligibleTacticalSkillLayerContractTest::RunTest(
 				TEXT("View.bHasHandMicroTacticalMatch"))
 			&& InteractionSource.Contains(
 				TEXT("View.HandMicroTacticalMatchCount")));
-	TestTrue(TEXT("Pitch Mini consumes resolved match state without TP or ownership calculation"),
+	TestTrue(TEXT("Cards consume resolved counts and Hand labels without TP or ownership calculation"),
 		CardWidgetSource.Contains(
 			TEXT("Presentation.PitchMiniTacticalMatchCount"))
 			&& CardWidgetSource.Contains(
 				TEXT("Presentation.HandMicroTacticalMatchCount"))
 			&& !CardWidgetSource.Contains(
 				TEXT("Presentation.PitchMiniVisibleTacticalSkills"))
-			&& !CardWidgetSource.Contains(
+			&& CardWidgetSource.Contains(
 				TEXT("Presentation.HandMicroVisibleTacticalSkills"))
 			&& !CardWidgetSource.Contains(
 				TEXT("Presentation.EligibleTacticalSkills"))

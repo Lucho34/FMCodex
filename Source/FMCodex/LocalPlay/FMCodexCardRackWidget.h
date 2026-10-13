@@ -26,7 +26,13 @@ public:
 	UFMCodexCardRackWidget(const FObjectInitializer& ObjectInitializer);
 
 	void RefreshFromPresentation(
-		const FFMCodexUMGCardRackViewModel& InPresentation);
+		const FFMCodexUMGCardRackViewModel& InPresentation,
+		int64 TacticalPointSequence = INDEX_NONE, int32 TacticalPoint = 0,
+		bool bAllowSkillReveal = true, const FString& MatchPhase = FString());
+
+#if WITH_DEV_AUTOMATION_TESTS
+	void AdvanceHandSkillRevealForTesting(float DeltaSeconds) { NativeTick(FGeometry(), DeltaSeconds); }
+#endif
 
 	const FFMCodexUMGCardRackViewModel& GetPresentation() const;
 	const TArray<TObjectPtr<UFMCodexPlayerCardWidget>>&
@@ -45,6 +51,8 @@ public:
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual TSharedRef<SWidget> RebuildWidget() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	virtual void NativeDestruct() override;
 
 private:
 	void BuildWidgetTree();
@@ -75,4 +83,12 @@ private:
 
 	bool bProminentDraftSelection = false;
 	int32 RenderedCellCount = 0;
+	// The rack survives child reconstruction. Retain identity here so passive
+	// view/ACK refreshes neither restart nor prematurely finish a label reveal.
+	int64 HandSkillSequence = INDEX_NONE;
+	int32 HandSkillTacticalPoint = 0;
+	TMap<FName, FString> SeenHandSkillLabels;
+	TMap<FName, float> HandSkillRevealElapsed;
+	bool bHandSkillRevealAllowed = true;
+	FString HandSkillMatchPhase;
 };
