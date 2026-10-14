@@ -86,7 +86,8 @@ FMatchPlayResolveNoLegalSkillResult
 FMatchPlayResolveNoLegalSkill::Resolve(
 	const FMatchPlayState& BeforeState,
 	const FSkillRuleSnapshotSet& SkillRuleSet,
-	const FMatchPlayResolveNoLegalSkillRequest& Request)
+	const FMatchPlayResolveNoLegalSkillRequest& Request,
+	IMatchPlayRecoveryProvider* RecoveryProvider)
 {
 	using namespace MatchPlaySkillNoSelectionNoGoalImplementation;
 
@@ -166,7 +167,8 @@ FMatchPlayResolveNoLegalSkill::Resolve(
 	Result.CompletionResult =
 		FMatchPlayCurrentAttackCompletion::CompleteSkillNoGoal(
 			BeforeState,
-			Capability);
+			Capability,
+			RecoveryProvider);
 	if (!Result.CompletionResult.bSuccess)
 	{
 		Result.ErrorCode =
@@ -188,7 +190,8 @@ FMatchPlayResolveNoLegalSkill::Resolve(
 FMatchPlaySkillDeclineResult FMatchPlaySkillDecline::Decline(
 	const FMatchPlayState& BeforeState,
 	const FSkillRuleSnapshotSet& SkillRuleSet,
-	const FMatchPlaySkillDeclineRequest& Request)
+	const FMatchPlaySkillDeclineRequest& Request,
+	IMatchPlayRecoveryProvider* RecoveryProvider)
 {
 	using namespace MatchPlaySkillNoSelectionNoGoalImplementation;
 
@@ -236,7 +239,8 @@ FMatchPlaySkillDeclineResult FMatchPlaySkillDecline::Decline(
 	Result.CompletionResult =
 		FMatchPlayCurrentAttackCompletion::CompleteSkillNoGoal(
 			BeforeState,
-			Capability);
+			Capability,
+			RecoveryProvider);
 	if (!Result.CompletionResult.bSuccess)
 	{
 		Result.ErrorCode =

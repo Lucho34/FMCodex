@@ -6,6 +6,35 @@
 
 namespace FMCodex::Tests::MatchPlayMarkerNoSelectionGoal
 {
+	// Deterministic authoritative Recovery seam for completion fixtures.
+	class FCompletionRecoveryProvider final : public IMatchPlayRecoveryProvider
+	{
+	public:
+		int32 Calls = 0;
+		bool bFail = false;
+		TArray<FMatchPlayRecoveryCandidate> Candidates;
+		FCompletionRecoveryProvider* Get() { return this; }
+		FMatchPlayRecoveryProviderResult DrawWeightedWithoutReplacement(
+			EMatchPlayRecoveryPurpose Purpose,
+			const TArray<FMatchPlayRecoveryCandidate>& OrderedCandidates,
+			int32 ReturnCount) override
+		{
+			++Calls;
+			Candidates = OrderedCandidates;
+			FMatchPlayRecoveryProviderResult Result;
+			if (bFail || Purpose != EMatchPlayRecoveryPurpose::ConsumedRecovery
+				|| ReturnCount != 2 || Candidates.Num() < ReturnCount)
+			{
+				Result.ErrorCode = EMatchPlayRecoveryProviderErrorCode::ProviderFailure;
+				Result.ErrorMessage = TEXT("Completion Recovery fixture failure.");
+				return Result;
+			}
+			Result.bSuccess = true;
+			Result.SelectedCandidateIndices = { 0, 1 };
+			return Result;
+		}
+	};
+
 	inline constexpr int64 ValidAttackSequence = 3;
 	inline const FName PlayerAOne(TEXT("PlayerA.One"));
 	inline const FName PlayerATwo(TEXT("PlayerA.Two"));

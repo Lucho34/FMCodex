@@ -67,6 +67,9 @@ public:
 		const FFMCodexLocalMatchInteractionView& View);
 	static FFMCodexLocalMatchResolutionFeedback BuildRecovery(
 		const FFMCodexLocalMatchInteractionView& AdvancedView);
+	/** One existing notification surface for the immediately completed public attack facts. */
+	static FFMCodexLocalMatchResolutionFeedback BuildCompletedAttackNotification(
+		const FFMCodexLocalMatchInteractionView& View);
 
 	static FFMCodexLocalMatchResolutionFeedback Build(
 		const FString& CommandName,

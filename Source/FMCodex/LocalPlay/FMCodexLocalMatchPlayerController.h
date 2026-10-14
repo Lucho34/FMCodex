@@ -187,7 +187,6 @@ private:
 	template <typename TResult>
 	void RecordCommandResult(const FString& CommandName, const TResult& Result)
 	{
-		CancelRecoveryNotificationDismiss();
 		const FFMCodexLocalMatchInteractionView PreviousView = InteractionView;
 		LastDiagnostic.CommandName = CommandName;
 		LastDiagnostic.bHostSuccess = Result.bSuccess;
@@ -201,6 +200,15 @@ private:
 				? Result.ErrorMessage
 				: Result.AuthoritativeResult.RuntimeEnvelope.ErrorMessage;
 		RefreshPresentation();
+		// A rejected retry must not dismiss or restart the committed notification.
+		if (!Result.bSuccess && ResolutionFeedback.bNonBlockingNotification
+			&& !InteractionView.bCurrentAttackActive && !InteractionView.bMatchEnded
+			&& PreviousView.AttackSequence == InteractionView.AttackSequence)
+		{
+			LastDiagnostic.PresentationSummary = TEXT("Command rejected");
+			return;
+		}
+		CancelRecoveryNotificationDismiss();
 		if (!Result.bSuccess)
 		{
 			ResolutionFeedback =
@@ -212,12 +220,11 @@ private:
 		}
 		else
 		{
-			if (CommandName == TEXT("AdvanceAfterTerminal"))
+			if (PreviousView.bCurrentAttackActive && !InteractionView.bCurrentAttackActive)
 			{
-				// The completed attack no longer owns the surface. A bounded Recovery
-				// fact may supply a non-blocking transition message for the next state.
+				// Completion can be coordinated inside any accepted typed action.
 				ResolutionFeedback =
-					FFMCodexLocalMatchResolutionFeedbackBuilder::BuildRecovery(
+					FFMCodexLocalMatchResolutionFeedbackBuilder::BuildCompletedAttackNotification(
 						InteractionView);
 			}
 			else if (InteractionView.bTerminalPendingAdvance)
@@ -233,11 +240,6 @@ private:
 				ResolutionFeedback =
 					FFMCodexLocalMatchResolutionFeedbackBuilder::Build(
 						CommandName, Result, PreviousView, InteractionView);
-			}
-			if (PreviousView.bCurrentAttackActive && !InteractionView.bCurrentAttackActive)
-			{
-				const auto Goal = FFMCodexLocalMatchResolutionFeedbackBuilder::BuildCompletedSystemGoal(InteractionView);
-				if (Goal.bVisible) ResolutionFeedback = Goal;
 			}
 			if (ResolutionFeedback.bTerminal)
 			{

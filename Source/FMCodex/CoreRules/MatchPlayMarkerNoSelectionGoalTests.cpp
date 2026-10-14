@@ -20,7 +20,7 @@ namespace MarkerNoSelectionGoalTests
 	{
 		const FMatchPlayState Original = State;
 		const FMatchPlayResolveNoLegalMarkerResult Result =
-			FMatchPlayResolveNoLegalMarker::Resolve(State, Request);
+			FMatchPlayResolveNoLegalMarker::Resolve(State, Request, FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		Test.TestFalse(
 			*FString::Printf(TEXT("%s fails"), Context),
 			Result.bSuccess);
@@ -46,7 +46,7 @@ namespace MarkerNoSelectionGoalTests
 	{
 		const FMatchPlayState Original = State;
 		const FMatchPlayMarkerDeclineResult Result =
-			FMatchPlayMarkerDecline::Decline(State, Request);
+			FMatchPlayMarkerDecline::Decline(State, Request, FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		Test.TestFalse(
 			*FString::Printf(TEXT("%s fails"), Context),
 			Result.bSuccess);
@@ -91,7 +91,7 @@ bool FResolveNoLegalMarkerContractTest::RunTest(
 		FMatchPlayResolveNoLegalMarkerResult::StaticStruct());
 	using FSignature = FMatchPlayResolveNoLegalMarkerResult (*)(
 		const FMatchPlayState&,
-		const FMatchPlayResolveNoLegalMarkerRequest&);
+		const FMatchPlayResolveNoLegalMarkerRequest&, IMatchPlayRecoveryProvider*);
 	TestTrue(TEXT("Exactly one Resolve signature"),
 		(std::is_same_v<
 			decltype(&FMatchPlayResolveNoLegalMarker::Resolve),
@@ -113,7 +113,7 @@ bool FResolveNoLegalMarkerZeroDefenderTest::RunTest(
 	const FMatchPlayResolveNoLegalMarkerResult Result =
 		FMatchPlayResolveNoLegalMarker::Resolve(
 			State,
-			MakeNoLegalRequest());
+			MakeNoLegalRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 
 	TestTrue(TEXT("Resolve succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Reason distinguishes zero placements"),
@@ -128,12 +128,12 @@ bool FResolveNoLegalMarkerZeroDefenderTest::RunTest(
 		Result.AfterState.RuntimeState.PlayerAState.Score, 3);
 	TestEqual(TEXT("Defender score unchanged"),
 		Result.AfterState.RuntimeState.PlayerBState.Score, 1);
-	TestTrue(TEXT("Carrier consumed"),
+	TestTrue(TEXT("Carrier consumed then recovered"),
 		Result.AfterState.CardUsageState.PlayerACardUsageState
-			.UsedCardIds.Contains(PlayerAOne));
-	TestTrue(TEXT("Unselected attacker deployment consumed"),
+			.AvailableCardIds.Contains(PlayerAOne));
+	TestTrue(TEXT("Unselected attacker deployment consumed then recovered"),
 		Result.AfterState.CardUsageState.PlayerACardUsageState
-			.UsedCardIds.Contains(PlayerATwo));
+			.AvailableCardIds.Contains(PlayerATwo));
 	TestFalse(TEXT("Current attack cleared"),
 		Result.AfterState.bHasCurrentAttack);
 	TestEqual(TEXT("Opportunity consumed once"),
@@ -161,7 +161,7 @@ bool FResolveNoLegalMarkerOnlyGoalkeeperTest::RunTest(
 	const FMatchPlayResolveNoLegalMarkerResult Result =
 		FMatchPlayResolveNoLegalMarker::Resolve(
 			State,
-			MakeNoLegalRequest());
+			MakeNoLegalRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 
 	TestTrue(TEXT("Resolve succeeds"), Result.bSuccess);
 	TestEqual(TEXT("GK-only reason is NoLegalMarker"),
@@ -197,7 +197,7 @@ bool FResolveNoLegalMarkerOtherAreaTest::RunTest(
 	const FMatchPlayResolveNoLegalMarkerResult Result =
 		FMatchPlayResolveNoLegalMarker::Resolve(
 			State,
-			MakeNoLegalRequest());
+			MakeNoLegalRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 
 	TestTrue(TEXT("Resolve succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Reason is NoLegalMarker"),
@@ -244,7 +244,7 @@ bool FResolveNoLegalMarkerGlobalBlockerTest::RunTest(
 	const FMatchPlayResolveNoLegalMarkerResult Result =
 		FMatchPlayResolveNoLegalMarker::Resolve(
 			State,
-			MakeNoLegalRequest());
+			MakeNoLegalRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestFalse(TEXT("Global blocker rejects"), Result.bSuccess);
 	TestEqual(TEXT("Mapped to availability failure"),
 		Result.ErrorCode,
@@ -345,12 +345,12 @@ bool FResolveNoLegalMarkerRepeatedTest::RunTest(
 	const FMatchPlayResolveNoLegalMarkerResult First =
 		FMatchPlayResolveNoLegalMarker::Resolve(
 			State,
-			MakeNoLegalRequest());
+			MakeNoLegalRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("First succeeds"), First.bSuccess);
 	const FMatchPlayResolveNoLegalMarkerResult Repeated =
 		FMatchPlayResolveNoLegalMarker::Resolve(
 			First.AfterState,
-			MakeNoLegalRequest());
+			MakeNoLegalRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestFalse(TEXT("Repeated fails"), Repeated.bSuccess);
 	TestEqual(TEXT("Repeated returns NoCurrentAttack"),
 		Repeated.ErrorCode,
@@ -378,7 +378,7 @@ bool FMarkerDeclineContractTest::RunTest(const FString& Parameters)
 		FMatchPlayMarkerDeclineResult::StaticStruct());
 	using FSignature = FMatchPlayMarkerDeclineResult (*)(
 		const FMatchPlayState&,
-		const FMatchPlayMarkerDeclineRequest&);
+		const FMatchPlayMarkerDeclineRequest&, IMatchPlayRecoveryProvider*);
 	TestTrue(TEXT("Exactly one Decline signature"),
 		(std::is_same_v<
 			decltype(&FMatchPlayMarkerDecline::Decline),
@@ -397,7 +397,7 @@ bool FMarkerDeclineSuccessTest::RunTest(const FString& Parameters)
 	const FMatchPlayMarkerDeclineResult Result =
 		FMatchPlayMarkerDecline::Decline(
 			State,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Decline succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Reason is MarkerDeclined"),
 		Result.Reason,
@@ -523,12 +523,12 @@ bool FMarkerDeclineRepeatedTest::RunTest(
 	const FMatchPlayMarkerDeclineResult First =
 		FMatchPlayMarkerDecline::Decline(
 			MakeState(),
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("First succeeds"), First.bSuccess);
 	const FMatchPlayMarkerDeclineResult Repeated =
 		FMatchPlayMarkerDecline::Decline(
 			First.AfterState,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestFalse(TEXT("Repeated fails"), Repeated.bSuccess);
 	TestEqual(TEXT("Repeated returns NoCurrentAttack"),
 		Repeated.ErrorCode,

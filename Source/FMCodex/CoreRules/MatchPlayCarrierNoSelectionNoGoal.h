@@ -33,5 +33,6 @@ class FMCODEX_API FMatchPlayResolveNoLegalCarrier final
 {
 public:
 	static FMatchPlayResolveNoLegalCarrierResult Resolve(
-		const FMatchPlayState& BeforeState);
+		const FMatchPlayState& BeforeState,
+		IMatchPlayRecoveryProvider* RecoveryProvider = nullptr);
 };

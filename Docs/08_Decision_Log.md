@@ -2937,3 +2937,14 @@ MakeCardView 继续从权威 card snapshot 复制分配，静态 Trait registry 
 真实 Local PIE 的 `FMCodex.PIE.FullCard.TraitLayoutSmoke` 通过：在原生悬浮入口连续检查哲凯赖什、马尔穆什、罗德里、埃泽、梅里诺、福登、拉亚，验证完整特性与等级、Binary、空特性及切换不提交命令。首轮沿用直接 OnMouseEnter 的旧测试方式与实际光标事件冲突，改用现有 Slate 指针移动路径后单独重跑通过；未为测试更改生产 hover。两张对手卡截图及一张窗口截图为工程证据，不能代替用户验收。最终增量 Development Editor build 与 git diff --check 通过。
 
 Network 证据为生产双 controller／Screen 夹具和 DTO 往返，不冒充真实独立 Host/Remote 视觉验证。未改 RPC、wire schema、规则、RNG 或 lifecycle，省略独立 Host/Remote Golden Path、full NetworkPlay／LocalPlay／Runtime／CoreRules、内容重导入、平衡审查与 Lesson 1 全流程。REGRESSION SCOPE JUSTIFIED: YES。USER PIE REQUIRED，包含真实 Host/Remote 双向检查；通过之前不可最终提交，staging/commit 由用户手动执行。
+
+
+## 2026-10-14 — Stage 8.29B：正式非终局换攻统一回收
+
+用户明确决定：每次完成的非终局进攻机会正式换攻时，恰好执行一次正常共享 Recovery，无论是否成功使用战术技能。无合法 Carrier、无合法 Skill、主动放弃 Skill，以及无合法 Marker／放弃 Marker 的直接进球路径，均复用现有完成事务，先按原规则消费，再回收与换攻。此次决定取代历史“Marker/Skill 直接完成不执行 Recovery”及“Recovery 只发生于显式 AdvanceAfterTerminal”的限定（包括旧联网 Marker launch 说明）；不改直接结束路径的交互，不增设 terminal 或确认步骤。
+
+Session 将已有 Local／服务器私有 Recovery provider 传给三个早期完成入口。共用双方 Used 池、S/A/B=5/3/1、最多两张、不放回、可同阵营两张、0/1 候选零 RNG、Ejected/GK 排除及原消费合同。正常结算、定位球实际参与者与 AP1 正式推进继续走原入口；未选中 Corner 候选不消费。终局由现有 MatchEnd 判定并跳过回收。所有变更留在同一事务工作副本，失败不提交部分状态，成功后旧阶段／序号／命令门控阻止重复回收与 RNG；没有新去重系统、RPC 或 schema。
+
+中间选择、Runner/Helper 跳过、结算预检查、UI 刷新与教学重演均不构成新回收。Rice → Ødegaard 检查点重建不改。TP 覆盖仍是自由组卡的策略取舍，不保证专门球员返回，不修改名单、属性、技能范围、Full D12、Trait、Stage 8.29A UI 或动画。工程验证不替代本阶段 USER PIE 游戏体验验收，最终 staging/commit 由用户执行。
+
+同阶段 USER PIE 发现早期完成已回收但缺少提示：Local 旧派发仅识别 AdvanceAfterTerminal，且 Local／Network 的系统进球提示优先分支会遮掉同次 Recovery。完成提示改为共用当前已结束进攻的公开事实；空回收不显示空面板，直接进球与非空回收在原非阻塞面板中同时保留进球说明和回收名单。沿用原期限与下一进攻清理规则，过期／重复刷新不重播，被拒绝的 Local 重试不取消或重启已显示通知；不改回收、RNG、DTO、RPC 或视觉组件。

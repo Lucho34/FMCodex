@@ -489,6 +489,21 @@ FFMCodexLocalMatchResolutionFeedbackBuilder::BuildRecovery(
 	return Feedback;
 }
 
+FFMCodexLocalMatchResolutionFeedback
+FFMCodexLocalMatchResolutionFeedbackBuilder::BuildCompletedAttackNotification(
+	const FFMCodexLocalMatchInteractionView& View)
+{
+	if (View.bCurrentAttackActive || View.bMatchEnded || View.AttackSequence <= 1) return {};
+	auto Goal = BuildCompletedSystemGoal(View);
+	const auto Recovery = View.RecoverySourceAttackSequence == View.AttackSequence - 1
+		&& View.RecoveryPresentationEntries.Num() <= 2 ? BuildRecovery(View)
+		: FFMCodexLocalMatchResolutionFeedback();
+	if (!Goal.bVisible) return Recovery;
+	if (Recovery.bVisible)
+		Goal.StepSummary += TEXT("\n") + Recovery.StepTitle + TEXT("\n") + Recovery.StepSummary;
+	return Goal;
+}
+
 #define FMCODEX_ROUTE_BUILD(ResultType) \
 	FFMCodexLocalMatchResolutionFeedback \
 	FFMCodexLocalMatchResolutionFeedbackBuilder::Build( \

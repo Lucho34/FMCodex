@@ -855,7 +855,11 @@ B. 挑射：判定公式。
 
 ## 19. 已消耗区自动回收
 
-Recovery 在每次成功完成的**非终局**攻击推进中自动发生，由 Authority 拥有；没有玩家 `RequestRecovery` 命令。玩家先看到冻结的 `TerminalPendingAdvance`，Recovery 只在 `AdvanceAfterTerminal` 通过全部验证并已把本次实际参与者加入 Used 的工作状态中执行。终局推进直接跳过 Recovery；错误请求、stale/wrong-side/wrong-sequence 或重复推进必须在随机 provider 前失败，且不能再次回收。
+Recovery 在每次成功完成并正式换攻的**非终局**进攻机会中恰好执行一次，由 Authority 拥有；没有玩家 `RequestRecovery` 命令。普通结算、定位球与罚下路径继续在 `TerminalPendingAdvance` 后的 `AdvanceAfterTerminal` 执行；无合法 Carrier、无合法 Skill、主动放弃 Skill，以及无合法 Marker／主动放弃 Marker 的直接进球完成路径，在原有直接完成事务内执行，不增加 terminal 界面或推进按钮。未成功使用技能不构成跳过 Recovery 的理由。
+
+事务保留原消费顺序：验证完成资格，将适用的普通部署球员或实际定位球参与者移入 Used，消费一次进攻机会并判断终局，再在非终局工作副本中执行共享 Recovery，最后一次发布 CardUsage、回收事实、攻击清理和换攻状态。终局由现有 MatchEnd 判定，跳过 Recovery；错误请求、stale/wrong-side/wrong-sequence 或重复完成必须在随机 provider 前失败，不能再次消费、回收或换攻。provider 失败不提交部分消费／回收状态，合法重试可重新尝试尚未提交的事务。
+
+Carrier 更换、Runner／Helper 选择或跳过、部署与技能选择间切换、结算预检查、UI 重建和教学 checkpoint 重演均不额外触发 Recovery。教学重演仍重建既有检查点，不是正式换攻。本规则不保证某个技能／TP 的覆盖或特定球员返回，不改名单、体力或技能合法性。
 
 候选池是双方合并的一个全局 Used 池：`PlayerA Used + PlayerB Used`。它同时包含更早仍为 Used 的合法球员，以及本次推进中新进入 Used 的普通非 GK、Short/Long/Penalty Carrier、Corner 实际 Runner/Helper。GK、`Ejected / Discarded` 和任何不在最终权威 Used 状态中的卡都排除；不按阵营拆池，也没有每方返回配额。
 

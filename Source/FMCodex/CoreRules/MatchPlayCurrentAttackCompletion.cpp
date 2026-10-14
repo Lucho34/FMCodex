@@ -1406,7 +1406,8 @@ FMatchPlayCurrentAttackCompletion::CompleteThroughBallResolution(
 FMatchPlayCurrentAttackCompletionResult
 FMatchPlayCurrentAttackCompletion::CompleteCarrierNoGoal(
 	const FMatchPlayState& BeforeState,
-	const FMatchPlayNoLegalCarrierCompletionCapability& Capability)
+	const FMatchPlayNoLegalCarrierCompletionCapability& Capability,
+	IMatchPlayRecoveryProvider* RecoveryProvider)
 {
 	using namespace MatchPlayCurrentAttackCompletionImplementation;
 
@@ -1452,14 +1453,15 @@ FMatchPlayCurrentAttackCompletion::CompleteCarrierNoGoal(
 		Attacker,
 		Defender,
 		MoveTemp(Result),
-		nullptr,
-		false);
+		RecoveryProvider,
+		true);
 }
 
 FMatchPlayCurrentAttackCompletionResult
 FMatchPlayCurrentAttackCompletion::CompleteMarkerGoal(
 	const FMatchPlayState& BeforeState,
-	const FMatchPlayMarkerNoSelectionGoalCapability& Capability)
+	const FMatchPlayMarkerNoSelectionGoalCapability& Capability,
+	IMatchPlayRecoveryProvider* RecoveryProvider)
 {
 	using namespace MatchPlayCurrentAttackCompletionImplementation;
 
@@ -1555,14 +1557,15 @@ FMatchPlayCurrentAttackCompletion::CompleteMarkerGoal(
 		Attacker,
 		Defender,
 		MoveTemp(Result),
-		nullptr,
-		false);
+		RecoveryProvider,
+		true);
 }
 
 FMatchPlayCurrentAttackCompletionResult
 FMatchPlayCurrentAttackCompletion::CompleteSkillNoGoal(
 	const FMatchPlayState& BeforeState,
-	const FMatchPlaySkillNoSelectionNoGoalCapability& Capability)
+	const FMatchPlaySkillNoSelectionNoGoalCapability& Capability,
+	IMatchPlayRecoveryProvider* RecoveryProvider)
 {
 	using namespace MatchPlayCurrentAttackCompletionImplementation;
 
@@ -1645,8 +1648,8 @@ FMatchPlayCurrentAttackCompletion::CompleteSkillNoGoal(
 		Attacker,
 		Defender,
 		MoveTemp(Result),
-		nullptr,
-		false);
+		RecoveryProvider,
+		true);
 }
 
 FMatchPlayCurrentAttackCompletionResult

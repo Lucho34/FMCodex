@@ -1234,12 +1234,12 @@ FMatchPlayAuthoritativeSession::ResolveNoLegalCarrier()
 		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalCarrier,
 		true,
 		AttackSequence,
-		[AttackSequence](
+		[this, AttackSequence](
 			FMatchPlayAuthoritativeResolveNoLegalCarrierResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
 			Result.ResolutionResult =
-				FMatchPlayResolveNoLegalCarrier::Resolve(BeforeState);
+				FMatchPlayResolveNoLegalCarrier::Resolve(BeforeState, RecoveryProvider);
 
 			FDomainExecution Execution;
 			Execution.bSuccess = Result.ResolutionResult.bSuccess;
@@ -1302,7 +1302,7 @@ FMatchPlayAuthoritativeSession::ResolveNoLegalMarker()
 		EMatchPlayAuthoritativeCommandKind::ResolveNoLegalMarker,
 		true,
 		AttackSequence,
-		[AttackSequence](
+		[this, AttackSequence](
 			FMatchPlayAuthoritativeResolveNoLegalMarkerResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
@@ -1311,7 +1311,8 @@ FMatchPlayAuthoritativeSession::ResolveNoLegalMarker()
 			Result.ResolutionResult =
 				FMatchPlayResolveNoLegalMarker::Resolve(
 					BeforeState,
-					DomainRequest);
+					DomainRequest,
+					RecoveryProvider);
 
 			FDomainExecution Execution;
 			Execution.bSuccess = Result.ResolutionResult.bSuccess;
@@ -1334,7 +1335,7 @@ FMatchPlayAuthoritativeSession::DeclineMarker(
 		EMatchPlayAuthoritativeCommandKind::DeclineMarker,
 		true,
 		AttackSequence,
-		[Request, AttackSequence](
+		[this, Request, AttackSequence](
 			FMatchPlayAuthoritativeDeclineMarkerResult& Result,
 			const FMatchPlayState& BeforeState)
 		{
@@ -1343,7 +1344,8 @@ FMatchPlayAuthoritativeSession::DeclineMarker(
 			DomainRequest.RequestingSide = Request.RequestingSide;
 			Result.DeclineResult = FMatchPlayMarkerDecline::Decline(
 				BeforeState,
-				DomainRequest);
+				DomainRequest,
+				RecoveryProvider);
 
 			FDomainExecution Execution;
 			Execution.bSuccess = Result.DeclineResult.bSuccess;
@@ -1410,7 +1412,8 @@ FMatchPlayAuthoritativeSession::ResolveNoLegalSkill()
 			Result.ResolutionResult = FMatchPlayResolveNoLegalSkill::Resolve(
 				BeforeState,
 				AuthoritativeSkillRuleSet,
-				DomainRequest);
+				DomainRequest,
+				RecoveryProvider);
 
 			FDomainExecution Execution;
 			Execution.bSuccess = Result.ResolutionResult.bSuccess;
@@ -1443,7 +1446,8 @@ FMatchPlayAuthoritativeSession::DeclineSkill(
 			Result.DeclineResult = FMatchPlaySkillDecline::Decline(
 				BeforeState,
 				AuthoritativeSkillRuleSet,
-				DomainRequest);
+				DomainRequest,
+				RecoveryProvider);
 
 			FDomainExecution Execution;
 			Execution.bSuccess = Result.DeclineResult.bSuccess;

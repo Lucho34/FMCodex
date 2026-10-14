@@ -41,17 +41,18 @@ void FFMCodexNetworkRecoveryFeedback::GetTests(TArray<FString>& N,TArray<FString
 bool FFMCodexNetworkRecoveryFeedback::RunTest(const FString& P)
 {
  using namespace FMCodexPlayerFacingOrdinaryUITests;
- const bool Final=P.EndsWith(TEXT("Final"));FUIFixture F(P.StartsWith(TEXT("B"))!=Final,Final);
+ const bool Final=P.EndsWith(TEXT("Final"));FUIFixture F(P.StartsWith(TEXT("B"))!=Final,Final,false);
  if(!TestTrue(TEXT("Canonical Cross setup"),F.SkillFixture(Final)))return false;
+ // Recovery/projection contract: submit typed transport directly; cinematic CTA timing has separate tests.
  auto* Actor=F.Attacker();auto* Defense=F.Defender();auto* S=Actor->GetPlayerMatchScreen();
  S->RequestSubmitSkill(TEXT("Canonical.Skill.Cross.4.6"));S->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::CrossLow);
- F.Entropy->Word=4;if(!Continue(*this,F,Actor,Kind::CrossInitialRouteRoll))return false;F.Settle();
- F.Entropy->Word=5;if(!Continue(*this,F,Actor,Kind::CrossHighAttackRoll))return false;F.Settle();
- F.Entropy->Word=0;if(!Continue(*this,F,Defense,Kind::CrossHighDefenseRoll))return false;F.Settle();
+ F.Entropy->Word=4;if(!TestTrue(TEXT("Typed resolution/advance accepted"),F.Send(Actor,Kind::CrossInitialRouteRoll)))return false;F.Settle();
+ F.Entropy->Word=5;if(!TestTrue(TEXT("Typed resolution/advance accepted"),F.Send(Actor,Kind::CrossHighAttackRoll)))return false;F.Settle();
+ F.Entropy->Word=0;if(!TestTrue(TEXT("Typed resolution/advance accepted"),F.Send(Defense,Kind::CrossHighDefenseRoll)))return false;F.Settle();
  const int64 Sequence=Actor->GetOwnerView().AttackSequence;
  const int32 Provider=Access::Runtime(*F.Mode).GetRecoveryProviderInvocationCount();
- if(!Continue(*this,F,Actor,Kind::AdvanceAfterTerminal))return false;
- const auto Advance=F.Backend(Actor).Last;
+ auto Advance=F.Request(Actor);Advance.IntentKind=Kind::AdvanceAfterTerminal;
+ if(!TestEqual(TEXT("Typed advance accepted"),F.Mode->SubmitConnectionPlayerIntent(Actor,Advance).Code,Code::Accepted))return false;
  const auto State=Access::Session(*F.Mode).GetStateSnapshot();
  TestEqual(TEXT("Canonical two returns or final zero"),State.LastRecoveryFact.ReturnedCards.Num(),Final?0:2);
  TestEqual(TEXT("Recovery provider exactly once unless final"),Access::Runtime(*F.Mode).GetRecoveryProviderInvocationCount(),Provider+(Final?0:1));

@@ -46,7 +46,7 @@ namespace FMCodexPlayerFacingOrdinaryUITests
 	{
 		FBackend BA, BB;
 		TSharedPtr<SWidget> SlateA, SlateB;
-		FUIFixture(bool BFirst = false, bool Final = false) : FFixture(BFirst, 6, Final)
+		FUIFixture(bool BFirst = false, bool Final = false, bool IncludeDormantPassControl = true) : FFixture(BFirst, 6, Final, IncludeDormantPassControl)
 		{
 			// Long synchronous automation runs otherwise retain retired widget trees
 			// until the engine next gets a regular GC tick. The new fixture world is rooted.

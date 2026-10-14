@@ -173,7 +173,8 @@ class FMCODEX_API FMatchPlayResolveNoLegalMarker final
 public:
 	static FMatchPlayResolveNoLegalMarkerResult Resolve(
 		const FMatchPlayState& BeforeState,
-		const FMatchPlayResolveNoLegalMarkerRequest& Request);
+		const FMatchPlayResolveNoLegalMarkerRequest& Request,
+		IMatchPlayRecoveryProvider* RecoveryProvider = nullptr);
 };
 
 class FMCODEX_API FMatchPlayMarkerDecline final
@@ -181,5 +182,6 @@ class FMCODEX_API FMatchPlayMarkerDecline final
 public:
 	static FMatchPlayMarkerDeclineResult Decline(
 		const FMatchPlayState& BeforeState,
-		const FMatchPlayMarkerDeclineRequest& Request);
+		const FMatchPlayMarkerDeclineRequest& Request,
+		IMatchPlayRecoveryProvider* RecoveryProvider = nullptr);
 };

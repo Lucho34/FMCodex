@@ -22,7 +22,8 @@ namespace MatchPlayCarrierNoSelectionNoGoal
 
 FMatchPlayResolveNoLegalCarrierResult
 FMatchPlayResolveNoLegalCarrier::Resolve(
-	const FMatchPlayState& BeforeState)
+	const FMatchPlayState& BeforeState,
+	IMatchPlayRecoveryProvider* RecoveryProvider)
 {
 	using namespace MatchPlayCarrierNoSelectionNoGoal;
 
@@ -94,7 +95,8 @@ FMatchPlayResolveNoLegalCarrier::Resolve(
 	Result.CompletionResult =
 		FMatchPlayCurrentAttackCompletion::CompleteCarrierNoGoal(
 			BeforeState,
-			Capability);
+			Capability,
+			RecoveryProvider);
 	if (!Result.CompletionResult.bSuccess)
 	{
 		Fail(Result,

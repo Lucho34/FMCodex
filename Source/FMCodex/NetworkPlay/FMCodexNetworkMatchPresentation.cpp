@@ -298,8 +298,7 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 				Goal.AttackSequence = G.AttackSequence; Goal.ScoringSide = G.ScoringSide;
 				Goal.ScorerCardId = G.ScorerCardId; Goal.bSystemAward = G.bSystemAward;
 			}
-		auto Feedback = FFMCodexLocalMatchResolutionFeedbackBuilder::BuildCompletedSystemGoal(PublicFacts);
-		if (!Feedback.bVisible && View.Recovery.SourceAttackSequence == View.AttackSequence - 1
+		if (View.Recovery.SourceAttackSequence == View.AttackSequence - 1
 			&& View.Recovery.Cards.Num() <= 2)
 		{
 			PublicFacts.bHasRecoveryFact = true;
@@ -312,8 +311,8 @@ FFMCodexUMGMatchScreenViewModel FFMCodexNetworkMatchPresentationAdapter::Read(
 				Entry.PresentationLine = FFMCodexPlayerUIPresentationText::RecoveryEntry(
 					Card.OwnerSide, Card.CardLabel.ToString()).ToString();
 			}
-			Feedback = FFMCodexLocalMatchResolutionFeedbackBuilder::BuildRecovery(PublicFacts);
 		}
+		const auto Feedback = FFMCodexLocalMatchResolutionFeedbackBuilder::BuildCompletedAttackNotification(PublicFacts);
 		M.Resolution.bVisible = Feedback.bVisible;
 		M.Resolution.bNonBlockingNotification = Feedback.bNonBlockingNotification;
 		M.Resolution.StepLabel = Feedback.StepTitle;

@@ -30,7 +30,19 @@ inline void Adopted(FAutomationTestBase& T,FFixture& F,Kind K,const FUnchanged& 
  const auto State=Access::Session(*F.Mode).GetStateSnapshot();
  T.TestEqual(TEXT("Accepted decline coordinates exactly once"),F.Calls(),Before.CoordinatorCalls+1);
  T.TestEqual(TEXT("Accepted decline publishes exactly once"),Access::Revision(*F.Mode),Before.Revision+1);
- T.TestEqual(TEXT("Decline draws zero entropy across all providers"),F.Entropy->Calls,Before.EntropyCalls);
+ const bool Recovered = !State.bHasCurrentAttack && State.LastRecoveryFact.bHasRecoveryFact
+  && State.LastRecoveryFact.SourceAttackSequence == Before.State.CurrentAttack.AttackSequence;
+ T.TestEqual(TEXT("Only completed nonfinal decline draws Recovery entropy"),F.Entropy->Calls,Before.EntropyCalls+(Recovered && State.LastRecoveryFact.ReturnedCards.Num()==2?2:0));
+ if(Recovered) for(auto* PC:{F.A,F.B})
+ {
+  const auto& V=PC->GetOwnerView();
+  T.TestEqual(TEXT("Both viewers receive authoritative Recovery"),V.Recovery.Cards.Num(),State.LastRecoveryFact.ReturnedCards.Num());
+  for(int32 I=0;I<V.Recovery.Cards.Num();++I)
+  {
+   T.TestEqual(TEXT("Recovery owner preserved"),V.Recovery.Cards[I].OwnerSide,State.LastRecoveryFact.ReturnedCards[I].OwnerSide);
+   T.TestEqual(TEXT("Recovery identity preserved"),V.Recovery.Cards[I].CardId,State.LastRecoveryFact.ReturnedCards[I].CardId);
+  }
+ }
  if(K==Kind::DeclineMarker)
  {
   const auto Attack=Before.State.RuntimeState.CurrentAttackingPlayer;

@@ -239,7 +239,8 @@ namespace MatchPlayMarkerNoSelectionGoalImplementation
 FMatchPlayResolveNoLegalMarkerResult
 FMatchPlayResolveNoLegalMarker::Resolve(
 	const FMatchPlayState& BeforeState,
-	const FMatchPlayResolveNoLegalMarkerRequest& Request)
+	const FMatchPlayResolveNoLegalMarkerRequest& Request,
+	IMatchPlayRecoveryProvider* RecoveryProvider)
 {
 	using namespace MatchPlayMarkerNoSelectionGoalImplementation;
 
@@ -308,7 +309,8 @@ FMatchPlayResolveNoLegalMarker::Resolve(
 	Result.CompletionResult =
 		FMatchPlayCurrentAttackCompletion::CompleteMarkerGoal(
 			BeforeState,
-			Capability);
+			Capability,
+			RecoveryProvider);
 	if (!Result.CompletionResult.bSuccess)
 	{
 		Result.ErrorCode =
@@ -329,7 +331,8 @@ FMatchPlayResolveNoLegalMarker::Resolve(
 
 FMatchPlayMarkerDeclineResult FMatchPlayMarkerDecline::Decline(
 	const FMatchPlayState& BeforeState,
-	const FMatchPlayMarkerDeclineRequest& Request)
+	const FMatchPlayMarkerDeclineRequest& Request,
+	IMatchPlayRecoveryProvider* RecoveryProvider)
 {
 	using namespace MatchPlayMarkerNoSelectionGoalImplementation;
 
@@ -409,7 +412,8 @@ FMatchPlayMarkerDeclineResult FMatchPlayMarkerDecline::Decline(
 	Result.CompletionResult =
 		FMatchPlayCurrentAttackCompletion::CompleteMarkerGoal(
 			BeforeState,
-			Capability);
+			Capability,
+			RecoveryProvider);
 	if (!Result.CompletionResult.bSuccess)
 	{
 		Result.ErrorCode =

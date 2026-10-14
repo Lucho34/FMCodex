@@ -15518,6 +15518,78 @@ bool FFMCodexMatchHeaderScoreIdentityMappingTest::RunTest(
 }
 
 
+IMPLEMENT_COMPLEX_AUTOMATION_TEST(FFMCodexEarlyRecoveryNotification,
+ "FMCodex.LocalPlay.ControlSurface.EarlyRecoveryNotification",
+ EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+void FFMCodexEarlyRecoveryNotification::GetTests(TArray<FString>& Names,TArray<FString>& Commands) const
+{
+ for(const TCHAR* Path:{TEXT("NoCarrier"),TEXT("NoSkill"),TEXT("DeclineSkill"),TEXT("NoMarker"),TEXT("DeclineMarker"),TEXT("Empty")})
+ {Names.Add(Path);Commands.Add(Path);}
+}
+bool FFMCodexEarlyRecoveryNotification::RunTest(const FString& Path)
+{
+ using namespace FMCodexLocalMatchControlSurfaceTests;
+ using Category=EFMCodexLocalMatchInteractionCategory;
+ using Side=EInitialTurnOrderPlayer;
+ FScopedPlayableWorld World;auto* C=World.GetController();if(!TestNotNull(TEXT("Local controller"),C))return false;
+ C->StartNewDemoMatch();C->InitializePlayerFacingUI();
+ C->SetLocalDevRollOverride({EFMCodexLocalDevRollTarget::FullD12,Path==TEXT("NoSkill")?8:3});C->RollDemoTacticalPoints();
+ const auto Attacker=C->GetInteractionView().CurrentAttackingPlayer;
+ const FString Half=Attacker==Side::PlayerA?TEXT("NearB"):TEXT("NearA");
+ const FName Carrier=Attacker==Side::PlayerA?TEXT("Prototype.Arsenal.MartinOdegaard"):TEXT("Prototype.ManchesterCity.PhilFoden");
+ const FName Marker=Attacker==Side::PlayerA?TEXT("Prototype.ManchesterCity.JohnStones"):TEXT("Prototype.Arsenal.WilliamSaliba");
+ auto Deploy=[&](FName Card)
+ {
+  const auto* Option=C->GetInteractionView().DeploymentOptions.FindByPredicate([&](const auto& O){return O.CardId==Card && O.SlotId.ToString().Contains(Half);});
+  if(!TestNotNull(TEXT("Controlled legal participant"),Option))return false;
+  const auto Copy=*Option;C->DeployOrdinary(Copy.CardId,Copy.SlotId);return TestTrue(TEXT("Deployment accepted"),C->GetLastDiagnostic().bHostSuccess);
+ };
+ if(Path==TEXT("NoCarrier") || Path==TEXT("Empty"))
+ {
+  C->FinishDeployment();if(Path!=TEXT("Empty") && !Deploy(Marker))return false;C->FinishDeployment();
+ }
+ else
+ {
+  if(!Deploy(Carrier))return false;
+  if(Path!=TEXT("NoMarker") && !Deploy(Marker))return false;
+  C->FinishDeployment();C->FinishDeployment();
+ }
+ for(int32 Step=0;Step<6 && C->GetInteractionView().bCurrentAttackActive;++Step)
+ {
+  switch(C->GetInteractionView().InteractionCategory)
+  {
+   case Category::SelectCarrier:C->SubmitCarrier(Carrier);break;
+   case Category::SelectMarker:if(Path==TEXT("DeclineMarker"))C->DeclineCurrentSelection();else C->SubmitMarker(Marker);break;
+   case Category::SelectRunner:case Category::SelectHelper:
+    if(C->GetInteractionView().bCanResolveNoLegalChoice)C->ResolveNoLegalCurrentSelection();else C->DeclineCurrentSelection();break;
+   case Category::SelectSkill:C->AbandonCurrentTacticalSelection();break;
+   default:AddError(TEXT("Unexpected controlled completion stage"));return false;
+  }
+  if(!TestTrue(TEXT("Completion action accepted"),C->GetLastDiagnostic().bHostSuccess))return false;
+ }
+ const auto View=C->GetInteractionView();const auto Feedback=C->GetResolutionFeedback();
+ TestFalse(TEXT("Early completion switches out of active attack"),View.bCurrentAttackActive);
+ TestTrue(TEXT("Authoritative Recovery fact exists"),View.bHasRecoveryFact);
+ const int32 Expected=Path==TEXT("Empty")?0:(Path==TEXT("NoCarrier")||Path==TEXT("NoMarker"))?1:2;
+ TestEqual(TEXT("Controlled returned-player count"),View.RecoveryPresentationEntries.Num(),Expected);
+ TestEqual(TEXT("Existing notification receives nonempty recovery"),Feedback.bVisible,Expected>0);
+ for(const auto& Entry:View.RecoveryPresentationEntries)TestTrue(TEXT("Notification carries exact public row"),Feedback.StepSummary.Contains(Entry.PresentationLine));
+ if(Path==TEXT("NoMarker")||Path==TEXT("DeclineMarker"))TestTrue(TEXT("Direct goal retained with recovery"),Feedback.StepSummary.Contains(TEXT("规则判定进球")));
+ if(Expected>0)
+ {
+  auto& Timer=World.GetWorld()->GetTimerManager();++GFrameCounter;Timer.Tick(0.f);++GFrameCounter;Timer.Tick(.9f);
+  C->FinishDeployment();TestFalse(TEXT("Stale completion rejected"),C->GetLastDiagnostic().bHostSuccess);
+  C->RefreshPresentation();TestEqual(TEXT("Rejected retry preserves notification"),C->GetResolutionFeedback().StepSummary,Feedback.StepSummary);
+  TestEqual(TEXT("Rejected retry preserves Recovery identity"),C->GetInteractionView().RecoverySourceAttackSequence,View.RecoverySourceAttackSequence);
+  ++GFrameCounter;Timer.Tick(1.7f);C->RefreshPresentation();
+  TestFalse(TEXT("Retry and refresh cannot restart expiry"),C->GetResolutionFeedback().bVisible);
+ }
+ C->SetLocalDevRollOverride({EFMCodexLocalDevRollTarget::FullD12,3});C->RollDemoTacticalPoints();
+ TestTrue(TEXT("Next attack remains usable"),C->GetLastDiagnostic().bHostSuccess);
+ TestFalse(TEXT("No stale recovery on next attack"),C->GetResolutionFeedback().bNonBlockingNotification);
+ return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexLocalMarkerGoalFeedback,
  "FMCodex.LocalPlay.ControlSurface.MarkerGoalNotification",
  EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)

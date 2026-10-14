@@ -13,6 +13,7 @@
 #include "../CoreRules/MatchPlayCurrentAttackSkillSelectionAvailability.h"
 #include "../CoreRules/MatchPlayOrdinaryDeploymentAvailability.h"
 #include "../CoreRules/PlayCardResolver.h"
+#include "../CoreRules/MatchPlaySkillNoSelectionNoGoalTestFixtures.h"
 #include "../LocalPlay/FMCodexLocalMatchInteractionView.h"
 
 #include "Misc/AutomationTest.h"
@@ -8802,7 +8803,11 @@ bool FMatchPlayAuthoritativeSessionResolveNoLegalMarkerTest::RunTest(
 	TestFalse(TEXT("Uninitialized no-legal marker rejected"),
 		Uninitialized.RuntimeEnvelope.bAccepted);
 
-	FMatchPlayAuthoritativeSession NoLegalSession;
+	FCoordinatorAttackEntryProvider NoLegalSessionEntry;
+
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider NoLegalSessionRecovery;
+
+	FMatchPlayAuthoritativeSession NoLegalSession(FMatchPlayState(), NoLegalSessionEntry, NoLegalSessionRecovery);
 	FReachabilityTrace NoLegalTrace;
 	TestTrue(TEXT("No-legal marker fixture reaches stage"),
 		BuildFoundationBToAwaitingMarker(
@@ -8867,7 +8872,11 @@ bool FMatchPlayAuthoritativeSessionResolveNoLegalMarkerTest::RunTest(
 		CompletedState,
 		NoLegalSession.GetStateSnapshot());
 
-	FMatchPlayAuthoritativeSession LegalSession;
+	FCoordinatorAttackEntryProvider LegalSessionEntry;
+
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider LegalSessionRecovery;
+
+	FMatchPlayAuthoritativeSession LegalSession(FMatchPlayState(), LegalSessionEntry, LegalSessionRecovery);
 	FReachabilityTrace LegalTrace;
 	BuildFoundationBToAwaitingMarker(
 		LegalSession, TEXT("MarkerHasLegal"), true, {}, LegalTrace);
@@ -8893,7 +8902,9 @@ bool FMatchPlayAuthoritativeSessionDeclineMarkerTest::RunTest(
 	const FString& Parameters)
 {
 	using namespace MatchPlayAuthoritativeSessionTests;
-	FMatchPlayAuthoritativeSession Session;
+	FCoordinatorAttackEntryProvider SessionEntry;
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider SessionRecovery;
+	FMatchPlayAuthoritativeSession Session(FMatchPlayState(), SessionEntry, SessionRecovery);
 	FReachabilityTrace Trace;
 	TestTrue(TEXT("Decline marker fixture reaches stage"),
 		BuildFoundationBToAwaitingMarker(
@@ -8953,7 +8964,11 @@ bool FMatchPlayAuthoritativeSessionDeclineMarkerTest::RunTest(
 		Trace.AttackingSide,
 		true);
 
-	FMatchPlayAuthoritativeSession NoLegalSession;
+	FCoordinatorAttackEntryProvider NoLegalSessionEntry;
+
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider NoLegalSessionRecovery;
+
+	FMatchPlayAuthoritativeSession NoLegalSession(FMatchPlayState(), NoLegalSessionEntry, NoLegalSessionRecovery);
 	FReachabilityTrace NoLegalTrace;
 	BuildFoundationBToAwaitingMarker(
 		NoLegalSession, TEXT("MarkerDeclineNone"), false, {}, NoLegalTrace);
@@ -8971,7 +8986,11 @@ bool FMatchPlayAuthoritativeSessionDeclineMarkerTest::RunTest(
 		NoLegalTrace.FinalState,
 		NoLegalSession.GetStateSnapshot());
 
-	FMatchPlayAuthoritativeSession WrongStageSession;
+	FCoordinatorAttackEntryProvider WrongStageSessionEntry;
+
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider WrongStageSessionRecovery;
+
+	FMatchPlayAuthoritativeSession WrongStageSession(FMatchPlayState(), WrongStageSessionEntry, WrongStageSessionRecovery);
 	FReachabilityTrace WrongStageTrace;
 	FMatchPlayAuthoritativeSubmitMarkerResult WrongStageMarker;
 	BuildFoundationBToAwaitingSkill(
@@ -9012,7 +9031,9 @@ bool FMatchPlayAuthoritativeSessionMarkerCompletionDeterminismTest::RunTest(
 	TArray<FMatchPlayState> DeclineFinals;
 	for (int32 Index = 0; Index < 3; ++Index)
 	{
-		FMatchPlayAuthoritativeSession ResolveSession;
+		FCoordinatorAttackEntryProvider ResolveSessionEntry;
+		FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider ResolveSessionRecovery;
+		FMatchPlayAuthoritativeSession ResolveSession(FMatchPlayState(), ResolveSessionEntry, ResolveSessionRecovery);
 		FReachabilityTrace ResolveTrace;
 		BuildFoundationBToAwaitingMarker(
 			ResolveSession, TEXT("MarkerCompleteResolve"), false, {}, ResolveTrace);
@@ -9029,7 +9050,11 @@ bool FMatchPlayAuthoritativeSessionMarkerCompletionDeterminismTest::RunTest(
 			ResolveTrace.AttackingSide,
 			false);
 
-		FMatchPlayAuthoritativeSession DeclineSession;
+		FCoordinatorAttackEntryProvider DeclineSessionEntry;
+
+		FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider DeclineSessionRecovery;
+
+		FMatchPlayAuthoritativeSession DeclineSession(FMatchPlayState(), DeclineSessionEntry, DeclineSessionRecovery);
 		FReachabilityTrace DeclineTrace;
 		BuildFoundationBToAwaitingMarker(
 			DeclineSession, TEXT("MarkerCompleteDecline"), true, {}, DeclineTrace);
@@ -9095,8 +9120,14 @@ bool FMatchPlayAuthoritativeSessionMarkerCompletionDeterminismTest::RunTest(
 			== static_cast<EMatchPlayMarkerNoSelectionGoalSource>(
 				Declines[0].DeclineResult.Source));
 
-	FMatchPlayAuthoritativeSession ResolveA;
-	FMatchPlayAuthoritativeSession ResolveB;
+	FCoordinatorAttackEntryProvider ResolveAEntry;
+
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider ResolveARecovery;
+
+	FMatchPlayAuthoritativeSession ResolveA(FMatchPlayState(), ResolveAEntry, ResolveARecovery);
+	FCoordinatorAttackEntryProvider ResolveBEntry;
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider ResolveBRecovery;
+	FMatchPlayAuthoritativeSession ResolveB(FMatchPlayState(), ResolveBEntry, ResolveBRecovery);
 	FReachabilityTrace ResolveTraceA;
 	FReachabilityTrace ResolveTraceB;
 	BuildFoundationBToAwaitingMarker(
@@ -9112,8 +9143,14 @@ bool FMatchPlayAuthoritativeSessionMarkerCompletionDeterminismTest::RunTest(
 	TestTrue(TEXT("Marker NoLegal B cannot mutate A"),
 		AreStatesEqual(ResolveAAfter, ResolveA.GetStateSnapshot()));
 
-	FMatchPlayAuthoritativeSession DeclineA;
-	FMatchPlayAuthoritativeSession DeclineB;
+	FCoordinatorAttackEntryProvider DeclineAEntry;
+
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider DeclineARecovery;
+
+	FMatchPlayAuthoritativeSession DeclineA(FMatchPlayState(), DeclineAEntry, DeclineARecovery);
+	FCoordinatorAttackEntryProvider DeclineBEntry;
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider DeclineBRecovery;
+	FMatchPlayAuthoritativeSession DeclineB(FMatchPlayState(), DeclineBEntry, DeclineBRecovery);
 	FReachabilityTrace DeclineTraceA;
 	FReachabilityTrace DeclineTraceB;
 	BuildFoundationBToAwaitingMarker(
@@ -9502,7 +9539,11 @@ bool FMatchPlayAuthoritativeSessionResolveNoLegalSkillTest::RunTest(
 	TestFalse(TEXT("Uninitialized no-legal skill rejected"),
 		Uninitialized.RuntimeEnvelope.bAccepted);
 
-	FMatchPlayAuthoritativeSession Session;
+	FCoordinatorAttackEntryProvider SessionEntry;
+
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider SessionRecovery;
+
+	FMatchPlayAuthoritativeSession Session(FMatchPlayState(), SessionEntry, SessionRecovery);
 	FReachabilityTrace Trace;
 	FMatchPlayAuthoritativeSubmitMarkerResult Marker;
 	TestTrue(TEXT("No-legal skill fixture reaches stage"),
@@ -9565,7 +9606,9 @@ bool FMatchPlayAuthoritativeSessionResolveNoLegalSkillTest::RunTest(
 
 	const FName LegalId(TEXT("Skill.FoundationB.NoLegalGuard"));
 	const auto LegalRules = MakeSkillRuleSet(LegalId, ESkillRuleType::LongShot);
-	FMatchPlayAuthoritativeSession LegalSession;
+	FCoordinatorAttackEntryProvider LegalSessionEntry;
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider LegalSessionRecovery;
+	FMatchPlayAuthoritativeSession LegalSession(FMatchPlayState(), LegalSessionEntry, LegalSessionRecovery);
 	FReachabilityTrace LegalTrace;
 	FMatchPlayAuthoritativeSubmitMarkerResult LegalMarker;
 	BuildFoundationBToAwaitingSkill(
@@ -9598,7 +9641,9 @@ bool FMatchPlayAuthoritativeSessionDeclineSkillTest::RunTest(
 	using namespace MatchPlayAuthoritativeSessionTests;
 	const FName SkillId(TEXT("Skill.FoundationB.Decline"));
 	const auto Rules = MakeSkillRuleSet(SkillId, ESkillRuleType::LongShot);
-	FMatchPlayAuthoritativeSession Session;
+	FCoordinatorAttackEntryProvider SessionEntry;
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider SessionRecovery;
+	FMatchPlayAuthoritativeSession Session(FMatchPlayState(), SessionEntry, SessionRecovery);
 	FReachabilityTrace Trace;
 	FMatchPlayAuthoritativeSubmitMarkerResult Marker;
 	TestTrue(TEXT("Skill decline fixture reaches stage"),
@@ -9657,7 +9702,9 @@ bool FMatchPlayAuthoritativeSessionDeclineSkillTest::RunTest(
 		true);
 
 	FSkillRuleSnapshotSet EmptyRules;
-	FMatchPlayAuthoritativeSession NoLegalSession;
+	FCoordinatorAttackEntryProvider NoLegalSessionEntry;
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider NoLegalSessionRecovery;
+	FMatchPlayAuthoritativeSession NoLegalSession(FMatchPlayState(), NoLegalSessionEntry, NoLegalSessionRecovery);
 	FReachabilityTrace NoLegalTrace;
 	FMatchPlayAuthoritativeSubmitMarkerResult NoLegalMarker;
 	BuildFoundationBToAwaitingSkill(
@@ -9683,7 +9730,11 @@ bool FMatchPlayAuthoritativeSessionDeclineSkillTest::RunTest(
 		NoLegalBefore,
 		NoLegalSession.GetStateSnapshot());
 
-	FMatchPlayAuthoritativeSession WrongStageSession;
+	FCoordinatorAttackEntryProvider WrongStageSessionEntry;
+
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider WrongStageSessionRecovery;
+
+	FMatchPlayAuthoritativeSession WrongStageSession(FMatchPlayState(), WrongStageSessionEntry, WrongStageSessionRecovery);
 	FReachabilityTrace WrongStageTrace;
 	BuildFoundationBToAwaitingMarker(
 		WrongStageSession,
@@ -9728,7 +9779,9 @@ bool FMatchPlayAuthoritativeSessionSkillCompletionDeterminismTest::RunTest(
 	TArray<FMatchPlayState> DeclineFinals;
 	for (int32 Index = 0; Index < 3; ++Index)
 	{
-		FMatchPlayAuthoritativeSession ResolveSession;
+		FCoordinatorAttackEntryProvider ResolveSessionEntry;
+		FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider ResolveSessionRecovery;
+		FMatchPlayAuthoritativeSession ResolveSession(FMatchPlayState(), ResolveSessionEntry, ResolveSessionRecovery);
 		FReachabilityTrace ResolveTrace;
 		FMatchPlayAuthoritativeSubmitMarkerResult ResolveMarker;
 		BuildFoundationBToAwaitingSkill(
@@ -9750,7 +9803,11 @@ bool FMatchPlayAuthoritativeSessionSkillCompletionDeterminismTest::RunTest(
 			ResolveTrace.AttackingSide,
 			false);
 
-		FMatchPlayAuthoritativeSession DeclineSession;
+		FCoordinatorAttackEntryProvider DeclineSessionEntry;
+
+		FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider DeclineSessionRecovery;
+
+		FMatchPlayAuthoritativeSession DeclineSession(FMatchPlayState(), DeclineSessionEntry, DeclineSessionRecovery);
 		FReachabilityTrace DeclineTrace;
 		FMatchPlayAuthoritativeSubmitMarkerResult DeclineMarkerResult;
 		BuildFoundationBToAwaitingSkill(
@@ -9817,8 +9874,14 @@ bool FMatchPlayAuthoritativeSessionSkillCompletionDeterminismTest::RunTest(
 			AreStatesEqual(DeclineFinals[0], DeclineFinals[Index]));
 	}
 
-	FMatchPlayAuthoritativeSession SessionA;
-	FMatchPlayAuthoritativeSession SessionB;
+	FCoordinatorAttackEntryProvider SessionAEntry;
+
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider SessionARecovery;
+
+	FMatchPlayAuthoritativeSession SessionA(FMatchPlayState(), SessionAEntry, SessionARecovery);
+	FCoordinatorAttackEntryProvider SessionBEntry;
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider SessionBRecovery;
+	FMatchPlayAuthoritativeSession SessionB(FMatchPlayState(), SessionBEntry, SessionBRecovery);
 	FReachabilityTrace TraceA;
 	FReachabilityTrace TraceB;
 	FMatchPlayAuthoritativeSubmitMarkerResult MarkerA;
@@ -9836,8 +9899,14 @@ bool FMatchPlayAuthoritativeSessionSkillCompletionDeterminismTest::RunTest(
 	TestTrue(TEXT("Skill NoLegal B cannot mutate A"),
 		AreStatesEqual(AAfter, SessionA.GetStateSnapshot()));
 
-	FMatchPlayAuthoritativeSession DeclineA;
-	FMatchPlayAuthoritativeSession DeclineB;
+	FCoordinatorAttackEntryProvider DeclineAEntry;
+
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider DeclineARecovery;
+
+	FMatchPlayAuthoritativeSession DeclineA(FMatchPlayState(), DeclineAEntry, DeclineARecovery);
+	FCoordinatorAttackEntryProvider DeclineBEntry;
+	FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider DeclineBRecovery;
+	FMatchPlayAuthoritativeSession DeclineB(FMatchPlayState(), DeclineBEntry, DeclineBRecovery);
 	FReachabilityTrace DeclineTraceA;
 	FReachabilityTrace DeclineTraceB;
 	FMatchPlayAuthoritativeSubmitMarkerResult DeclineMarkerA;
@@ -28020,6 +28089,103 @@ bool FMatchPlayShotMethodSafeFactProjectionTest::RunTest(const FString& Paramete
 		FMatchPlayAuthoritativeAdvanceAfterTerminalRequest Advance;
 		Advance.AttackSequence = Trace.AttackSequence; Advance.RequestingSide = Trace.AttackingSide;
 		TestTrue(TEXT("Existing continuation succeeds"), Session.AdvanceAfterTerminal(Advance).CompletionResult.bSuccess);
+	}
+	return true;
+}
+
+
+
+MATCH_PLAY_AUTHORITATIVE_SESSION_TEST(FPossessionSwitchRecoveryTest,
+	"Recovery.EarlyCompletionExactlyOnce")
+bool FPossessionSwitchRecoveryTest::RunTest(const FString&)
+{
+	using namespace MatchPlayAuthoritativeSessionTests;
+	namespace Marker = FMCodex::Tests::MatchPlayMarkerNoSelectionGoal;
+	namespace Skill = FMCodex::Tests::MatchPlaySkillNoSelectionNoGoal;
+	namespace Skills = FMCodex::Tests::MatchPlayCurrentAttackSkillSelection;
+	using Side = EInitialTurnOrderPlayer;
+	for (Side Attacker : {Side::PlayerA, Side::PlayerB})
+	for (int32 Path = 0; Path < 5; ++Path)
+	for (bool Final : {false, true})
+	{
+		AddInfo(FString::Printf(TEXT("Early completion path=%d attacker=%d final=%d"),Path,int32(Attacker),Final));
+		auto State = Path >= 3 ? Skill::MakeState(Attacker, Path == 3 ? TArray<FName>{} : TArray<FName>{Skills::LongShotSkillId}) : Marker::MakeState(Attacker);
+		if (Path == 0)
+		{
+			State.CurrentAttack.SelectionStage = EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier;
+			State.CurrentAttack.ActionPreparation = FMatchPlayCurrentAttackActionPreparationState();
+			State.CurrentAttack.DeploymentPlacements.RemoveAll([&](const auto& P){return P.PlayerSide==Attacker;});
+		}
+		if (Path == 1) Marker::RemoveDefenderPlacements(State);
+		if (Final)
+		{
+			State.RuntimeState.PlayerAState.UsedAttackCount = Attacker==Side::PlayerA ? 2 : 3;
+			State.RuntimeState.PlayerBState.UsedAttackCount = Attacker==Side::PlayerB ? 2 : 3;
+		}
+		const int64 Sequence = State.CurrentAttack.AttackSequence;
+		FCoordinatorAttackEntryProvider Entry;
+		Marker::FCompletionRecoveryProvider Recovery;
+		FMatchPlayAuthoritativeSession Session(State, Entry, Recovery);
+		auto Complete = [&](Side Requester, int64 Seq)
+		{
+			if (Path==0) return Session.ResolveNoLegalCarrier().RuntimeEnvelope;
+			if (Path==1) return Session.ResolveNoLegalMarker().RuntimeEnvelope;
+			if (Path==2) {FMatchPlayAuthoritativeDeclineMarkerRequest R;R.ExpectedAttackSequence=Seq;R.RequestingSide=Requester;return Session.DeclineMarker(R).RuntimeEnvelope;}
+			if (Path==3) return Session.ResolveNoLegalSkill(Skills::MakeRuleSet()).RuntimeEnvelope;
+			FMatchPlayAuthoritativeDeclineSkillRequest R;R.ExpectedAttackSequence=Seq;R.RequestingSide=Requester;return Session.DeclineSkill(Skills::MakeRuleSet(),R).RuntimeEnvelope;
+		};
+		Side Actor = Path==2 ? Marker::GetDefender(Attacker) : Attacker;
+		if (Path==2 || Path==4)
+		{
+			TestFalse(TEXT("Wrong side rejected before Recovery"),Complete(Marker::GetDefender(Actor),Sequence).bDomainSuccess);
+			TestFalse(TEXT("Stale sequence rejected before Recovery"),Complete(Actor,Sequence+1).bDomainSuccess);
+			TestEqual(TEXT("Rejected commands spend zero RNG"),Recovery.Calls,0);
+			TestTrue(TEXT("Rejected commands preserve state"),AreStatesEqual(State,Session.GetStateSnapshot()));
+		}
+		// No-Carrier fixture consumes just one defender; every other path has >=2.
+		if (!Final && Path!=0)
+		{
+			Recovery.bFail=true;
+			TestFalse(TEXT("Recovery provider failure rejects whole completion"),Complete(Actor,Sequence).bDomainSuccess);
+			TestEqual(TEXT("One failed provider operation"),Recovery.Calls,1);
+			TestTrue(TEXT("Failure preserves score, usage, opportunity and possession"),AreStatesEqual(State,Session.GetStateSnapshot()));
+			Recovery.bFail=false;
+		}
+		const int32 Calls = Recovery.Calls;
+		TestTrue(TEXT("Early completion commits"),Complete(Actor,Sequence).bDomainSuccess);
+		const auto After=Session.GetStateSnapshot();
+		TestFalse(TEXT("Completed attack cleared"),After.bHasCurrentAttack);
+		TestEqual(TEXT("Exactly one Recovery provider operation when pool needs RNG"),Recovery.Calls-Calls,(!Final && Path!=0)?1:0);
+		TestEqual(TEXT("Only nonfinal completion publishes Recovery fact"),After.LastRecoveryFact.bHasRecoveryFact,!Final);
+		TestEqual(TEXT("Final skips Recovery; otherwise returns consumed candidates"),After.LastRecoveryFact.ReturnedCards.Num(),Final?0:Path==0?1:2);
+		if (!Final) {TestEqual(TEXT("Recovery source identity"),After.LastRecoveryFact.SourceAttackSequence,Sequence);TestEqual(TEXT("Possession switches"),After.RuntimeState.CurrentAttackingPlayer,Marker::GetDefender(Attacker));}
+		const auto& BeforeSide=Attacker==Side::PlayerA?State.RuntimeState.PlayerAState:State.RuntimeState.PlayerBState;
+		const auto& AfterSide=Attacker==Side::PlayerA?After.RuntimeState.PlayerAState:After.RuntimeState.PlayerBState;
+		TestEqual(TEXT("Exactly one opportunity consumed"),AfterSide.UsedAttackCount,BeforeSide.UsedAttackCount+1);
+		const int32 AfterCalls=Recovery.Calls;
+		TestFalse(TEXT("Repeat cannot complete again"),Complete(Actor,Sequence).bDomainSuccess);
+		TestEqual(TEXT("Repeat consumes zero additional RNG"),Recovery.Calls,AfterCalls);
+		TestTrue(TEXT("Repeat preserves committed state"),AreStatesEqual(After,Session.GetStateSnapshot()));
+	}
+	// Empty/one/shared multi-card old Used pool through the real no-Carrier entry.
+	for (int32 Count : {0,1,3})
+	{
+		auto State=Marker::MakeState();State.CurrentAttack.DeploymentPlacements.Reset();
+		State.CurrentAttack.SelectionStage=EMatchPlayCurrentAttackSelectionStage::AwaitingCarrier;
+		State.CurrentAttack.ActionPreparation=FMatchPlayCurrentAttackActionPreparationState();
+		auto& A=State.CardUsageState.PlayerACardUsageState;
+		auto& B=State.CardUsageState.PlayerBCardUsageState;
+		if(Count>0){A.AvailableCardIds.Remove(Marker::PlayerAOne);A.UsedCardIds.Add(Marker::PlayerAOne);}
+		if(Count>1){A.AvailableCardIds.Remove(Marker::PlayerATwo);A.UsedCardIds.Add(Marker::PlayerATwo);B.AvailableCardIds.Remove(Marker::PlayerBOne);B.UsedCardIds.Add(Marker::PlayerBOne);}
+		B.AvailableCardIds.Remove(Marker::PlayerBTwo);B.EjectedCardIds.Add(Marker::PlayerBTwo);
+		FCoordinatorAttackEntryProvider Entry;Marker::FCompletionRecoveryProvider Recovery;
+		FMatchPlayAuthoritativeSession Session(State,Entry,Recovery);
+		TestTrue(TEXT("No-Carrier completes with controlled old Used pool"),Session.ResolveNoLegalCarrier().RuntimeEnvelope.bDomainSuccess);
+		const auto After=Session.GetStateSnapshot();
+		TestEqual(TEXT("Zero/one/multi result count"),After.LastRecoveryFact.ReturnedCards.Num(),FMath::Min(2,Count));
+		TestEqual(TEXT("Only multi pool draws RNG"),Recovery.Calls,Count>=2?1:0);
+		TestTrue(TEXT("Ejection persists"),After.CardUsageState.PlayerBCardUsageState.EjectedCardIds.Contains(Marker::PlayerBTwo));
+		if(Count==3)for(const auto& Card:After.LastRecoveryFact.ReturnedCards)TestEqual(TEXT("Two returns may belong to same side"),Card.OwnerSide,Side::PlayerA);
 	}
 	return true;
 }

@@ -117,11 +117,11 @@ bool FMarkerNoSelectionGoalAuthorityIsolationTest::RunTest(
 	using FNoLegalSignature =
 		FMatchPlayResolveNoLegalMarkerResult (*)(
 			const FMatchPlayState&,
-			const FMatchPlayResolveNoLegalMarkerRequest&);
+			const FMatchPlayResolveNoLegalMarkerRequest&, IMatchPlayRecoveryProvider*);
 	using FDeclineSignature =
 		FMatchPlayMarkerDeclineResult (*)(
 			const FMatchPlayState&,
-			const FMatchPlayMarkerDeclineRequest&);
+			const FMatchPlayMarkerDeclineRequest&, IMatchPlayRecoveryProvider*);
 
 	static_assert(
 		!THasPublicComplete<FMatchPlayCurrentAttackCompletion>::value,

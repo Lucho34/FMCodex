@@ -192,4 +192,33 @@ bool FFMCodexRecoveryPresentationSurfaceTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexCompletedRecoveryFeedbackTest,
+	"FMCodex.LocalPlay.RecoveryPresentation.03.CompletedFactFreshnessAndGoal",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexCompletedRecoveryFeedbackTest::RunTest(const FString&)
+{
+	FFMCodexLocalMatchInteractionView View;
+	View.AttackSequence = 4; View.bHasRecoveryFact = true; View.RecoverySourceAttackSequence = 3;
+	FFMCodexLocalMatchRecoveryPresentationEntry Entry; Entry.PresentationLine = TEXT("玩家B · 测试球员");
+	for (int32 Count : {0, 1, 2})
+	{
+		View.RecoveryPresentationEntries.Init(Entry, Count);
+		const auto Feedback = FFMCodexLocalMatchResolutionFeedbackBuilder::BuildCompletedAttackNotification(View);
+		TestEqual(TEXT("Only nonempty Recovery displays"), Feedback.bVisible, Count > 0);
+	}
+	auto& Goal = View.GoalHistory.AddDefaulted_GetRef();
+	Goal.AttackSequence = 3; Goal.bSystemAward = true; Goal.ScoringSide = EInitialTurnOrderPlayer::PlayerA;
+	const auto Combined = FFMCodexLocalMatchResolutionFeedbackBuilder::BuildCompletedAttackNotification(View);
+	TestTrue(TEXT("One existing notification retains Goal and recovered identities"), Combined.bNonBlockingNotification
+		&& Combined.StepTitle == TEXT("进球") && Combined.StepSummary.Contains(TEXT("规则判定进球"))
+		&& Combined.StepSummary.Contains(TEXT("球员返回手牌")) && Combined.StepSummary.Contains(Entry.PresentationLine));
+	View.bMatchEnded = true;
+	TestFalse(TEXT("Final match suppresses notification"), FFMCodexLocalMatchResolutionFeedbackBuilder::BuildCompletedAttackNotification(View).bVisible);
+	View.bMatchEnded = false; View.bCurrentAttackActive = true;
+	TestFalse(TEXT("Next active attack suppresses old facts"), FFMCodexLocalMatchResolutionFeedbackBuilder::BuildCompletedAttackNotification(View).bVisible);
+	View.bCurrentAttackActive = false; ++View.AttackSequence;
+	TestFalse(TEXT("Old source identity cannot replay"), FFMCodexLocalMatchResolutionFeedbackBuilder::BuildCompletedAttackNotification(View).bVisible);
+	return true;
+}
+
 #endif

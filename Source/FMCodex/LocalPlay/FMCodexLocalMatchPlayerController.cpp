@@ -764,13 +764,19 @@ void AFMCodexLocalMatchPlayerController::RecordLocalFailure(
 	const FString& CommandName,
 	const FString& Message)
 {
-	CancelRecoveryNotificationDismiss();
 	LastDiagnostic.CommandName = CommandName;
 	LastDiagnostic.bHostSuccess = false;
 	LastDiagnostic.bAuthoritativeAccepted = false;
 	LastDiagnostic.bAuthoritativeSuccess = false;
 	LastDiagnostic.Message = Message;
 	LastDiagnostic.PresentationSummary = TEXT("Command rejected");
+	if (ResolutionFeedback.bNonBlockingNotification
+		&& !InteractionView.bCurrentAttackActive && !InteractionView.bMatchEnded)
+	{
+		RefreshPresentation();
+		return;
+	}
+	CancelRecoveryNotificationDismiss();
 	ResolutionFeedback =
 		FFMCodexLocalMatchResolutionFeedbackBuilder::BuildRejected(
 			CommandName, Message, false);

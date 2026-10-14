@@ -147,7 +147,8 @@ public:
 	static FMatchPlayResolveNoLegalSkillResult Resolve(
 		const FMatchPlayState& BeforeState,
 		const FSkillRuleSnapshotSet& SkillRuleSet,
-		const FMatchPlayResolveNoLegalSkillRequest& Request);
+		const FMatchPlayResolveNoLegalSkillRequest& Request,
+		IMatchPlayRecoveryProvider* RecoveryProvider = nullptr);
 };
 
 class FMCODEX_API FMatchPlaySkillDecline final
@@ -156,5 +157,6 @@ public:
 	static FMatchPlaySkillDeclineResult Decline(
 		const FMatchPlayState& BeforeState,
 		const FSkillRuleSnapshotSet& SkillRuleSet,
-		const FMatchPlaySkillDeclineRequest& Request);
+		const FMatchPlaySkillDeclineRequest& Request,
+		IMatchPlayRecoveryProvider* RecoveryProvider = nullptr);
 };

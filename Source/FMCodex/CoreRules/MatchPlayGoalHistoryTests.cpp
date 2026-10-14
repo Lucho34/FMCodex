@@ -14,18 +14,18 @@ bool FMatchPlayGoalHistoryAwardTest::RunTest(const FString&)
 	{
 		const auto Before = MakeState(Side);
 		const auto Request = MakeDeclineRequest(GetDefender(Side));
-		const auto Goal = FMatchPlayMarkerDecline::Decline(Before, Request);
+		const auto Goal = FMatchPlayMarkerDecline::Decline(Before, Request, FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		if (!TestTrue(TEXT("Real rule-awarded goal accepted"), Goal.bSuccess)) return false;
 		if (!TestEqual(TEXT("Exactly one persistent event"), Goal.AfterState.GoalHistory.Num(), 1)) return false;
 		const auto& Fact = Goal.AfterState.GoalHistory[0];
 		TestTrue(TEXT("Actual sequence/side; no invented individual for marker decline"),
 			Fact.AttackSequence == Before.CurrentAttack.AttackSequence && Fact.ScoringSide == Side
 				&& Fact.bSystemAward && Fact.ScorerCardId.IsNone() && !Goal.AfterState.bHasCurrentAttack);
-		const auto Duplicate = FMatchPlayMarkerDecline::Decline(Goal.AfterState, Request);
+		const auto Duplicate = FMatchPlayMarkerDecline::Decline(Goal.AfterState, Request, FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		TestTrue(TEXT("Duplicate cannot record or score again"), !Duplicate.bSuccess && AreStatesEqual(Duplicate.AfterState, Goal.AfterState));
 		auto Invalid = Before;
 		Invalid.RuntimeState.PlayerAState.Score = -1;
-		const auto Failure = FMatchPlayMarkerDecline::Decline(Invalid, Request);
+		const auto Failure = FMatchPlayMarkerDecline::Decline(Invalid, Request, FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		TestTrue(TEXT("Failed completion cannot publish history"), !Failure.bSuccess && AreStatesEqual(Invalid, Failure.AfterState)
 			&& Failure.AfterState.GoalHistory.IsEmpty());
 	}

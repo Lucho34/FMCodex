@@ -154,12 +154,12 @@ bool FSkillNoSelectionNoGoalCapabilityAuthorityTest::RunTest(
 		FMatchPlayResolveNoLegalSkillResult (*)(
 			const FMatchPlayState&,
 			const FSkillRuleSnapshotSet&,
-			const FMatchPlayResolveNoLegalSkillRequest&);
+			const FMatchPlayResolveNoLegalSkillRequest&, IMatchPlayRecoveryProvider*);
 	using FDeclineSignature =
 		FMatchPlaySkillDeclineResult (*)(
 			const FMatchPlayState&,
 			const FSkillRuleSnapshotSet&,
-			const FMatchPlaySkillDeclineRequest&);
+			const FMatchPlaySkillDeclineRequest&, IMatchPlayRecoveryProvider*);
 
 	static_assert(
 		!std::is_default_constructible_v<FCapability>);

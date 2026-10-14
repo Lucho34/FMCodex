@@ -2,6 +2,7 @@
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 #include "FMCodexMatchHeaderWidget.h"
 #include "FMCodexRollReelWidget.h"
+#include "FMCodexResolutionPanelWidget.h"
 #include "FMCodexPitchWidget.h"
 #include "FMCodexCardRackWidget.h"
 #include "FMCodexPlayerCardWidget.h"
@@ -2102,4 +2103,131 @@ bool FHandSkillLabelPIE::RunTest(const FString&)
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FHandSkillLabelPIESmoke(this)));
  ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
 }
+
+class FPossessionRecoveryPIESmoke final : public IAutomationLatentCommand
+{
+public:
+ explicit FPossessionRecoveryPIESmoke(FAutomationTestBase* InTest):Test(InTest){}
+ bool Update() override
+ {
+  if(FPlatformTime::Seconds()-Start>120.){Test->AddError(TEXT("Possession Recovery PIE timed out"));return true;}
+  if(!GEditor || !GEditor->PlayWorld)return false;
+  auto* C=Cast<AFMCodexLocalMatchPlayerController>(GEditor->PlayWorld->GetFirstPlayerController());
+  auto* S=C?C->GetPlayerMatchScreen():nullptr;if(!S)return false;
+  if(FPlatformTime::Seconds()-Changed<.25 || S->IsInlineFormulaRevealInputBlocked())return false;
+  auto Next=[&](){++Step;Changed=FPlatformTime::Seconds();};
+  auto Accepted=[&](){return Test->TestTrue(TEXT("PIE typed player action accepted"),C->GetLastDiagnostic().bHostSuccess);};
+  using Category=EFMCodexLocalMatchInteractionCategory;
+  using Side=EInitialTurnOrderPlayer;
+  if(Step==0){S->RequestStartNewMatch();Next();return false;}
+  if(Step==1)
+  {
+   if(!Test->TestTrue(TEXT("PIE uses existing authoritative DEV TP provider"),C->SetLocalDevRollOverride({EFMCodexLocalDevRollTarget::FullD12,Round==0?8:3}).bSuccess))return true;
+   S->RequestRollTacticalPoints();Next();return !Accepted();
+  }
+  if(Step==2)
+  {
+   const auto& V=C->GetInteractionView();Attacker=V.CurrentAttackingPlayer;Sequence=V.AttackSequence;
+   Carrier=Attacker==Side::PlayerA?TEXT("Prototype.Arsenal.MartinOdegaard"):TEXT("Prototype.ManchesterCity.PhilFoden");
+   Marker=Attacker==Side::PlayerA?TEXT("Prototype.ManchesterCity.JohnStones"):TEXT("Prototype.Arsenal.WilliamSaliba");
+   // Exactly two ordinary participants and an initially empty Used pool: both must return.
+   const FString Half=Attacker==Side::PlayerA?TEXT("NearB"):TEXT("NearA");
+   for(FName Id:{Carrier,Marker})
+   {
+    const auto* O=C->GetInteractionView().DeploymentOptions.FindByPredicate([&](const auto& P){return P.CardId==Id && P.SlotId.ToString().Contains(Half);});
+    if(!O)
+    {
+     const auto& Current=C->GetInteractionView();
+     Test->AddError(FString::Printf(TEXT("PIE deployment missing: Card=%s Half=%s Attacker=%d DeploySide=%d Category=%d Options=%d"),*Id.ToString(),*Half,int32(Attacker),int32(Current.CurrentLegalDeploymentSide),int32(Current.InteractionCategory),Current.DeploymentOptions.Num()));
+     return true;
+    }
+    const auto Choice=*O;C->DeployOrdinary(Choice.CardId,Choice.SlotId);if(!Accepted())return true;
+   }
+   // Ordinary deployment alternates sides after each card; finish only after both are placed.
+   C->FinishDeployment();if(!Accepted())return true;
+   C->FinishDeployment();if(!Accepted())return true;
+   Next();return false;
+  }
+  if(Step==3)
+  {
+   const auto V=C->GetInteractionView();
+   if(V.bHasRecoveryFact && V.RecoverySourceAttackSequence==Sequence){Step=7;return false;}
+   switch(V.InteractionCategory)
+   {
+    case Category::SelectCarrier:S->RequestSubmitCarrier(Carrier);break;
+    case Category::SelectMarker:S->RequestSubmitMarker(Marker);break;
+    case Category::SelectRunner:case Category::SelectHelper:
+     if(V.bCanResolveNoLegalChoice)S->RequestResolveNoLegalSelection();else S->RequestDeclineSelection();break;
+    case Category::SelectSkill:
+     if(Round==0)
+     {
+      Test->TestTrue(TEXT("TP8 offers no legal Skill for chosen carrier"),V.SelectionOptions.IsEmpty());
+      C->AbandonCurrentTacticalSelection();Step=7;
+     }
+     else if(Round==1){Test->TestFalse(TEXT("Voluntary abandonment has legal alternatives"),V.SelectionOptions.IsEmpty());C->AbandonCurrentTacticalSelection();Step=7;}
+     else
+     {
+      const auto* O=V.SelectionOptions.FindByPredicate([](const auto& P){return P.Id.ToString().Contains(TEXT("LongShot"));});
+      if(!Test->TestNotNull(TEXT("Normal resolved LongShot remains legal"),O))return true;
+      S->RequestSubmitSkill(O->Id);Next();
+     }
+     break;
+    default:Test->AddError(TEXT("Unexpected early completion PIE phase"));return true;
+   }
+   Changed=FPlatformTime::Seconds();return !Accepted();
+  }
+  if(Step==4){S->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::DirectShot);Next();return !Accepted();}
+  if(Step==5)
+  {
+   if(!Test->TestTrue(TEXT("Normal shot uses existing deterministic attack die"),C->SetLocalDevRollOverride({EFMCodexLocalDevRollTarget::LongShotDirectAttack,1}).bSuccess))return true;
+   C->RollLongShotDirectAttack();Next();return !Accepted();
+  }
+  if(Step==6){C->AdvanceAfterTerminal();Next();return !Accepted();}
+  if(Step==7)
+  {
+   const auto V=C->GetInteractionView();
+   if(!Test->TestTrue(TEXT("PIE completed attack publishes Recovery"),V.bHasRecoveryFact && V.RecoverySourceAttackSequence==Sequence))return true;
+   Test->TestEqual(TEXT("Controlled two-player pool returns exactly two"),V.RecoveryPresentationEntries.Num(),2);
+   Test->TestTrue(TEXT("Real PIE renders existing Recovery panel"),S->GetPresentation().Resolution.bVisible
+    && S->GetPresentation().Resolution.bNonBlockingNotification && S->GetResolutionPanel()->IsVisible());
+   for(const auto& Entry:V.RecoveryPresentationEntries)
+    Test->TestTrue(TEXT("Real panel contains authoritative recovery row"),S->GetPresentation().Resolution.StepSummaryLabel.Contains(Entry.PresentationLine));
+   Test->TestTrue(TEXT("PIE next attacker changed"),V.CurrentAttackingPlayer!=Attacker);
+   for(FName Id:{Carrier,Marker})
+   {
+    const auto* Card=V.PlayerACardRoster.FindByPredicate([&](const auto& P){return P.CardId==Id;});
+    if(!Card)Card=V.PlayerBCardRoster.FindByPredicate([&](const auto& P){return P.CardId==Id;});
+    if(Test->TestNotNull(TEXT("PIE participant stays in public roster"),Card))Test->TestTrue(TEXT("Consumed participant recovered to Available"),Card->bAvailable && !Card->bUsed);
+   }
+   C->RefreshPresentation();Test->TestEqual(TEXT("Refresh does not create another Recovery"),C->GetInteractionView().RecoverySourceAttackSequence,Sequence);
+   Test->AddInfo(FString::Printf(TEXT("RECOVERY_PIE round=%d source=%lld returned=%d nextAttacker=%d"),Round,Sequence,V.RecoveryPresentationEntries.Num(),int32(V.CurrentAttackingPlayer)));
+   C->FinishDeployment(); // Rejected retry must leave the existing notification deadline intact.
+   Test->TestFalse(TEXT("Completed deployment retry rejected"),C->GetLastDiagnostic().bHostSuccess);
+   NoticeStarted=GEditor->PlayWorld->GetTimeSeconds();Step=8;return false;
+  }
+  if(Step==8)
+  {
+   const double Elapsed=GEditor->PlayWorld->GetTimeSeconds()-NoticeStarted;
+   if(Elapsed<1.){Test->TestTrue(TEXT("Notification not prematurely dismissed by retry"),S->GetPresentation().Resolution.bVisible);return false;}
+   if(Elapsed<3.)return false;
+   C->RefreshPresentation();Test->TestFalse(TEXT("Natural notification expiry does not replay"),S->GetPresentation().Resolution.bVisible);
+   if(++Round==3)return true;
+   Step=1;Changed=FPlatformTime::Seconds();return false;
+  }
+  return false;
+ }
+private:
+ FAutomationTestBase* Test;double Start=FPlatformTime::Seconds(),Changed=0,NoticeStarted=0;
+ int32 Step=0,Round=0;int64 Sequence=0;EInitialTurnOrderPlayer Attacker=EInitialTurnOrderPlayer::None;FName Carrier,Marker;
+};
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPossessionRecoveryPIE,"FMCodex.PIE.Recovery.PossessionSwitchSmoke",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FPossessionRecoveryPIE::RunTest(const FString&)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FPossessionRecoveryPIESmoke(this)));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
+}
+
 #endif

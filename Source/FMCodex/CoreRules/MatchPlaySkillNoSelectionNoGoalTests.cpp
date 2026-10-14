@@ -63,7 +63,7 @@ bool FSkillNoGoalMutualExclusivityTest::RunTest(
 			FMatchPlayResolveNoLegalSkill::Resolve(
 				EmptyState,
 				Rules,
-				MakeResolveRequest());
+				MakeResolveRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		TestTrue(TEXT("Zero legal system path succeeds"),
 			ResolveResult.bSuccess);
 		TestFalse(TEXT("Zero legal has no selectable skill"),
@@ -82,7 +82,7 @@ bool FSkillNoGoalMutualExclusivityTest::RunTest(
 			FMatchPlaySkillDecline::Decline(
 				EmptyState,
 				Rules,
-				MakeDeclineRequest(Attacker));
+				MakeDeclineRequest(Attacker), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		TestFalse(TEXT("Zero legal decline rejects"),
 			EmptyDecline.bSuccess);
 		TestEqual(TEXT("Zero legal decline exact error"),
@@ -104,7 +104,7 @@ bool FSkillNoGoalMutualExclusivityTest::RunTest(
 			FMatchPlayResolveNoLegalSkill::Resolve(
 				LegalState,
 				Rules,
-				MakeResolveRequest());
+				MakeResolveRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		TestFalse(TEXT("Legal skill system path rejects"),
 			LegalResolve.bSuccess);
 		TestEqual(TEXT("Legal skill exact system error"),
@@ -121,7 +121,7 @@ bool FSkillNoGoalMutualExclusivityTest::RunTest(
 			FMatchPlaySkillDecline::Decline(
 				LegalState,
 				Rules,
-				MakeDeclineRequest(Attacker));
+				MakeDeclineRequest(Attacker), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		TestTrue(TEXT("Legal skill decline succeeds"),
 			DeclineResult.bSuccess);
 		TestTrue(TEXT("Decline has selectable skill"),
@@ -166,7 +166,7 @@ bool FSkillNoGoalCandidateAndGlobalFailureTest::RunTest(
 		FMatchPlayResolveNoLegalSkill::Resolve(
 			State,
 			RangeRules,
-			MakeResolveRequest());
+			MakeResolveRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("All AP-mismatch candidates resolve"),
 		RangeResult.bSuccess);
 
@@ -177,7 +177,7 @@ bool FSkillNoGoalCandidateAndGlobalFailureTest::RunTest(
 		FMatchPlayResolveNoLegalSkill::Resolve(
 			State,
 			Rules,
-			MakeResolveRequest());
+			MakeResolveRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("All illegal candidates resolve"),
 		AllIllegal.bSuccess);
 
@@ -197,7 +197,7 @@ bool FSkillNoGoalCandidateAndGlobalFailureTest::RunTest(
 		FMatchPlayResolveNoLegalSkill::Resolve(
 			State,
 			MixedIllegalRules,
-			MakeResolveRequest());
+			MakeResolveRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Mixed all-illegal candidates resolve"),
 		MixedIllegal.bSuccess);
 
@@ -211,7 +211,7 @@ bool FSkillNoGoalCandidateAndGlobalFailureTest::RunTest(
 			FMatchPlayResolveNoLegalSkill::Resolve(
 				State,
 				Rules,
-				MakeResolveRequest());
+				MakeResolveRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		TestFalse(TEXT("Invalid AP never resolves no legal"),
 			Result.bSuccess);
 		TestEqual(TEXT("Invalid AP remains global failure"),
@@ -232,7 +232,7 @@ bool FSkillNoGoalCandidateAndGlobalFailureTest::RunTest(
 		FMatchPlayResolveNoLegalSkill::Resolve(
 			State,
 			CorruptRules,
-			MakeResolveRequest());
+			MakeResolveRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestFalse(TEXT("Corrupt RuleSet never resolves"),
 		CorruptRulesResult.bSuccess);
 	TestStateUnchanged(
@@ -262,7 +262,7 @@ bool FSkillNoGoalRequestValidationTest::RunTest(
 		FMatchPlayResolveNoLegalSkill::Resolve(
 			State,
 			Rules,
-			ResolveRequest);
+			ResolveRequest, FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestFalse(TEXT("Stale system sequence rejects"),
 		StaleResolve.bSuccess);
 	TestEqual(TEXT("Stale sequence maps exactly"),
@@ -281,7 +281,7 @@ bool FSkillNoGoalRequestValidationTest::RunTest(
 		FMatchPlaySkillDecline::Decline(
 			State,
 			Rules,
-			DeclineRequest);
+			DeclineRequest, FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestFalse(TEXT("Wrong side rejects"), WrongSide.bSuccess);
 	TestEqual(TEXT("Wrong side maps exactly"),
 		WrongSide.ErrorCode,
@@ -299,7 +299,7 @@ bool FSkillNoGoalRequestValidationTest::RunTest(
 		FMatchPlaySkillDecline::Decline(
 			State,
 			Rules,
-			DeclineRequest);
+			DeclineRequest, FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("Invalid side maps exactly"),
 		InvalidSide.ErrorCode,
 		EMatchPlaySkillNoSelectionNoGoalErrorCode
@@ -316,7 +316,7 @@ bool FSkillNoGoalRequestValidationTest::RunTest(
 		FMatchPlaySkillDecline::Decline(
 			WrongStage,
 			Rules,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestFalse(TEXT("Wrong stage rejects"),
 		WrongStageResult.bSuccess);
 	TestEqual(TEXT("Wrong stage maps exactly"),
@@ -331,7 +331,7 @@ bool FSkillNoGoalRequestValidationTest::RunTest(
 		FMatchPlayResolveNoLegalSkill::Resolve(
 			NoAttack,
 			Rules,
-			MakeResolveRequest());
+			MakeResolveRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("No current attack maps exactly"),
 		NoAttackResult.ErrorCode,
 		EMatchPlaySkillNoSelectionNoGoalErrorCode
@@ -355,7 +355,7 @@ bool FSkillNoGoalLifecycleTest::RunTest(
 		FMatchPlaySkillDecline::Decline(
 			State,
 			SkillFixtures::MakeRuleSet(),
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 
 	TestTrue(TEXT("Lifecycle completion succeeds"),
 		Result.bSuccess);
@@ -389,7 +389,7 @@ bool FSkillNoGoalLifecycleTest::RunTest(
 				.OrdinaryCardUsageResults[3].CardId,
 			ExtraDefenderCardId);
 	}
-	TestTrue(TEXT("Carrier Used"),
+	TestFalse(TEXT("Carrier no longer Used after Recovery"),
 		IsCardUsed(
 			Result.AfterState,
 			EInitialTurnOrderPlayer::PlayerA,
@@ -399,7 +399,7 @@ bool FSkillNoGoalLifecycleTest::RunTest(
 			Result.AfterState,
 			EInitialTurnOrderPlayer::PlayerB,
 			SkillFixtures::MarkerId));
-	TestTrue(TEXT("Unselected attacker Used"),
+	TestFalse(TEXT("Unselected attacker no longer Used after Recovery"),
 		IsCardUsed(
 			Result.AfterState,
 			EInitialTurnOrderPlayer::PlayerA,
@@ -455,7 +455,7 @@ bool FSkillNoGoalPlacementAndAtomicityTest::RunTest(
 		FMatchPlaySkillDecline::Decline(
 			State,
 			Rules,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestFalse(TEXT("Cross-side duplicate slot rejects"),
 		Result.bSuccess);
 	TestEqual(TEXT("Duplicate slot exact completion error"),
@@ -475,7 +475,7 @@ bool FSkillNoGoalPlacementAndAtomicityTest::RunTest(
 	Result = FMatchPlaySkillDecline::Decline(
 		State,
 		Rules,
-		MakeDeclineRequest());
+		MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestFalse(TEXT("Same-side duplicate slot rejects"),
 		Result.bSuccess);
 	TestStateUnchanged(
@@ -494,7 +494,7 @@ bool FSkillNoGoalPlacementAndAtomicityTest::RunTest(
 	Result = FMatchPlaySkillDecline::Decline(
 		State,
 		Rules,
-		MakeDeclineRequest());
+		MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("Same-side duplicate card exact error"),
 		Result.CompletionResult.ErrorCode,
 		EMatchPlayCurrentAttackCompletionErrorCode
@@ -516,7 +516,7 @@ bool FSkillNoGoalPlacementAndAtomicityTest::RunTest(
 	Result = FMatchPlaySkillDecline::Decline(
 		State,
 		Rules,
-		MakeDeclineRequest());
+		MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("Missing snapshot exact completion error"),
 		Result.CompletionResult.ErrorCode,
 		EMatchPlayCurrentAttackCompletionErrorCode
@@ -534,7 +534,7 @@ bool FSkillNoGoalPlacementAndAtomicityTest::RunTest(
 	Result = FMatchPlaySkillDecline::Decline(
 		State,
 		Rules,
-		MakeDeclineRequest());
+		MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("Mid-loop failure exact completion error"),
 		Result.CompletionResult.ErrorCode,
 		EMatchPlayCurrentAttackCompletionErrorCode
@@ -551,7 +551,7 @@ bool FSkillNoGoalPlacementAndAtomicityTest::RunTest(
 	Result = FMatchPlaySkillDecline::Decline(
 		State,
 		Rules,
-		MakeDeclineRequest());
+		MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("Exhausted opportunity exact error"),
 		Result.CompletionResult.ErrorCode,
 		EMatchPlayCurrentAttackCompletionErrorCode
@@ -567,7 +567,7 @@ bool FSkillNoGoalPlacementAndAtomicityTest::RunTest(
 	Result = FMatchPlaySkillDecline::Decline(
 		State,
 		Rules,
-		MakeDeclineRequest());
+		MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("Corrupt opportunity exact error"),
 		Result.CompletionResult.ErrorCode,
 		EMatchPlayCurrentAttackCompletionErrorCode
@@ -583,7 +583,7 @@ bool FSkillNoGoalPlacementAndAtomicityTest::RunTest(
 	Result = FMatchPlaySkillDecline::Decline(
 		State,
 		Rules,
-		MakeDeclineRequest());
+		MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("Negative score exact error"),
 		Result.CompletionResult.ErrorCode,
 		EMatchPlayCurrentAttackCompletionErrorCode
@@ -629,10 +629,10 @@ bool FSkillNoGoalSameCardAcrossSidesTest::RunTest(
 		FMatchPlaySkillDecline::Decline(
 			State,
 			SkillFixtures::MakeRuleSet(),
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Same CardId across sides succeeds"),
 		Result.bSuccess);
-	TestTrue(TEXT("PlayerA shared card Used"),
+	TestFalse(TEXT("PlayerA shared card no longer Used after Recovery"),
 		IsCardUsed(
 			Result.AfterState,
 			EInitialTurnOrderPlayer::PlayerA,
@@ -661,7 +661,7 @@ bool FSkillNoGoalNextAttackerAndMatchResultTest::RunTest(
 		FMatchPlaySkillDecline::Decline(
 			State,
 			Rules,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("Opponent attacks next"),
 		Result.CompletionResult.NextAttackingPlayer,
 		EInitialTurnOrderPlayer::PlayerB);
@@ -672,7 +672,7 @@ bool FSkillNoGoalNextAttackerAndMatchResultTest::RunTest(
 	Result = FMatchPlaySkillDecline::Decline(
 		State,
 		Rules,
-		MakeDeclineRequest());
+		MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("Current attacker continues"),
 		Result.CompletionResult.NextAttackingPlayer,
 		EInitialTurnOrderPlayer::PlayerA);
@@ -692,7 +692,7 @@ bool FSkillNoGoalNextAttackerAndMatchResultTest::RunTest(
 		Result = FMatchPlaySkillDecline::Decline(
 			State,
 			Rules,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		TestTrue(TEXT("Terminal completion succeeds"),
 			Result.bSuccess);
 		TestTrue(TEXT("Match ended"),
@@ -725,13 +725,13 @@ bool FSkillNoGoalRepeatedCallTest::RunTest(
 		FMatchPlayResolveNoLegalSkill::Resolve(
 			EmptyState,
 			Rules,
-			MakeResolveRequest());
+			MakeResolveRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Initial Resolve succeeds"), Resolved.bSuccess);
 	const FMatchPlayResolveNoLegalSkillResult RepeatedResolve =
 		FMatchPlayResolveNoLegalSkill::Resolve(
 			Resolved.AfterState,
 			Rules,
-			MakeResolveRequest());
+			MakeResolveRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("Repeated Resolve has no current attack"),
 		RepeatedResolve.ErrorCode,
 		EMatchPlaySkillNoSelectionNoGoalErrorCode
@@ -745,7 +745,7 @@ bool FSkillNoGoalRepeatedCallTest::RunTest(
 		FMatchPlaySkillDecline::Decline(
 			Resolved.AfterState,
 			Rules,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("Resolve then Decline has no current attack"),
 		CrossDecline.ErrorCode,
 		EMatchPlaySkillNoSelectionNoGoalErrorCode
@@ -761,13 +761,13 @@ bool FSkillNoGoalRepeatedCallTest::RunTest(
 		FMatchPlaySkillDecline::Decline(
 			LegalState,
 			Rules,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Initial Decline succeeds"), Declined.bSuccess);
 	const FMatchPlaySkillDeclineResult RepeatedDecline =
 		FMatchPlaySkillDecline::Decline(
 			Declined.AfterState,
 			Rules,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("Repeated Decline has no current attack"),
 		RepeatedDecline.ErrorCode,
 		EMatchPlaySkillNoSelectionNoGoalErrorCode
@@ -776,7 +776,7 @@ bool FSkillNoGoalRepeatedCallTest::RunTest(
 		FMatchPlayResolveNoLegalSkill::Resolve(
 			Declined.AfterState,
 			Rules,
-			MakeResolveRequest());
+			MakeResolveRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestEqual(TEXT("Decline then Resolve has no current attack"),
 		CrossResolve.ErrorCode,
 		EMatchPlaySkillNoSelectionNoGoalErrorCode

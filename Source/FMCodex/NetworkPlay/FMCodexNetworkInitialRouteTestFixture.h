@@ -46,13 +46,13 @@ public:
 struct FFMCodexNetworkInitialRouteTestAccess
 {
 	static FInitialRouteEntropy* Configure(AFMCodexNetworkMatchGameMode& Mode,
-		AFMCodexNetworkMatchPlayerController* A, AFMCodexNetworkMatchPlayerController* B, bool BFirst, int32 RawD12, bool ShortMatch = false)
+		AFMCodexNetworkMatchPlayerController* A, AFMCodexNetworkMatchPlayerController* B, bool BFirst, int32 RawD12, bool ShortMatch = false, bool IncludeDormantPassControl = true)
 	{
 		Mode.MatchInstanceId = FGuid::NewGuid();
 		Mode.BootstrapConfiguration = BFirst
 			? FFMCodexNetworkBootstrapConfigurationFactory::CreateBFirstAutomationMatch()
 			: FFMCodexNetworkBootstrapConfigurationFactory::CreatePrototypeMatch();
-		FMCodexDormantPassControlTests::AddCapability(Mode.BootstrapConfiguration.MatchConfiguration);
+		if (IncludeDormantPassControl) FMCodexDormantPassControlTests::AddCapability(Mode.BootstrapConfiguration.MatchConfiguration);
 		Mode.BootstrapConfiguration.MatchConfiguration.OpeningInput.OpeningInput.bUseDevOneAttackPerSide = ShortMatch;
 		Mode.ParticipantRegistry.Admit(A, Mode.GetWorld()->SpawnActor<AFMCodexNetworkMatchPlayerState>());
 		Mode.ParticipantRegistry.Admit(B, Mode.GetWorld()->SpawnActor<AFMCodexNetworkMatchPlayerState>());
@@ -116,7 +116,7 @@ namespace FMCodexNetworkInitialRouteTests
 		FFMCodexNetworkIntentClientState ClientA, ClientB;
 		int64 NextA = 1, NextB = 1;
 		Kind RequestedKind = Kind::CrossInitialRouteRoll;
-		explicit FFixture(bool BFirst = false, int32 RawD12 = 6, bool ShortMatch = false)
+		explicit FFixture(bool BFirst = false, int32 RawD12 = 6, bool ShortMatch = false, bool IncludeDormantPassControl = true)
 		{
 			// These controller/Session tests do not simulate physics. Avoid one Chaos TLS slot per temporary world.
 			const auto Initialization = UWorld::InitializationValues().CreatePhysicsScene(false);
@@ -126,7 +126,7 @@ namespace FMCodexNetworkInitialRouteTests
 			A = World->SpawnActor<AFMCodexNetworkMatchPlayerController>();
 			B = World->SpawnActor<AFMCodexNetworkMatchPlayerController>();
 			World->AddController(A); World->AddController(B);
-			Entropy = Access::Configure(*Mode, A, B, BFirst, RawD12, ShortMatch);
+			Entropy = Access::Configure(*Mode, A, B, BFirst, RawD12, ShortMatch, IncludeDormantPassControl);
 		}
 		~FFixture() { GEngine->DestroyWorldContext(World); World->DestroyWorld(false); }
 		AFMCodexNetworkMatchPlayerController* Attacker() const { return A->GetOwnerView().CurrentAttackingSide == Side::PlayerA ? A : B; }

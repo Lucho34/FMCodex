@@ -890,11 +890,11 @@ bool FRunnerNoGoalCrossFamilyRepeatedCallTest::RunTest(
 		const FMatchPlayResolveNoLegalMarkerResult MarkerResolve =
 			FMatchPlayResolveNoLegalMarker::Resolve(
 				*RunnerCompleted,
-				MarkerFixtures::MakeNoLegalRequest());
+				MarkerFixtures::MakeNoLegalRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		const FMatchPlayMarkerDeclineResult MarkerDecline =
 			FMatchPlayMarkerDecline::Decline(
 				*RunnerCompleted,
-				MarkerFixtures::MakeDeclineRequest());
+				MarkerFixtures::MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		TestFalse(TEXT("Runner then Marker Resolve rejects"),
 			MarkerResolve.bSuccess);
 		TestFalse(TEXT("Runner then Marker Decline rejects"),

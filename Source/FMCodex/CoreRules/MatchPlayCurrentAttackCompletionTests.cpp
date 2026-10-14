@@ -22,7 +22,7 @@ namespace CurrentAttackCompletionTests
 		const FMatchPlayMarkerDeclineResult Result =
 			FMatchPlayMarkerDecline::Decline(
 				State,
-				MakeDeclineRequest(Defender));
+				MakeDeclineRequest(Defender), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 		Test.TestFalse(
 			*FString::Printf(TEXT("%s fails"), Context),
 			Result.bSuccess);
@@ -92,7 +92,7 @@ bool FCurrentAttackCompletionPlayerBScoreTest::RunTest(
 	const FMatchPlayMarkerDeclineResult Result =
 		FMatchPlayMarkerDecline::Decline(
 			State,
-			MakeDeclineRequest(EInitialTurnOrderPlayer::PlayerA));
+			MakeDeclineRequest(EInitialTurnOrderPlayer::PlayerA), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Decline succeeds"), Result.bSuccess);
 	TestTrue(TEXT("Completion succeeds"),
 		Result.CompletionResult.bSuccess);
@@ -118,7 +118,7 @@ bool FCurrentAttackCompletionDeploymentOrderTest::RunTest(
 	const FMatchPlayMarkerDeclineResult Result =
 		FMatchPlayMarkerDecline::Decline(
 			State,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Decline succeeds"), Result.bSuccess);
 	const TArray<FPlayCardResolveResult>& UsageResults =
 		Result.CompletionResult.OrdinaryCardUsageResults;
@@ -133,12 +133,12 @@ bool FCurrentAttackCompletionDeploymentOrderTest::RunTest(
 		TestEqual(TEXT("Defender third"), UsageResults[2].CardId,
 			PlayerBOne);
 	}
-	TestTrue(TEXT("PlayerA carrier Used"),
+	TestTrue(TEXT("PlayerA carrier consumed then recovered"),
 		Result.AfterState.CardUsageState.PlayerACardUsageState
-			.UsedCardIds.Contains(PlayerAOne));
-	TestTrue(TEXT("PlayerA unselected deployment Used"),
+			.AvailableCardIds.Contains(PlayerAOne));
+	TestTrue(TEXT("PlayerA unselected deployment consumed then recovered"),
 		Result.AfterState.CardUsageState.PlayerACardUsageState
-			.UsedCardIds.Contains(PlayerATwo));
+			.AvailableCardIds.Contains(PlayerATwo));
 	TestTrue(TEXT("PlayerB defender Used"),
 		Result.AfterState.CardUsageState.PlayerBCardUsageState
 			.UsedCardIds.Contains(PlayerBOne));
@@ -250,7 +250,7 @@ bool FCurrentAttackCompletionGoalkeeperValidationTest::RunTest(
 	const FMatchPlayResolveNoLegalMarkerResult Result =
 		FMatchPlayResolveNoLegalMarker::Resolve(
 			State,
-			MakeNoLegalRequest());
+			MakeNoLegalRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestFalse(TEXT("Corrupt GK state rejects"), Result.bSuccess);
 	TestEqual(TEXT("Mapped to CompletionFailed"), Result.ErrorCode,
 		EMatchPlayResolveNoLegalMarkerErrorCode::CompletionFailed);
@@ -282,7 +282,7 @@ bool FCurrentAttackCompletionCurrentAttackClearTest::RunTest(
 	const FMatchPlayResolveNoLegalMarkerResult Result =
 		FMatchPlayResolveNoLegalMarker::Resolve(
 			State,
-			MakeNoLegalRequest());
+			MakeNoLegalRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	const FMatchPlayCurrentAttackState EmptyAttack;
 	TestTrue(TEXT("Resolve succeeds"), Result.bSuccess);
 	TestFalse(TEXT("CurrentAttack flag cleared"),
@@ -326,7 +326,7 @@ bool FCurrentAttackCompletionNextAttackerTest::RunTest(
 	FMatchPlayMarkerDeclineResult Result =
 		FMatchPlayMarkerDecline::Decline(
 			State,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Opponent case succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Opponent attacks next"),
 		Result.CompletionResult.NextAttackingPlayer,
@@ -339,7 +339,7 @@ bool FCurrentAttackCompletionNextAttackerTest::RunTest(
 		State.RuntimeState.PlayerBState.TotalAttackCount;
 	Result = FMatchPlayMarkerDecline::Decline(
 		State,
-		MakeDeclineRequest());
+		MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Same-side case succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Current attacker continues"),
 		Result.CompletionResult.NextAttackingPlayer,
@@ -367,7 +367,7 @@ bool FCurrentAttackCompletionMatchResultsTest::RunTest(
 	FMatchPlayMarkerDeclineResult Result =
 		FMatchPlayMarkerDecline::Decline(
 			State,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Home-win completion succeeds"), Result.bSuccess);
 	TestTrue(TEXT("Match ended"),
 		Result.CompletionResult.bMatchEnded);
@@ -384,7 +384,7 @@ bool FCurrentAttackCompletionMatchResultsTest::RunTest(
 	State.RuntimeState.PlayerBState.Score = 1;
 	Result = FMatchPlayMarkerDecline::Decline(
 		State,
-		MakeDeclineRequest(EInitialTurnOrderPlayer::PlayerA));
+		MakeDeclineRequest(EInitialTurnOrderPlayer::PlayerA), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Away-win completion succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Away win derived"),
 		Result.CompletionResult.MatchResultResolveResult.ResultType,
@@ -399,7 +399,7 @@ bool FCurrentAttackCompletionMatchResultsTest::RunTest(
 	State.RuntimeState.PlayerBState.Score = 1;
 	Result = FMatchPlayMarkerDecline::Decline(
 		State,
-		MakeDeclineRequest());
+		MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Draw completion succeeds"), Result.bSuccess);
 	TestEqual(TEXT("Draw derived"),
 		Result.CompletionResult.MatchResultResolveResult.ResultType,
@@ -456,16 +456,16 @@ bool FCurrentAttackCompletionOrdinaryPlusGoalkeeperTest::RunTest(
 	const FMatchPlayMarkerDeclineResult Result =
 		FMatchPlayMarkerDecline::Decline(
 			State,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Ordinary plus GK completion succeeds"),
 		Result.bSuccess);
 	TestEqual(TEXT("Only three ordinary cards consumed"),
 		Result.CompletionResult.OrdinaryCardUsageResults.Num(), 3);
-	TestTrue(TEXT("All attacker ordinary cards Used"),
+	TestTrue(TEXT("Both attacker cards consumed then recovered"),
 		Result.AfterState.CardUsageState.PlayerACardUsageState
-			.UsedCardIds.Contains(PlayerAOne)
+			.AvailableCardIds.Contains(PlayerAOne)
 		&& Result.AfterState.CardUsageState.PlayerACardUsageState
-			.UsedCardIds.Contains(PlayerATwo));
+			.AvailableCardIds.Contains(PlayerATwo));
 	TestTrue(TEXT("Defender ordinary card Used"),
 		Result.AfterState.CardUsageState.PlayerBCardUsageState
 			.UsedCardIds.Contains(PlayerBOne));
@@ -503,12 +503,12 @@ bool FCurrentAttackCompletionSequenceAndRepeatTest::RunTest(
 	const FMatchPlayMarkerDeclineResult Completed =
 		FMatchPlayMarkerDecline::Decline(
 			State,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestTrue(TEXT("Completion succeeds"), Completed.bSuccess);
 	const FMatchPlayMarkerDeclineResult Repeated =
 		FMatchPlayMarkerDecline::Decline(
 			Completed.AfterState,
-			MakeDeclineRequest());
+			MakeDeclineRequest(), FMCodex::Tests::MatchPlayMarkerNoSelectionGoal::FCompletionRecoveryProvider().Get());
 	TestFalse(TEXT("Repeated entry fails"), Repeated.bSuccess);
 	TestEqual(TEXT("NoCurrentAttack is repeat guard"),
 		Repeated.ErrorCode,
