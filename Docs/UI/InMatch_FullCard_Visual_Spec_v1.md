@@ -29,6 +29,32 @@ The geometry test covers all 40 actual cards, content/rank completeness, groupin
 
 ## Purpose and boundary
 
+### Stage 8.30A — attacking TP contextual preview
+
+Current attacking cards reuse the existing hand/pitch matching-Skill projection.
+Full Card inspection from either source emphasizes the same union: LongShot →
+Shooting / LongShotCarrier; CutInsideShot → Shooting + Control / CutInsideCarrier;
+Cross → Passing / CrossCarrier; ThroughBall → Passing / ThroughBallCarrier.
+Only actually owned, ranked Carrier Traits are emphasized. Runner-only receiving,
+anti-offside, defensive and unrelated set-piece Traits stay ordinary. CutInside's
+Trait affects Control, not Shooting; ThroughBall's Trait is not a promise of a
+bonus in every subsequent route/stage.
+
+This is **contextual relevance**, not an active Formula bonus or full action
+legality. No effective value or speculative arithmetic is shown. Stable rule IDs
+provide semantic lookup; all matching lists and owned assignments remain the
+existing public projection's facts. The approved reference supersedes the earlier
+row-fill/outline treatment: context changes **text color only**. Matching Skill
+names use sRGB #8FE6C2 (the existing hand/Mini mint), owned relevant Trait names
+use #9BD8CF, and related attribute labels use #A4D4CF. Ordinary labels keep their
+normal near-white. All row backgrounds and decorative outlines stay ordinary;
+there are no contextual fills, accent edges, glow or font changes. Attribute
+values/tier badges, Trait ranks/badges and Skill TP ranges keep their original
+colors. Full geometry, hover allowlist and animation behavior remain unchanged.
+No matches, defender/GK cards, pre-TP, unrelated routes and cleared
+attack contexts retain ordinary appearance. Existing TP disclosure and refresh
+gates apply. USER PIE is required for this new visual treatment.
+
 This specification owns the `360×540` In-Match Full Card visual family.
 During Deployment, undeployed hand/roster cards and already-deployed Pitch cards
 share the existing transient inspector. Permission follows the canonical Deployment

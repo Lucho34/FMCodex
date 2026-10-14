@@ -484,10 +484,10 @@ bool FFMCodexPitchMiniLayerAndContentContractTest::RunTest(
 			&& LoadSource(
 				TEXT("Source/FMCodex/LocalPlay/FMCodexLocalMatchScreenWidget.cpp"),
 				ScreenSource));
-	TestTrue(TEXT("Pitch Mini consumes only the resolved tactical-match count"),
+	TestTrue(TEXT("Pitch Mini consumes resolved tactical-match count and names, never TP legality"),
 		CardSource.Contains(TEXT("Presentation.PitchMiniTacticalMatchCount"))
 			&& CardSource.Contains(TEXT("Presentation.bHasPitchMiniTacticalMatch"))
-			&& !CardSource.Contains(
+			&& CardSource.Contains(
 				TEXT("Presentation.PitchMiniVisibleTacticalSkills"))
 			&& !CardSource.Contains(TEXT("Presentation.EligibleTacticalSkills"))
 			&& !CardSource.Contains(TEXT("CurrentTacticalPoint"))

@@ -576,12 +576,12 @@ bool FFMCodexEligibleTacticalSkillLayerContractTest::RunTest(
 				TEXT("View.bHasHandMicroTacticalMatch"))
 			&& InteractionSource.Contains(
 				TEXT("View.HandMicroTacticalMatchCount")));
-	TestTrue(TEXT("Cards consume resolved counts and Hand labels without TP or ownership calculation"),
+	TestTrue(TEXT("Cards consume resolved counts and Hand/Pitch labels without TP or ownership calculation"),
 		CardWidgetSource.Contains(
 			TEXT("Presentation.PitchMiniTacticalMatchCount"))
 			&& CardWidgetSource.Contains(
 				TEXT("Presentation.HandMicroTacticalMatchCount"))
-			&& !CardWidgetSource.Contains(
+			&& CardWidgetSource.Contains(
 				TEXT("Presentation.PitchMiniVisibleTacticalSkills"))
 			&& CardWidgetSource.Contains(
 				TEXT("Presentation.HandMicroVisibleTacticalSkills"))
@@ -594,7 +594,7 @@ bool FFMCodexEligibleTacticalSkillLayerContractTest::RunTest(
 			&& !PitchSlotSource.Contains(TEXT("PitchMiniVisibleTacticalSkills"))
 			&& !PitchSlotSource.Contains(TEXT("bHasPitchMiniTacticalMatch"))
 			&& !PitchSlotSource.Contains(TEXT("PitchMiniTacticalMatchCount")));
-	TestTrue(TEXT("Screen gates only Hand display at the shared TP disclosure seam"),
+	TestTrue(TEXT("Screen gates Hand and Pitch display at the shared TP disclosure seam"),
 		ScreenSource.Contains(
 			TEXT("CanRevealTacticalPointDependentPresentation"))
 			&& ScreenSource.Contains(TEXT("BuildDisplayedHandRack"))

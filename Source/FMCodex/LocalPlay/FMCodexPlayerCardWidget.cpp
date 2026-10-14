@@ -821,7 +821,7 @@ FVector2D UFMCodexPlayerCardWidget::GetConfiguredDimensions() const
 }
 
 FBox2f UFMCodexPlayerCardWidget::CalculatePitchMiniHeroCrop(
-	const FIntPoint SourceSize)
+	const FIntPoint SourceSize, const float PortraitHeight)
 {
 	using namespace FMCodexPlayerCardWidget;
 	if (SourceSize.X <= 0 || SourceSize.Y <= 0)
@@ -831,7 +831,7 @@ FBox2f UFMCodexPlayerCardWidget::CalculatePitchMiniHeroCrop(
 
 	const float SourceAspect =
 		static_cast<float>(SourceSize.X) / static_cast<float>(SourceSize.Y);
-	const float TargetAspect = PitchMiniInteriorWidth / PitchMiniPortraitHeight;
+	const float TargetAspect = PitchMiniInteriorWidth / FMath::Max(1.f, PortraitHeight);
 	FVector2f AspectFillSize(1.0f, 1.0f);
 	if (SourceAspect > TargetAspect)
 	{
@@ -1268,7 +1268,20 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	{
 		RoleSlot->SetVerticalAlignment(VAlign_Center);
 	}
-	PitchIdentitySurface->AddChild(PitchIdentityRow);
+	auto* PitchIdentityStack = WidgetTree->ConstructWidget<UVerticalBox>();
+	PitchIdentityStack->AddChildToVerticalBox(PitchIdentityRow);
+	PitchMiniSkillText = MakeText(*WidgetTree, TEXT("PitchMiniMatchingSkills"));
+	ConfigureBoundedSingleLine(*PitchMiniSkillText);
+	FFMCodexPlayerUIStyle::Get().ApplyText(*PitchMiniSkillText, EFMCodexPlayerUITextRole::Secondary);
+	auto PitchSkillFont = PitchMiniSkillText->GetFont();
+	PitchSkillFont.Size = 10;
+	PitchSkillFont.TypefaceFontName = TEXT("Medium");
+	PitchMiniSkillText->SetFont(PitchSkillFont);
+	PitchMiniSkillText->SetColorAndOpacity(FLinearColor::FromSRGBColor(FColor(0x8F,0xE6,0xC2)));
+	PitchMiniSkillText->SetVisibility(ESlateVisibility::Collapsed);
+	PitchIdentityStack->AddChildToVerticalBox(PitchMiniSkillText);
+	PitchIdentitySurface->SetVerticalAlignment(VAlign_Center);
+	PitchIdentitySurface->AddChild(PitchIdentityStack);
 	PitchIdentityBounds->AddChild(PitchIdentitySurface);
 	PitchMiniContent->AddChildToVerticalBox(PitchIdentityBounds);
 	FrameAssetHook->AddChildToOverlay(PitchMiniContent);
@@ -1886,6 +1899,7 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 
 void UFMCodexPlayerCardWidget::RefreshVisuals()
 {
+	AttackingContext = FFMCodexAttackingCardContext::Build(Presentation);
 	if (IdentityText == nullptr)
 	{
 		return;
@@ -2072,12 +2086,24 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		TEXT("Hand TP-match names must agree with the projected count")))
 		for (const auto& Skill : Presentation.HandMicroVisibleTacticalSkills)
 			MatchingLabels.Add(FFMCodexPlayerUIPresentationText::Skill(Skill.CanonicalLabel));
-	const FText MatchingText = FText::Join(FText::FromString(TEXT("·")), MatchingLabels);
+	const FText MatchingText = MatchingLabels.IsEmpty() ? FText::GetEmpty()
+		: FFMCodexAttackingCardContext::SkillNames(Presentation.HandMicroVisibleTacticalSkills);
 	if (MatchingLabels.IsEmpty()) HandSkillRevealProgress = 1.f;
 	HandMicroSkillText->SetText(MatchingText);
 	HandMicroSkillText->SetVisibility(!MatchingLabels.IsEmpty()
 			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	SetHandSkillRevealProgress(HandSkillRevealProgress);
+	const FText PitchSkills = bPitchMini && PitchMiniTacticalMatchCount > 0
+		? FFMCodexAttackingCardContext::SkillNames(Presentation.PitchMiniVisibleTacticalSkills) : FText::GetEmpty();
+	PitchMiniSkillText->SetText(PitchSkills);
+	PitchMiniSkillText->SetVisibility(PitchSkills.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	// A separate identity line keeps long names and both complete Skill names.
+	// Reclaim 16 units from the portrait only while labels exist; outer size stays fixed.
+	const float SkillLineHeight = PitchSkills.IsEmpty() ? 0.f : 16.f;
+	CastChecked<USizeBox>(GetWidgetFromName(TEXT("PitchMiniPortraitBounds")))->SetHeightOverride(
+		FMCodexPlayerCardWidget::PitchMiniPortraitHeight - SkillLineHeight);
+	CastChecked<USizeBox>(GetWidgetFromName(TEXT("PitchMiniIdentityBounds")))->SetHeightOverride(
+		FMCodexPlayerCardWidget::PitchMiniIdentityHeight + SkillLineHeight);
 
 	const FLinearColor PitchMiniPortraitBase =
 		FLinearColor::FromSRGBColor(FColor(0x14, 0x2B, 0x36));
@@ -2413,7 +2439,8 @@ void UFMCodexPlayerCardWidget::RefreshPresentationArt()
 		FSlateBrush PitchMiniPortraitBrush = PitchMiniPortraitImage->GetBrush();
 		PitchMiniPortraitBrush.DrawAs = ESlateBrushDrawType::Image;
 		const FBox2f PitchMiniHeroCrop = CalculatePitchMiniHeroCrop(
-			ResolvedPortraitTexture->GetImportedSize());
+			ResolvedPortraitTexture->GetImportedSize(),
+			CastChecked<USizeBox>(GetWidgetFromName(TEXT("PitchMiniPortraitBounds")))->GetHeightOverride());
 		if (PitchMiniHeroCrop.bIsValid)
 		{
 			PitchMiniPortraitBrush.SetUVRegion(PitchMiniHeroCrop);
@@ -2649,6 +2676,7 @@ void UFMCodexPlayerCardWidget::RefreshSkills()
 				FLinearColor::FromSRGBColor(FColor(0x08, 0x1A, 0x26)),
 				FMargin(5.0f, 3.0f));
             if (!Skill.SkillId.IsNone()) SkillPresentationWidgets.Add(Skill.SkillId, RowSurface);
+            CastChecked<UFMCodexFullCardSurface>(RowSurface)->SetContextRelevant(AttackingContext.Skills.Contains(Skill.SkillId));
             if (bFullCardPilot)
             {
                 RowSurface->SetPadding(FMargin(4, 0));
@@ -2723,6 +2751,8 @@ void UFMCodexPlayerCardWidget::RefreshSkills()
 			SkillText->SetAutoWrapText(false);
 			FFMCodexPlayerUIStyle::Get().ApplyText(
 				*SkillText, EFMCodexPlayerUITextRole::Body);
+			if (bFullCardPilot && AttackingContext.Skills.Contains(Skill.SkillId))
+				SkillText->SetColorAndOpacity(FLinearColor::FromSRGBColor(FColor(0x8F,0xE6,0xC2)));
 			FSlateFontInfo SkillFont = SkillText->GetFont();
 			SkillFont.Size = bFullCardPilot ? 12 : 13;
 			SkillFont.TypefaceFontName = TEXT("Medium");
@@ -2884,6 +2914,7 @@ void UFMCodexPlayerCardWidget::RefreshAttributes()
 				FLinearColor::FromSRGBColor(FColor(0x08, 0x1A, 0x26)),
 				FMargin(7, 0, 1, 0));
             AttributePresentationWidgets.Add(FName(*Attribute.CanonicalLabel), StatCell);
+            CastChecked<UFMCodexFullCardSurface>(StatCell)->SetContextRelevant(AttackingContext.Attributes.Contains(FName(*Attribute.CanonicalLabel)));
             if (bFullCardPilot)
             {
                 StatCell->SetPadding(FMargin(7, 0, 1, 0));
@@ -2922,6 +2953,8 @@ void UFMCodexPlayerCardWidget::RefreshAttributes()
 			LabelText->SetAutoWrapText(false);
 			FFMCodexPlayerUIStyle::Get().ApplyText(
 				*LabelText, EFMCodexPlayerUITextRole::Body);
+			if (bFullCardPilot && AttackingContext.Attributes.Contains(FName(Attribute.CanonicalLabel)))
+				LabelText->SetColorAndOpacity(FLinearColor::FromSRGBColor(FColor(0xA4,0xD4,0xCF)));
 			FSlateFontInfo AttributeLabelFont = LabelText->GetFont();
 			AttributeLabelFont.Size = bFullCardPilot ? 12 : Presentation.bGoalkeeper ? 13 : 11;
 			AttributeLabelFont.TypefaceFontName = TEXT("Medium");
@@ -3064,11 +3097,14 @@ void UFMCodexPlayerCardWidget::RefreshTraits()
             auto* Bounds=WidgetTree->ConstructWidget<USizeBox>(); Bounds->SetHeightOverride(19.f);
             auto* Surface=MakeFullRegion(*WidgetTree,FName(*(Base+TEXT("Row"))),FullCardSurfaceColor(),FMargin(7,0,1,0));
             SetFullSurface(Surface,bFullCardPilot,EFMCodexFullCardSurface::AttributeRow,FMCodexFullCardGeometry::StructuralInk());
+            CastChecked<UFMCodexFullCardSurface>(Surface)->SetContextRelevant(AttackingContext.Traits.Contains(Data.Id));
             auto* Row=WidgetTree->ConstructWidget<UHorizontalBox>();
             auto* NameBounds=WidgetTree->ConstructWidget<USizeBox>(); NameBounds->SetWidthOverride(106.f);
             auto* Name=MakeText(*WidgetTree,FName(*(Base+TEXT("Name")))); Name->SetText(FPlayerTraitFormula::DisplayName(Data.Id));
             Name->SetAutoWrapText(false);
             FFMCodexPlayerUIStyle::Get().ApplyText(*Name,EFMCodexPlayerUITextRole::Body);
+            if (bFullCardPilot && AttackingContext.Traits.Contains(Data.Id))
+                Name->SetColorAndOpacity(FLinearColor::FromSRGBColor(FColor(0x9B,0xD8,0xCF)));
             auto NameFont=Name->GetFont(); NameFont.TypefaceFontName=TEXT("Medium");
             NameFont.Size=GetMeasuredSingleLineFontSize(Name->GetText(),NameFont,106.f,12,10); Name->SetFont(NameFont);
             NameBounds->AddChild(Name); Row->AddChildToHorizontalBox(NameBounds)->SetVerticalAlignment(VAlign_Center);

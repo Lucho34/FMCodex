@@ -6,6 +6,7 @@
 #include "FMCodexPitchWidget.h"
 #include "FMCodexCardRackWidget.h"
 #include "FMCodexPlayerCardWidget.h"
+#include "FMCodexFullCardSurface.h"
 #include "FMCodexPitchSlotWidget.h"
 #include "FMCodexInteractionPanelWidget.h"
 #include "FMCodexInteractionOptionWidget.h"
@@ -2230,4 +2231,103 @@ bool FPossessionRecoveryPIE::RunTest(const FString&)
  ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
 }
 
+class FAttackingCardContextPIESmoke final : public IAutomationLatentCommand
+{
+public:
+ explicit FAttackingCardContextPIESmoke(FAutomationTestBase* InTest):Test(InTest){}
+ bool Update() override
+ {
+  if(FPlatformTime::Seconds()-Start>90.){Test->AddError(TEXT("Attacking card context PIE timeout"));return true;}
+  if(!GEditor || !GEditor->PlayWorld)return false;
+  auto* C=Cast<AFMCodexLocalMatchPlayerController>(GEditor->PlayWorld->GetFirstPlayerController());
+  auto* S=C?C->GetPlayerMatchScreen():nullptr;if(!S)return false;
+  if(FPlatformTime::Seconds()-Changed<.4 || S->IsInlineFormulaRevealInputBlocked())return false;
+  auto Next=[&](){++Step;Changed=FPlatformTime::Seconds();};
+  const FName Eze=TEXT("Prototype.Arsenal.EberechiEze");
+  auto Inspect=[&](UFMCodexPlayerCardWidget* Card)
+  {
+   if(!Test->TestNotNull(TEXT("PIE inspected source"),Card))return;
+   Test->TestTrue(TEXT("Existing hover entry"),Card->RequestFullCardDetailHover());
+   auto* Full=S->GetDetailOverlayCard();
+   for(FName Id:{FName(TEXT("SHO")),FName(TEXT("CON"))})
+    Test->TestTrue(TEXT("PIE Full Card contextual attribute"),CastChecked<UFMCodexFullCardSurface>(Full->FindAttributePresentationWidget(Id))->IsContextRelevant());
+   Test->TestFalse(TEXT("Unrelated free kick stays ordinary"),CastChecked<UFMCodexFullCardSurface>(Full->FindTraitPresentationWidget(TEXT("Trait.LongFreeKickTaker")))->IsContextRelevant());
+   Card->OnDetailHoverDismissed.Broadcast(Card);
+  };
+  if(Step==0){S->RequestStartNewMatch();Next();return false;}
+  if(Step==1)
+  {
+   Test->TestTrue(TEXT("Production DEV TP override"),C->SetLocalDevRollOverride({EFMCodexLocalDevRollTarget::FullD12,4}).bSuccess);
+   S->RequestRollTacticalPoints();Next();return false;
+  }
+  if(Step==2)
+  {
+   UFMCodexPlayerCardWidget* Hand=nullptr;
+   for(auto* Rack:{S->GetLocalRackWidget(),S->GetOpponentRackWidget()})for(UFMCodexPlayerCardWidget* Card:Rack->GetRenderedCardWidgets())if(Card->GetPresentation().CardId==Eze)Hand=Card;
+   Inspect(Hand);
+   if(!Hand)return true;
+   auto& App=FSlateApplication::Get();const auto& G=Hand->GetCachedGeometry();
+   const FVector2D Pos=G.LocalToAbsolute(G.GetLocalSize()*.5f),Old=App.GetCursorPos();
+   App.SetCursorPos(Pos);
+   App.ProcessMouseMoveEvent(FPointerEvent(0,Pos,Old,TSet<FKey>(),EKeys::Invalid,0,FModifierKeysState()),false);
+   Next();return false;
+  }
+  if(Step==3)
+  {
+   Test->TestTrue(TEXT("Native Full inspector stays visible after paint"),S->IsDetailOverlayVisible());
+   TArray<FColor> Pixels;FIntVector Size;
+   if(Test->TestTrue(TEXT("Native Full screenshot"),FSlateApplication::Get().TakeScreenshot(S->GetDetailOverlayCard()->TakeWidget(),Pixels,Size)))
+   {
+    const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_30A");IFileManager::Get().MakeDirectory(*Dir,true);
+    TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
+    Test->TestTrue(TEXT("Native Full evidence saved"),FFileHelper::SaveArrayToFile(PNG,*(Dir/TEXT("EzeTP4FullPIE.png"))));
+   }
+   const auto* Option=C->GetInteractionView().DeploymentOptions.FindByPredicate([&](const auto& O){return O.CardId==Eze;});
+   if(!Test->TestNotNull(TEXT("Legal Eze deployment"),Option))return true;
+   const auto Choice=*Option;C->DeployOrdinary(Choice.CardId,Choice.SlotId);
+   Test->TestTrue(TEXT("Real typed deployment accepted"),C->GetLastDiagnostic().bHostSuccess);Next();return false;
+  }
+  if(Step==4)
+  {
+   UFMCodexPlayerCardWidget* Mini=nullptr;
+   for(UFMCodexPitchSlotWidget* Slot:S->GetPitchWidget()->GetRenderedSlotWidgets())if(Slot->GetCardWidget() && Slot->GetCardWidget()->GetPresentation().CardId==Eze)Mini=Slot->GetCardWidget();
+   if(!Test->TestNotNull(TEXT("Deployed production Mini exists"),Mini))return true;
+   Test->TestEqual(TEXT("Live Mini complete matching names"),CastChecked<UTextBlock>(Mini->GetWidgetFromName(TEXT("PitchMiniMatchingSkills")))->GetText().ToString(),FString(TEXT("远射·内切")));
+   Inspect(Mini);
+   TArray<FColor> Pixels;FIntVector Size;
+   if(FSlateApplication::Get().TakeScreenshot(Mini->TakeWidget(),Pixels,Size))
+   {
+    const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_30A");IFileManager::Get().MakeDirectory(*Dir,true);
+    TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
+    FFileHelper::SaveArrayToFile(PNG,*(Dir/TEXT("PitchMiniPIE.png")));
+   }
+   S->RequestStartNewMatch();Next();return false;
+  }
+  for(auto* Rack:{S->GetLocalRackWidget(),S->GetOpponentRackWidget()})for(UFMCodexPlayerCardWidget* Card:Rack->GetRenderedCardWidgets())
+   Test->TestTrue(TEXT("Reset clears current attack context"),FFMCodexAttackingCardContext::Build(Card->GetPresentation()).Skills.IsEmpty());
+  // A stationary real cursor can legitimately re-enter the rebuilt hand after
+  // reset. Its newly opened pre-TP card must be ordinary, not forcibly hidden.
+  if(S->IsDetailOverlayVisible())
+  {
+   auto* Full=S->GetDetailOverlayCard();
+   Test->TestTrue(TEXT("Reset/rehover carries no old context"),FFMCodexAttackingCardContext::Build(Full->GetPresentation()).Skills.IsEmpty());
+   for(FName Id:{FName(TEXT("SHO")),FName(TEXT("CON"))})
+    if(auto* Row=Cast<UFMCodexFullCardSurface>(Full->FindAttributePresentationWidget(Id)))
+     Test->TestFalse(TEXT("Reset/rehover renders no stale emphasis"),Row->IsContextRelevant());
+  }
+  Test->AddInfo(TEXT("ATTACKING_CONTEXT_PIE: TP4 Eze hand -> real deployment -> Mini label -> identical Full Card -> reset clear. USER PIE REQUIRED."));
+  return true;
+ }
+private:
+ FAutomationTestBase* Test;double Start=FPlatformTime::Seconds(),Changed=0;int32 Step=0;
+};
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAttackingCardContextPIE,"FMCodex.PIE.PlayerCard.AttackingContextSmoke",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FAttackingCardContextPIE::RunTest(const FString&)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FAttackingCardContextPIESmoke(this)));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
+}
 #endif

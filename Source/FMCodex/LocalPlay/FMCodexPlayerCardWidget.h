@@ -4,6 +4,7 @@
 #include "Blueprint/UserWidget.h"
 
 #include "FMCodexLocalMatchUMGPresentation.h"
+#include "FMCodexAttackingCardContext.h"
 
 #include "FMCodexPlayerCardWidget.generated.h"
 
@@ -92,7 +93,7 @@ public:
 	UTexture2D* GetResolvedRoleIconTexture() const;
 	UTexture2D* GetResolvedLongShotSkillIconTexture() const;
 	FVector2D GetConfiguredDimensions() const;
-	static FBox2f CalculatePitchMiniHeroCrop(FIntPoint SourceSize);
+	static FBox2f CalculatePitchMiniHeroCrop(FIntPoint SourceSize, float PortraitHeight = 112.f);
 	bool CanExposeFullCardDetail() const;
 	bool IsCanonicalCardFamily() const { return bCanonicalCardFamily; }
 	bool IsPitchMiniPilot() const { return bPitchMiniPilot; }
@@ -149,6 +150,7 @@ protected:
 		const FPointerEvent& InMouseEvent) override;
 
 private:
+	FFMCodexAttackingCardContext AttackingContext;
 	TMap<FName, TWeakObjectPtr<UWidget>> AttributePresentationWidgets;
 	TMap<FName, TWeakObjectPtr<UWidget>> SkillPresentationWidgets;
 	TMap<FName, TWeakObjectPtr<UWidget>> TraitPresentationWidgets;
@@ -273,6 +275,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PitchMiniIdentityText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> PitchMiniSkillText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PitchMiniRoleText;

@@ -36,9 +36,13 @@ public:
     void SetSurface(EFMCodexFullCardSurface InSurface, const FLinearColor& InAccent);
     EFMCodexFullCardSurface GetSurface() const { return Surface; }
     FLinearColor GetAccent() const { return Accent; }
+    // Context metadata for inspection; emphasis belongs to text, never panel paint.
+    void SetContextRelevant(bool bRelevant) { bContextRelevant = bRelevant; }
+    bool IsContextRelevant() const { return bContextRelevant; }
 protected:
     virtual TSharedRef<SWidget> RebuildWidget() override;
 private:
     EFMCodexFullCardSurface Surface = EFMCodexFullCardSurface::None;
     FLinearColor Accent = FLinearColor::White;
+    bool bContextRelevant = false;
 };

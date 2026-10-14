@@ -1,5 +1,23 @@
 # Pitch Mini / Deployed Slot Card Visual Target Draft v1
 
+## Stage 8.30A — current attacking Skill-name amendment
+
+This amendment supersedes the historical no-Skill-text rule below. Deployed
+attacking cards show the existing projected TP-matching Chinese Skill names in
+stable order, separated by `·`. Zero matches collapse the label. This is range
+matching information, not full legality or a recommendation. The hand and pitch
+use the same label mapping and safe facts; defenders receive no offensive hints.
+
+The outer `136×140` card and `148×148` slot remain unchanged. When text exists,
+the identity region is `130×38`: the existing name/position row, then a 10-point
+mint (`#8FE6C2`) Skill line. Portrait height becomes 96 with aspect-preserving
+crop; zero matches restore the accepted 112-high portrait and 22-high identity.
+Original dots, owner/rarity/selection cues and hover remain. No new animation,
+button appearance or input wait. TP disclosure gates both labels and inspected
+Full context; normal projection refresh clears old contexts without redeployment.
+Full Card inspection uses the same relevance preview as hand inspection.
+USER PIE remains required for this amendment's readability and visual fit.
+
 Status: **FROZEN — Stage 8.2B / B.1–B.2 USER PIE ACCEPTED**, committed before `b9774ec5e7b0af401618c716ace59d3f65d863e3`. Earlier candidate/pending wording below is checkpoint history; the accepted B.2 contract governs roster migration.
 
 Current implementation stage: `6.13.1.3.13.3.1 — Pitch Mini Tactical Match Count Cue & Highlight Refinement`

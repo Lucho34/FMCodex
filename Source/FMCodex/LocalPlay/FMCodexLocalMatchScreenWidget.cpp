@@ -5250,7 +5250,15 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	}
 	RefreshFullCardProductionReviewSurface();
 #endif
-	PitchWidget->RefreshFromPitchPresentation(Presentation.PitchRegions);
+	auto DisplayedPitch = Presentation.PitchRegions;
+	if (!CanRevealTacticalPointDependentPresentation())
+		for (auto& Region : DisplayedPitch) for (auto& PitchSlot : Region.Slots)
+		{
+			PitchSlot.Card.PitchMiniVisibleTacticalSkills.Reset();
+			PitchSlot.Card.PitchMiniTacticalMatchCount = 0;
+			PitchSlot.Card.bHasPitchMiniTacticalMatch = false;
+		}
+	PitchWidget->RefreshFromPitchPresentation(DisplayedPitch);
 	FFMCodexUMGInlineFormulaSurfaceViewModel DisplayedInlineFormula =
 		BuildDisplayedInlineFormula();
 	FFMCodexUMGThroughBallResolutionViewModel DisplayedThroughBall =
