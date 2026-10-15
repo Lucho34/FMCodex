@@ -10,4 +10,5 @@ struct FFMCodexAttackingCardContext
 	TSet<FName> Traits;
 	static FFMCodexAttackingCardContext Build(const FFMCodexUMGCardViewModel& Card);
 	static FText SkillNames(const TArray<FFMCodexUMGSkillViewModel>& Skills);
+	static ESkillRuleType SkillType(FName RuleId);
 };

@@ -4225,6 +4225,7 @@ UFMCodexLocalMatchScreenWidget::BuildDisplayedHandRack(
 		// prevents Hand Micro from disclosing a live TP result before the same
 		// semantic boundary already used by the Header.
 		Cell.Card.HandMicroVisibleTacticalSkills.Reset();
+		Cell.Card.DefensiveCounterTraits.Reset();
 		Cell.Card.HandMicroTacticalMatchCount = 0;
 		Cell.Card.bHasHandMicroTacticalMatch = false;
 	}
@@ -5255,6 +5256,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		for (auto& Region : DisplayedPitch) for (auto& PitchSlot : Region.Slots)
 		{
 			PitchSlot.Card.PitchMiniVisibleTacticalSkills.Reset();
+			PitchSlot.Card.DefensiveCounterTraits.Reset();
 			PitchSlot.Card.PitchMiniTacticalMatchCount = 0;
 			PitchSlot.Card.bHasPitchMiniTacticalMatch = false;
 		}

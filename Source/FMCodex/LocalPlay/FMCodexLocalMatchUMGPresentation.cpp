@@ -1,5 +1,6 @@
 #include "FMCodexLocalMatchUMGPresentation.h"
 #include "FMCodexTraitFormulaPresentation.h"
+#include "FMCodexDefensiveCardContext.h"
 
 #include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPrototypeTeamContent.h"
@@ -3988,5 +3989,6 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		Result.LongShotResolution = FFMCodexUMGLongShotResolutionViewModel();
 		Result.InlineFormula = FFMCodexUMGInlineFormulaSurfaceViewModel();
 	}
+	FFMCodexDefensiveCardContext::Apply(InteractionView, Result);
 	return Result;
 }

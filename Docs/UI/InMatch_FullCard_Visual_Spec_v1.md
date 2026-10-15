@@ -51,9 +51,22 @@ normal near-white. All row backgrounds and decorative outlines stay ordinary;
 there are no contextual fills, accent edges, glow or font changes. Attribute
 values/tier badges, Trait ranks/badges and Skill TP ranges keep their original
 colors. Full geometry, hover allowlist and animation behavior remain unchanged.
-No matches, defender/GK cards, pre-TP, unrelated routes and cleared
+No matches, GK cards, pre-TP, unrelated routes and cleared
 attack contexts retain ordinary appearance. Existing TP disclosure and refresh
 gates apply. USER PIE is required for this new visual treatment.
+
+### Stage 8.30B — defensive counter preview
+
+Defending cards reuse the same text-only Trait (#9BD8CF) and attribute-label
+(#A4D4CF) emphasis, with unchanged values, badges, rows and 360×540 bounds.
+`DefensiveCounterTraits` contains owned, potentially relevant ranked Trait IDs
+from the shared safe presentation projection, not active Formula bonuses or
+legal participant recommendations. Ordinary TP possibilities narrow to the
+public Carrier, final Skill, then disclosed route and participant roles.
+Marker counters emphasize Defense; Cross High Helper emphasizes Strength,
+Cross Low / ThroughBall Behind Helper Speed, and ThroughBall Feet Helper
+Defense. Corner is excluded. No speculative route, effective value, new animation
+or inspector is introduced. All full Trait names and grades remain available.
 
 This specification owns the `360×540` In-Match Full Card visual family.
 During Deployment, undeployed hand/roster cards and already-deployed Pitch cards

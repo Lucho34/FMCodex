@@ -2,10 +2,8 @@
 #include "FMCodexPrototypeTeamContent.h"
 #include "FMCodexPlayerUIPresentationText.h"
 
-FFMCodexAttackingCardContext FFMCodexAttackingCardContext::Build(const FFMCodexUMGCardViewModel& Card)
+ESkillRuleType FFMCodexAttackingCardContext::SkillType(FName RuleId)
 {
-	FFMCodexAttackingCardContext Result;
-	if (Card.bGoalkeeper) return Result;
 	// Exact stable rule identity -> semantic type only. TP matching is already
 	// projected by authority; static catalog values never replace those facts.
 	static const TMap<FName, ESkillRuleType> Types = []()
@@ -15,14 +13,20 @@ FFMCodexAttackingCardContext FFMCodexAttackingCardContext::Build(const FFMCodexU
 			for (const auto& Skill : Player.SkillAssignments) Map.Add(Skill.RuleId, Skill.SkillType);
 		return Map;
 	}();
+	const auto* Type = Types.Find(RuleId);
+	return Type ? *Type : ESkillRuleType::None;
+}
+
+FFMCodexAttackingCardContext FFMCodexAttackingCardContext::Build(const FFMCodexUMGCardViewModel& Card)
+{
+	FFMCodexAttackingCardContext Result;
+	if (Card.bGoalkeeper) return Result;
 	for (const auto* Matches : { &Card.HandMicroVisibleTacticalSkills, &Card.PitchMiniVisibleTacticalSkills })
 		for (const auto& Skill : *Matches)
 		{
 			Result.Skills.Add(Skill.SkillId);
-			const auto* Type = Types.Find(Skill.SkillId);
-			if (!Type) continue;
 			FName Trait;
-			switch (*Type)
+			switch (SkillType(Skill.SkillId))
 			{
 			case ESkillRuleType::LongShot:
 				Result.Attributes.Add(TEXT("SHO")); Trait = TEXT("Trait.LongShotCarrier"); break;

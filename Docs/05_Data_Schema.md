@@ -931,3 +931,22 @@ Reuse SetPiece, AcceptedContestRolls, Contest, Terminal, PublicGoalHistory and s
 Canonical import/runtime schema 3 adds `presentation.defaultShirtNumber` (0 absent; otherwise integer 1–99, unique per team), loaded as `FFMCodexPrototypePlayerDefinition::DefaultShirtNumber`. It is public static presentation configuration outside FPlayerCardData/CoreRules snapshots. `AssignedPlayerNumber` remains the resolved/current presentation assignment: explicit runtime value wins, then configured default, then empty. Neither collection serial nor roster index is a fallback. Forty explicit provisional defaults are stored in the source sidecar, not computed on startup. No customization UI, save schema, RPC or gameplay authority change is part of this stage.
 
 Full biography uses existing birthDate/heightCm/weightKg/nationality plus team/position. Missing source values stay missing and display `—` under the global four-row Full policy. See Player Card Family v1.1 in the Shared Portrait Art Contract; prior schema-2 statements describe the previous checkpoint.
+
+## Stage 8.30B defensive card presentation projection
+
+`FFMCodexUMGCardViewModel::DefensiveCounterTraits` is a reflected list of stable
+ranked Trait IDs for potential ordinary-attack defensive relevance. It is built
+only from the viewer-safe InteractionView: current attacking side, existing
+eligible TP Skills, card availability/deployment, public Carrier/final Skill,
+disclosed route and Marker/Helper facts, and owned ranked Traits. It neither
+contains nor calculates numeric bonuses, legality, private commands or RNG.
+
+This narrow dynamic card field is necessary because Network clients consume the
+shared card DTO without raw match state. The existing Network presentation
+projection, reflection serialization and static-card rehydration preserve it on
+hand, pitch and selection cards. Local and Network use one derivation. There is
+no new RPC, intent, authority schema, roster format or disclosure permission.
+Withheld TP produces no hints; withheld route retains potential branches.
+Existing local TP presentation gates also clear the field until the result
+window closes. Corner/set-piece, terminal and cleared contexts produce empty
+lists, including when refreshing a previously populated card.

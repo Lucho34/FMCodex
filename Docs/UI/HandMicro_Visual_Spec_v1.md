@@ -6,6 +6,20 @@
 **Reference Canvas：1920 × 1080 @ UI Scale 1.0**
 **Reference：Hand Micro Design Reference A / 设计方案 1**
 
+### Stage 8.30B — defensive counter labels
+
+当前防守方使用共享公开投影的 `DefensiveCounterTraits`：至少一个相关自有特性
+显示一个原样绿点，不用点数表达特性数量。位置右侧复用薄荷色文字与既有安全宽度，
+按固定类别顺序显示防远射、防内切、防传中、高球协防、低球协防、防直塞、脚下协防、
+身后协防中的相关项。按实际字体测量，全部能放下时完整显示；否则整段显示
+`防守N项`，N 为当前相关自有特性的总数，单项放不下也显示 `防守1项`。
+防守手牌禁止部分名称加 `·+N`，避免与球衣号码连读。Mini 保持原溢出策略。
+Full Card 始终保留完整特性名与等级。
+不扩大 220×68、不侵入号码或姓名区域、不新增胶囊、动画或等待。
+这表示潜在防守关联，不是特性激活或 Marker/Helper 合法性。原进攻方技能名、
+0/1/2 绿点和 TP 弹窗关闭后的揭示动画保持。双方按当前权威进攻方切换语义，
+沿用 TP 可见揭示门控，后续公开 Carrier／技能／路线／角色更新即时刷新并清除旧提示。
+
 > **Stage 8.1B precedence (2026-09-10):** The [Player Art Architecture v1](Shared_Portrait_Art_Contract_v1.md) owns future authored-source, derivative, import and migration policy. This document continues to own Hand geometry, text fitting, drag presentation and visual hierarchy. The 16-player source/crop/hash workflow in §27 is legacy reproduction evidence, not permission to author new independent Hand images. No current compact-card layout or production route changes in Stage 8.1B.
 
 本文定义 Match Screen 左右 Card Rack 中 `Hand Micro Card Variant` 的固定视觉规格。

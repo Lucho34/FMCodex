@@ -410,6 +410,10 @@ struct FMCODEX_API FFMCodexUMGCardViewModel
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	TArray<FName> BinaryTraits;
 
+	/** Potential defensive counters from the safe shared projection; not Skills or active bonuses. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
+	TArray<FName> DefensiveCounterTraits;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Local Match|Card")
 	TArray<FFMCodexUMGSkillViewModel> Skills;
 

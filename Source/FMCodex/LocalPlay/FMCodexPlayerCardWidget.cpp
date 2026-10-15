@@ -1,6 +1,7 @@
 #include "FMCodexPlayerCardWidget.h"
 #include "FMCodexPlayerCardSurface.h"
 #include "FMCodexFullCardSurface.h"
+#include "FMCodexDefensiveCardContext.h"
 #include "../CoreRules/PlayerTraitFormula.h"
 #include "Rendering/DrawElements.h"
 
@@ -399,7 +400,7 @@ void UFMCodexPlayerCardWidget::SetPresentationMode(
 
 void UFMCodexPlayerCardWidget::SetHandSkillRevealProgress(const float Progress)
 {
-	HandSkillRevealProgress = FMath::Clamp(Progress, 0.f, 1.f);
+	HandSkillRevealProgress = Presentation.DefensiveCounterTraits.IsEmpty() ? FMath::Clamp(Progress, 0.f, 1.f) : 1.f;
 	if (!HandMicroSkillText) return;
 	const FLinearColor Mint = FLinearColor::FromSRGBColor(FColor(0x8F, 0xE6, 0xC2));
 	// Phase zero is also the pending state behind the TP window. It must paint
@@ -1900,6 +1901,12 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 void UFMCodexPlayerCardWidget::RefreshVisuals()
 {
 	AttackingContext = FFMCodexAttackingCardContext::Build(Presentation);
+	// Reuse the same Full Card text treatment for projected defensive relevance.
+	for (FName Trait : Presentation.DefensiveCounterTraits)
+	{
+		const FName Attribute = FFMCodexDefensiveCardContext::Attribute(Trait);
+		if (!Attribute.IsNone()) { AttackingContext.Traits.Add(Trait); AttackingContext.Attributes.Add(Attribute); }
+	}
 	if (IdentityText == nullptr)
 	{
 		return;
@@ -2041,8 +2048,10 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		&& bHandMicroTacticalMatchCountValid
 		&& bHandMicroTacticalMatchStateConsistent
 		? Presentation.HandMicroTacticalMatchCount : 0;
-	const int32 VisibleTacticalMatchPipCount = bPitchMini
-		? PitchMiniTacticalMatchCount : HandMicroTacticalMatchCount;
+	const bool bDefensiveCue = !Presentation.DefensiveCounterTraits.IsEmpty();
+	// Defensive presence is one dot, never an attacking Skill-match count.
+	const int32 VisibleTacticalMatchPipCount = bDefensiveCue && (bPitchMini || bHandMicro) ? 1
+		: bPitchMini ? PitchMiniTacticalMatchCount : HandMicroTacticalMatchCount;
 	FLinearColor TacticalMatchAccent =
 		FLinearColor::FromSRGBColor(FColor(0x8F, 0xE6, 0xC2));
 	TacticalMatchAccent.A = 0.88f;
@@ -2090,11 +2099,17 @@ void UFMCodexPlayerCardWidget::RefreshVisuals()
 		: FFMCodexAttackingCardContext::SkillNames(Presentation.HandMicroVisibleTacticalSkills);
 	if (MatchingLabels.IsEmpty()) HandSkillRevealProgress = 1.f;
 	HandMicroSkillText->SetText(MatchingText);
-	HandMicroSkillText->SetVisibility(!MatchingLabels.IsEmpty()
+	HandMicroSkillText->SetVisibility(bDefensiveCue || !MatchingLabels.IsEmpty()
 			? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	SetHandSkillRevealProgress(HandSkillRevealProgress);
-	const FText PitchSkills = bPitchMini && PitchMiniTacticalMatchCount > 0
+	FText PitchSkills = bPitchMini && PitchMiniTacticalMatchCount > 0
 		? FFMCodexAttackingCardContext::SkillNames(Presentation.PitchMiniVisibleTacticalSkills) : FText::GetEmpty();
+	if (bPitchMini && bDefensiveCue)
+		PitchSkills = FFMCodexDefensiveCardContext::CompactLabels(Presentation.DefensiveCounterTraits,[&](const FText& Text)
+		{
+			float Width = 0.f;
+			return FMCodexPlayerCardWidget::TryMeasureHandMicroName(Text,PitchMiniSkillText->GetFont(),Width) && Width <= 122.f;
+		});
 	PitchMiniSkillText->SetText(PitchSkills);
 	PitchMiniSkillText->SetVisibility(PitchSkills.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	// A separate identity line keeps long names and both complete Skill names.
@@ -3225,6 +3240,15 @@ void UFMCodexPlayerCardWidget::RefreshPilotSurfaces()
 		auto* SkillSlot = CastChecked<UHorizontalBoxSlot>(HandMicroSkillText->Slot);
 		SkillSlot->SetPadding(FMargin(2.f, 0.f, NumberReserve, 0.f));
 		FSlateFontInfo SkillFont = HandMicroRoleText->GetFont();
+		if (!Presentation.DefensiveCounterTraits.IsEmpty())
+		{
+			SkillFont.Size = 10;
+			HandMicroSkillText->SetText(FFMCodexDefensiveCardContext::CompactLabels(Presentation.DefensiveCounterTraits,[&](const FText& Text)
+			{
+				float Width = 0.f;
+				return FMCodexPlayerCardWidget::TryMeasureHandMicroName(Text,SkillFont,Width) && Width <= SkillWidth;
+			}, false)); // Hand: complete names or total count; never a suffix beside the shirt number.
+		}
 		SkillFont.Size = FMCodexPlayerCardWidget::GetMeasuredSingleLineFontSize(
 			HandMicroSkillText->GetText(), SkillFont, SkillWidth, 11, 10);
 		HandMicroSkillText->SetFont(SkillFont);

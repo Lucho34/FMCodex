@@ -1,5 +1,17 @@
 # Pitch Mini / Deployed Slot Card Visual Target Draft v1
 
+## Stage 8.30B — defensive counter-label amendment
+
+Defensive Mini cards consume the same safe-derived `DefensiveCounterTraits` as
+Hand Micro and Full Card. One original green dot means at least one relevant
+owned counter, not a Trait count. Reuse the existing mint label line, fixed
+ordering and measured prefix + accurate `·+N` overflow; all names remain in Full
+Card. Public Carrier/Skill/route/role changes refresh the deployed card without
+redeployment. No matches, pre-TP, terminal, possession changes and reset clear
+the previous context. Keep 136×140 geometry, identity, selection indicators and
+the existing optional 16-unit label line; no new animation or reveal delay.
+Attacking Skill labels and 0/1/2 dots retain their existing contract.
+
 ## Stage 8.30A — current attacking Skill-name amendment
 
 This amendment supersedes the historical no-Skill-text rule below. Deployed

@@ -2330,4 +2330,120 @@ bool FAttackingCardContextPIE::RunTest(const FString&)
  FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FAttackingCardContextPIESmoke(this)));
  ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
 }
+
+class FDefensiveCardContextPIESmoke final : public IAutomationLatentCommand
+{
+public:
+ explicit FDefensiveCardContextPIESmoke(FAutomationTestBase* InTest):Test(InTest){}
+ bool Update() override
+ {
+  if(FPlatformTime::Seconds()-Start>90.){Test->AddError(TEXT("Defensive card context PIE timeout"));return true;}
+  if(!GEditor || !GEditor->PlayWorld)return false;
+  auto* C=Cast<AFMCodexLocalMatchPlayerController>(GEditor->PlayWorld->GetFirstPlayerController());
+  auto* S=C?C->GetPlayerMatchScreen():nullptr;if(!S)return false;
+  if(FPlatformTime::Seconds()-Changed<.4 || S->IsInlineFormulaRevealInputBlocked())return false;
+  auto Next=[&](){++Step;Changed=FPlatformTime::Seconds();};
+  auto Accepted=[&](){return Test->TestTrue(TEXT("Real Local typed command accepted"),C->GetLastDiagnostic().bHostSuccess);};
+  const FName Eze=TEXT("Prototype.Arsenal.EberechiEze"),Rodri=TEXT("Prototype.ManchesterCity.Rodri");
+  const FName Block=TEXT("Trait.LongShotBlocker"),High=TEXT("Trait.CrossHighHelperDefense");
+  auto FindCard=[&](bool Pitch)->UFMCodexPlayerCardWidget*
+  {
+   if(Pitch){for(UFMCodexPitchSlotWidget* Slot:S->GetPitchWidget()->GetRenderedSlotWidgets())if(Slot->GetCardWidget() && Slot->GetCardWidget()->GetPresentation().CardId==Rodri)return Slot->GetCardWidget();}
+   else for(auto* Rack:{S->GetLocalRackWidget(),S->GetOpponentRackWidget()})for(UFMCodexPlayerCardWidget* Card:Rack->GetRenderedCardWidgets())if(Card->GetPresentation().CardId==Rodri)return Card;
+   return nullptr;
+  };
+  if(Step==0){S->RequestStartNewMatch();Next();return false;}
+  if(Step==1)
+  {
+   if(!Test->TestTrue(TEXT("Existing DEV TP provider"),C->SetLocalDevRollOverride({EFMCodexLocalDevRollTarget::FullD12,4}).bSuccess))return true;
+   S->RequestRollTacticalPoints();Next();return !Accepted();
+  }
+  if(Step==2)
+  {
+   auto* Hand=FindCard(false);if(!Test->TestNotNull(TEXT("Production defensive hand"),Hand))return true;
+   const auto& Traits=Hand->GetPresentation().DefensiveCounterTraits;
+   Test->TestTrue(TEXT("Deployment preview available before decisions"),Traits.Contains(Block)&&Traits.Contains(High));
+   Test->TestTrue(TEXT("One defensive presence dot"),Hand->GetWidgetFromName(TEXT("PitchMiniTacticalMatchPipTop"))->IsVisible());
+   Test->TestFalse(TEXT("Multiple traits do not create two dots"),Hand->GetWidgetFromName(TEXT("PitchMiniTacticalMatchPipBottom"))->IsVisible());
+   if(Test->TestTrue(TEXT("Existing defensive hover entry"),Hand->RequestFullCardDetailHover()))
+   {
+    auto* Full=S->GetDetailOverlayCard();
+    for(FName Id:{Block,High})Test->TestTrue(TEXT("Live Full owned defensive emphasis"),CastChecked<UFMCodexFullCardSurface>(Full->FindTraitPresentationWidget(Id))->IsContextRelevant());
+    Test->TestFalse(TEXT("No offensive carrier emphasis on defender"),CastChecked<UFMCodexFullCardSurface>(Full->FindTraitPresentationWidget(TEXT("Trait.LongShotCarrier")))->IsContextRelevant());
+    Hand->OnDetailHoverDismissed.Broadcast(Hand);
+   }
+   Next();return false;
+  }
+  if(Step==3)
+  {
+   for(FName Id:{Eze,Rodri})
+   {
+    const auto V=C->GetInteractionView();
+    const auto* O=V.DeploymentOptions.FindByPredicate([&](const auto& P){return P.CardId==Id && P.SlotId.ToString().Contains(TEXT("NearB"));});
+    if(!Test->TestNotNull(TEXT("Legal production deployment"),O))return true;
+    const auto Choice=*O;C->DeployOrdinary(Choice.CardId,Choice.SlotId);if(!Accepted())return true;
+   }
+   Next();return false;
+  }
+  if(Step==4)
+  {
+   auto* Mini=FindCard(true);if(!Test->TestNotNull(TEXT("Real defensive Pitch Mini"),Mini))return true;
+   Test->TestTrue(TEXT("Mini receives identical broad context"),Mini->GetPresentation().DefensiveCounterTraits.Contains(Block)&&Mini->GetPresentation().DefensiveCounterTraits.Contains(High));
+   Test->TestTrue(TEXT("Mini renders readable counter labels"),CastChecked<UTextBlock>(Mini->GetWidgetFromName(TEXT("PitchMiniMatchingSkills")))->GetText().ToString().Contains(TEXT("防远射")));
+   C->FinishDeployment();if(!Accepted())return true;C->FinishDeployment();if(!Accepted())return true;
+   S->RequestSubmitCarrier(Eze);Next();return !Accepted();
+  }
+  if(Step==5)
+  {
+   auto* Mini=FindCard(true);if(!Test->TestNotNull(TEXT("Deployed defender persists"),Mini))return true;
+   Test->TestTrue(TEXT("Public Eze narrows Rodri to LongShot defense"),Mini->GetPresentation().DefensiveCounterTraits==TArray<FName>({Block}));
+   Next();return false;
+  }
+  if(Step==6)
+  {
+   const auto V=C->GetInteractionView();using Category=EFMCodexLocalMatchInteractionCategory;
+   switch(V.InteractionCategory)
+   {
+    case Category::SelectMarker:S->RequestSubmitMarker(Rodri);break;
+    case Category::SelectRunner:case Category::SelectHelper:
+     if(V.bCanResolveNoLegalChoice)S->RequestResolveNoLegalSelection();else S->RequestDeclineSelection();break;
+    case Category::SelectSkill:
+    {
+     const auto* O=V.SelectionOptions.FindByPredicate([](const auto& P){return P.SkillType==ESkillRuleType::LongShot;});
+     if(!Test->TestNotNull(TEXT("Legal LongShot"),O))return true;
+     S->RequestSubmitSkill(O->Id);Next();break;
+    }
+    default:Test->AddError(TEXT("Unexpected defensive smoke selection phase"));return true;
+   }
+   Changed=FPlatformTime::Seconds();return !Accepted();
+  }
+  if(Step==7)
+  {
+   auto* Mini=FindCard(true);if(!Test->TestNotNull(TEXT("Final skill defender Mini"),Mini))return true;
+   Test->TestTrue(TEXT("Final LongShot leaves its owned Marker counter only"),Mini->GetPresentation().DefensiveCounterTraits==TArray<FName>({Block}));
+   S->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::DirectShot);Next();return !Accepted();
+  }
+  if(Step==8)
+  {
+   if(!Test->TestTrue(TEXT("Existing DEV miss provider"),C->SetLocalDevRollOverride({EFMCodexLocalDevRollTarget::LongShotDirectAttack,1}).bSuccess))return true;
+   C->RollLongShotDirectAttack();Next();return !Accepted();
+  }
+  if(Step==9){C->AdvanceAfterTerminal();Next();return !Accepted();}
+  for(auto* Rack:{S->GetLocalRackWidget(),S->GetOpponentRackWidget()})for(UFMCodexPlayerCardWidget* Card:Rack->GetRenderedCardWidgets())
+   Test->TestTrue(TEXT("Next possession pre-TP has no stale defense hints"),Card->GetPresentation().DefensiveCounterTraits.IsEmpty());
+  Test->AddInfo(TEXT("DEFENSIVE_CONTEXT_PIE: TP4 production Rodri hand/Full -> deployed Mini -> public Eze/LongShot -> real terminal/possession switch clear. USER PIE REQUIRED."));
+  return true;
+ }
+private:
+ FAutomationTestBase* Test;double Start=FPlatformTime::Seconds(),Changed=0;int32 Step=0;
+};
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDefensiveCardContextPIE,"FMCodex.PIE.PlayerCard.DefensiveContextSmoke",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FDefensiveCardContextPIE::RunTest(const FString&)
+{
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartTheaterPIE()));
+ ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+ FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FDefensiveCardContextPIESmoke(this)));
+ ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
+}
 #endif
