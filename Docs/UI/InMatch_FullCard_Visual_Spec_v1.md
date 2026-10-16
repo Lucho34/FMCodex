@@ -35,8 +35,8 @@ Current attacking cards reuse the existing hand/pitch matching-Skill projection.
 Full Card inspection from either source emphasizes the same union: LongShot →
 Shooting / LongShotCarrier; CutInsideShot → Shooting + Control / CutInsideCarrier;
 Cross → Passing / CrossCarrier; ThroughBall → Passing / ThroughBallCarrier.
-Only actually owned, ranked Carrier Traits are emphasized. Runner-only receiving,
-anti-offside, defensive and unrelated set-piece Traits stay ordinary. CutInside's
+This Carrier projection emphasizes only actually owned, ranked Carrier Traits.
+Separate defensive and receiving previews are specified below. CutInside's
 Trait affects Control, not Shooting; ThroughBall's Trait is not a promise of a
 bonus in every subsequent route/stage.
 
@@ -67,6 +67,35 @@ Marker counters emphasize Defense; Cross High Helper emphasizes Strength,
 Cross Low / ThroughBall Behind Helper Speed, and ThroughBall Feet Helper
 Defense. Corner is excluded. No speculative route, effective value, new animation
 or inspector is introduced. All full Trait names and grades remain available.
+
+### Stage 8.30D — ThroughBall and Cross receiving Runner preview
+
+Full Card inspection from Hand Micro or Pitch Mini combines owned receiving
+Traits with the existing Carrier/defensive text emphasis. ThroughBall Feet uses
+`Trait.ThroughBallFeetRunner` / 脚下球接应 / Control; Behind P1 uses
+`Trait.ThroughBallBehindRunner` / 身后球接应 / Speed. Binary
+`Trait.ThroughBallAntiRunner` / 反越位专家 has no attribute highlight and ends
+after the AntiOffside check. Cross High uses `Trait.CrossHighRunner` / 高球接应 /
+Strength; Cross Low uses `Trait.CrossLowRunner` / 低球接应 / Speed. The four ranked
+Traits require an owned non-None rank. Corner remains excluded, including its
+different Low Runner Control mapping.
+
+The receiver need not own the initiating Skill. Existing public TP-matching
+Skills on available/deployed attacking cards establish potential families;
+public Pitch roles narrow Carrier and bound Runner. After deployment, only
+deployed candidates remain. Existing public tactical surfaces narrow final
+Skill and disclosed route. Cross intent does not reveal its random High/Low
+result. The existing DTO lacks a selected-Skill identity during some
+SelectRunner/SelectHelper transitions: retain the last safe Carrier-level
+possibilities until the tactical surface supplies a family, equally in Local
+and Network. No new disclosure or network field is added.
+
+The transient Full Card context is rebuilt on inspection and cleared on rebind;
+existing TP/reel inspection gates and refresh dismissal prevent early or stale
+hints. Terminal, possession/reset and unrelated contexts clear receiving
+relevance. Hints express potential relevance, not legal selection or activation.
+No new compact labels/dots, values, badges, geometry, animation or Corner behavior.
+The accepted text palette is reused. USER PIE acceptance is required.
 
 This specification owns the `360×540` In-Match Full Card visual family.
 During Deployment, undeployed hand/roster cards and already-deployed Pitch cards

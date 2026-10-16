@@ -58,6 +58,8 @@ public:
 	void SetPresentationMode(EFMCodexPlayerCardPresentationMode InMode);
 
 	const FFMCodexUMGCardViewModel& GetPresentation() const;
+	/** Transient inspection-only context, reset by every presentation bind. */
+	void SetFullCardRunnerContext(const FFMCodexAttackingCardContext& Context);
 	EFMCodexPlayerCardPresentationMode GetPresentationMode() const;
 	const FString& GetRenderedAttributeSummary() const;
 	int32 GetRenderedSkillCount() const;
@@ -151,6 +153,7 @@ protected:
 
 private:
 	FFMCodexAttackingCardContext AttackingContext;
+	FFMCodexAttackingCardContext FullCardRunnerContext;
 	TMap<FName, TWeakObjectPtr<UWidget>> AttributePresentationWidgets;
 	TMap<FName, TWeakObjectPtr<UWidget>> SkillPresentationWidgets;
 	TMap<FName, TWeakObjectPtr<UWidget>> TraitPresentationWidgets;

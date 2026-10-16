@@ -379,6 +379,7 @@ void UFMCodexPlayerCardWidget::RefreshFromPresentation(
 				&& Presentation.HandMicroVisibleTacticalSkills[Index].CanonicalLabel == InPresentation.HandMicroVisibleTacticalSkills[Index].CanonicalLabel;
 	if (!bSameLabels) HandSkillRevealProgress = 1.f;
 	Presentation = InPresentation;
+	FullCardRunnerContext = {};
 	PresentationMode = InMode;
 	if (PresentationMode != EFMCodexPlayerCardPresentationMode::PitchMini
 		&& PresentationMode != EFMCodexPlayerCardPresentationMode::HandMicro)
@@ -1898,9 +1899,20 @@ void UFMCodexPlayerCardWidget::BuildWidgetTree()
 	FrameAssetHook->AddChildToOverlay(AssignedBounds);
 }
 
+void UFMCodexPlayerCardWidget::SetFullCardRunnerContext(const FFMCodexAttackingCardContext& Context)
+{
+	FullCardRunnerContext = Context;
+	RefreshVisuals();
+}
+
 void UFMCodexPlayerCardWidget::RefreshVisuals()
 {
 	AttackingContext = FFMCodexAttackingCardContext::Build(Presentation);
+	if (PresentationMode == EFMCodexPlayerCardPresentationMode::InteractionChoice)
+	{
+		AttackingContext.Traits.Append(FullCardRunnerContext.Traits);
+		AttackingContext.Attributes.Append(FullCardRunnerContext.Attributes);
+	}
 	// Reuse the same Full Card text treatment for projected defensive relevance.
 	for (FName Trait : Presentation.DefensiveCounterTraits)
 	{

@@ -2973,3 +2973,13 @@ Session 将已有 Local／服务器私有 Recovery provider 传给三个早期�
 确认的中间 Roll v2 按既有事件用途统一试用 2.25 秒：Full D12、Cross / ThroughBall 路线、定位球类型、角球共享选人 / 路线、反越位与身后球 P1 双方骰。P1 只决定继续单刀或终止进攻，不是终结射门；脚下球、单刀与其他终结骰无论成功失败均保持原有 4.04 秒每枚。分类不读结果、比分或骰面，未迁移 Legacy / 未知用途保留原时长。
 
 保留 1.46 秒运动，仅中间停留改为 0.79 秒；Formula / 资源 0.18 秒、Narrative 0.38 秒门控与 Hero 退出淡出仍在同一真实 elapsed clock 内。此试验取代旧中间停留参数，包括 8.19C 成功 P1 的加长停留；不修改 Formula、RNG、规则、权威、队列或网络合同。参数与可读窗口见 [Roll v2 实现说明](Dev/Resolution_Theater_Roll_v2.md#stage-830c--intermediate-pacing-trial-user-pie-required)。USER PIE REQUIRED，尚未验收；独立 Host/Remote 视觉验收继续留后续专门阶段，用户手动 staging / commit。
+
+## 2026-10-16 — Stage 8.30D：ThroughBall 与 Cross 接应 Runner Full Card 提示
+
+范围修订将直塞与传中接应合并在同一阶段。只在既有 Full Card 详情中增加自有接应特性及对应属性的文字强调：脚下球接应 CON、身后球接应 SPD、高球接应 STR、低球接应 SPD；反越位专家仅强调 Binary 名称，不关联属性。接应者无需拥有发起技能。未改等级、数值、Formula、RNG、合法性、内容、Roll v2 或 Corner；Corner 低球接应的 CON 不用于传中。
+
+复用公开 UMG 的 TP 匹配技能、可用／已部署牌、当前进攻方与 Pitch Carrier/Runner 角色。既有战术表面提供最终战术和实际路线收窄，Cross 意向不等于路线结果。部分 SelectRunner/SelectHelper 期间既有网络 DTO 没有最终 Skill 身份，按本阶段允许的安全回退保留 Carrier 层潜在预览，直到战术表面明确家族；不增加网络字段或披露权限，也不从本地权威补出仅 Local 可见的结论。部署阶段仍属潜在关联，不重新计算完整位置／参与者合法性。
+
+详情绑定时计算瞬时 context，沿用 TP／Reel 门控与既有刷新关闭机制。Hand Micro 与 Pitch Mini 只作入口，无新名称、点或计数；原 Carrier、防守文本强调独立保留。终结、换攻、重置及无关上下文清除新提示。Full 360×540、底板、数值色与等级徽章保持。
+
+验证预算：`FMCodex.LocalPlay.UI.RunnerCardContext.SemanticsAndProjection`（五项语义、收窄／清除、现有 DTO 往返）与 `FMCodex.LocalPlay.UI.RunnerCardContext.FullCardRendering`（属性／Binary、compact 隔离、手牌／场上详情入口）；直接复用既有 Carrier Full 与 defensive 渲染检查验证叠加路径，必要增量 Development Editor build 和 diff 检查。省略全部 broad suites、8.30C 重验、额外自动 PIE 与独立 Host/Remote 视觉；USER PIE REQUIRED，用户手动 staging/commit。

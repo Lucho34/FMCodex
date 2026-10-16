@@ -2339,6 +2339,11 @@ void UFMCodexLocalMatchScreenWidget::ShowDetailOverlay(
 	DetailOverlayCard->RefreshFromPresentation(
 		DetailModel,
 		EFMCodexPlayerCardPresentationMode::InteractionChoice);
+	// Existing inspection/reveal gates own visibility. Never inspect a future route
+	// while its reel is playing, or TP-dependent context before the TP reveal.
+	if (CanRevealTacticalPointDependentPresentation() && !IsInlineFormulaRevealInputBlocked())
+		DetailOverlayCard->SetFullCardRunnerContext(
+			FFMCodexAttackingCardContext::BuildRunner(Presentation, DetailModel.CardId));
 	DetailOverlayCard->SetVisibility(ESlateVisibility::HitTestInvisible);
 	PositionDetailOverlay(SourceCard);
 	InteractionState = EFMCodexUMGCardInteractionState::Hover;
