@@ -2966,3 +2966,10 @@ Session 将已有 Local／服务器私有 Recovery provider 传给三个早期�
 验证预算限定为新防守语义／公开路线边界／三种卡面渲染、受影响的原进攻语义、必要增量 UHT/Editor 编译与一条真实 Local PIE 冒烟；不扩展全量玩法、联网、名单／平衡或教程测试。网络夹具与 DTO 证据不等于独立 Host/Remote。实际视觉需本阶段 USER PIE；8.30C 时序工作继续独立，最终 staging/commit 由用户执行。
 
 同阶段 USER PIE 反馈修订：防守 Hand Micro 的部分名称加 `·+N` 容易与相邻球衣号码连读，改为实际测量下完整名称全部容纳才显示，否则整段显示 `防守N项`（包括单项）。N 直接取现有相关特性列表，不重新判断相关性；Mini 原策略、号码、卡片尺寸及其他行为保持。此修订只验证定向手牌渲染与增量编译，视觉验收仍待用户确认。
+
+
+## 2026-10-15 — Stage 8.30C：中间骰表现时长试验
+
+确认的中间 Roll v2 按既有事件用途统一试用 2.25 秒：Full D12、Cross / ThroughBall 路线、定位球类型、角球共享选人 / 路线、反越位与身后球 P1 双方骰。P1 只决定继续单刀或终止进攻，不是终结射门；脚下球、单刀与其他终结骰无论成功失败均保持原有 4.04 秒每枚。分类不读结果、比分或骰面，未迁移 Legacy / 未知用途保留原时长。
+
+保留 1.46 秒运动，仅中间停留改为 0.79 秒；Formula / 资源 0.18 秒、Narrative 0.38 秒门控与 Hero 退出淡出仍在同一真实 elapsed clock 内。此试验取代旧中间停留参数，包括 8.19C 成功 P1 的加长停留；不修改 Formula、RNG、规则、权威、队列或网络合同。参数与可读窗口见 [Roll v2 实现说明](Dev/Resolution_Theater_Roll_v2.md#stage-830c--intermediate-pacing-trial-user-pie-required)。USER PIE REQUIRED，尚未验收；独立 Host/Remote 视觉验收继续留后续专门阶段，用户手动 staging / commit。

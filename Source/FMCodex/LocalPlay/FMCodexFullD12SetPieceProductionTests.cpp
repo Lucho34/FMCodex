@@ -1087,9 +1087,9 @@ bool FFMCodexFullD12RevealAndCentralOwnershipTest::RunTest(
 	Screen->PauseInlineFormulaRevealTimerForTesting();
 	TestEqual(TEXT("Repeated authoritative event does not replay Type roll"),
 		Screen->GetInlineFormulaRevealPhase(), EFMCodexUMGInlineFormulaRevealPhase::ResultHold);
-	Screen->AdvanceInlineFormulaRevealForTesting(2.36f);
+	Screen->AdvanceInlineFormulaRevealForTesting(.57f);
 	const auto* EarlyTheaterTaker = Screen->GetWidgetFromName(TEXT("TheaterTakerBounds"));
-	TestTrue(TEXT("Original .18s disclosure plus 2.40s readable hold blocks Theater until completion"),
+	TestTrue(TEXT("Intermediate .79s hold blocks Theater until the 2.25s cycle completes"),
 		Screen->IsInlineFormulaRevealInputBlocked()
 		&& (!EarlyTheaterTaker || EarlyTheaterTaker->GetVisibility() == ESlateVisibility::Collapsed));
 	Screen->AdvanceInlineFormulaRevealForTesting(.02f);

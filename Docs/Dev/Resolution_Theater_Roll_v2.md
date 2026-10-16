@@ -30,6 +30,14 @@ No gameplay provider/RNG call or authoritative result enters prefix selection. T
 
 ## Implementation detail — trajectory and reveal
 
+### Stage 8.30C — intermediate pacing trial (USER PIE REQUIRED)
+
+The shared Screen now selects the hold from the accepted roll kind / contest purpose, before inspecting any result. Confirmed modern intermediate events use **2.25 s total = unchanged 0.92 s Cycling + 0.54 s Settling + 0.79 s ResultHold**: Full D12, Cross / ThroughBall route, Set Piece Type, Corner shared participants / route, AntiOffside and both BehindDefense P1 operands. P1 only determines whether play reaches OneOnOne, including its out-of-bounds / intercepted outcomes; Feet and OneOnOne are scoring resolutions and remain full length.
+
+This supersedes the older intermediate hold values below: 4.04 s total for D12 / Type / participants / Anti / ordinary P1, 2.91 s for routes, and 4.94 s for successful P1 defense. All final scoring operands retain 4.04 s each, including misses, saves, early shot failure and both operands of paired scoring rolls. Unknown and Legacy consumers retain their prior timing; dormant PassControl and internal non-presented rolls are not migrated.
+
+Motion, .18 s Formula/resource disclosure, .38 s Narrative disclosure, event sequencing/dedupe, authority wait and input gates are unchanged. Hero's existing .12 s exit uses the selected hold endpoint. A normal intermediate result is static for .79 s, its delayed semantics for .61 s, and applicable Narrative for .41 s; subjective readability, especially both Corner identities and P1 prose, requires USER PIE. Late authority and actual frame/timer scheduling may extend wall time. No RNG, gameplay, transport or replication change; Local and Network share this policy. Independent Host/Remote visual acceptance remains deferred.
+
 The 8.9A.2 refinement removed the old late re-acceleration: the earlier capture traversed about 1.36 cells in 120 ms after slowing to 1.5 cells/s, creating the impression of an inserted answer. The accepted modern profile now shared by TheaterInline, CompactBox and HeroRoll uses these parameters:
 
 | Interval | Presentation behavior |

@@ -263,6 +263,7 @@ private:
 	FFMCodexUMGCardRackViewModel BuildDisplayedHandRack(
 		const FFMCodexUMGCardRackViewModel& Source) const;
 	bool UsesTheaterRollMotion() const;
+	float ActiveRollResultHoldDuration() const;
 	FFMCodexUMGRollReelViewModel BuildActiveRollReelPresentation() const;
 	FFMCodexUMGRollReelViewModel BuildAntiOffsideSecondReelPresentation() const;
 	void AdvanceInlineFormulaReveal(float DeltaSeconds, bool bForceFullRefresh);

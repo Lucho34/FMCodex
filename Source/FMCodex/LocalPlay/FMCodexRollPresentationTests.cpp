@@ -15,6 +15,8 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 #include "Misc/AutomationTest.h"
+#include "Misc/ScopeExit.h"
+#include "HAL/IConsoleManager.h"
 
 // Focused access to cosmetic projection only; real PIE below uses typed commands.
 struct FFMCodexRollCosmeticTestAccess
@@ -61,7 +63,95 @@ struct FFMCodexRollCosmeticTestAccess
 	{ Screen.InlineFormulaRevealPhaseElapsed = Time; Screen.RefreshActiveRollReelVisuals(); }
 	static void Hide(UFMCodexLocalMatchScreenWidget& Screen)
 	{ Screen.CancelInlineFormulaReveal(); Screen.RefreshVisuals(); }
+	static void Purpose(UFMCodexLocalMatchScreenWidget& Screen, EFMCodexUMGCrossRollRevealKind Kind,
+		FName Contest, bool bSuccess, bool bModern = true)
+	{
+		Screen.ActiveCrossRollReveal.Kind = Kind;
+		Screen.ActiveCrossRollReveal.ContestId = Contest;
+		Screen.TheaterMotion.bActive = bModern;
+		Screen.CachedResolvedInlineFormula.bNarrativeAvailable = true;
+		Screen.CachedResolvedInlineFormula.bNarrativeAttackSuccess = bSuccess;
+		Screen.CachedResolvedInlineFormula.ResultTitle = bSuccess ? TEXT("进球") : TEXT("未进球");
+	}
+	static float Hold(const UFMCodexLocalMatchScreenWidget& Screen)
+	{ return Screen.ActiveRollResultHoldDuration(); }
+	static void Corner(UFMCodexLocalMatchScreenWidget& Screen)
+	{ Screen.Presentation.SetPiece.Type = ESetPieceSelectedType::Corner; }
+	static int32 CompletedCount(const UFMCodexLocalMatchScreenWidget& Screen)
+	{ return Screen.SettledCrossRollRevealKeys.Num(); }
 };
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexIntermediateRollPacingTest,
+	"FMCodex.LocalPlay.RollPresentation.PurposeBasedPacing",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FFMCodexIntermediateRollPacingTest::RunTest(const FString&)
+{
+	auto* TheaterMode = IConsoleManager::Get().FindConsoleVariable(TEXT("fm.UI.ResolutionStageV2"));
+	const int32 PreviousMode = TheaterMode->GetInt();
+	TheaterMode->Set(1, ECVF_SetByCode);
+	ON_SCOPE_EXIT { TheaterMode->Set(PreviousMode, ECVF_SetByCode); };
+	using Access = FFMCodexRollCosmeticTestAccess;
+	using EKind = EFMCodexUMGCrossRollRevealKind;
+	using EPhase = EFMCodexUMGInlineFormulaRevealPhase;
+	auto* Screen = NewObject<UFMCodexLocalMatchScreenWidget>(); Screen->TakeWidget();
+	struct FCase { EKind Kind; const TCHAR* Contest; int32 Maximum; float Total; };
+	const FCase Cases[] = {
+		{EKind::TacticalPoint, TEXT("Match.TacticalPoint"), 12, 2.25f},
+		{EKind::InitialRoute, TEXT("Cross.Route"), 6, 2.25f},
+		{EKind::ThroughBallInitialRoute, TEXT("ThroughBall.Route"), 6, 2.25f},
+		{EKind::Attack, TEXT("ThroughBall.AntiOffside"), 6, 2.25f},
+		{EKind::Attack, TEXT("ThroughBall.BehindDefense.P1"), 6, 2.25f},
+		{EKind::Defense, TEXT("ThroughBall.BehindDefense.P1"), 6, 2.25f},
+		{EKind::SetPieceType, TEXT("SetPiece.Type"), 6, 2.25f},
+		{EKind::Defense, TEXT("Cross.High"), 6, 4.04f},
+		{EKind::Attack, TEXT("ThroughBall.OneOnOne.ChipShot"), 6, 4.04f},
+		{EKind::Attack, TEXT("Unknown.ScoringPurpose"), 6, 4.04f},
+		{EKind::PassControlInitialRoute, TEXT("PassControl.Route"), 6, 2.91f}
+	};
+	int64 Event = 100;
+	for (const auto& C : Cases)
+	for (bool bSuccess : {false, true})
+	{
+		Access::Begin(*Screen, C.Maximum, bSuccess ? C.Maximum : 1, Event++);
+		Access::Purpose(*Screen, C.Kind, C.Contest, bSuccess);
+		TestTrue(FString::Printf(TEXT("%s total follows purpose for success=%d"), C.Contest, bSuccess),
+			FMath::IsNearlyEqual(1.46f + Access::Hold(*Screen), C.Total));
+		// Full ThroughBall/Corner View lifecycle is covered by the existing fixtures;
+		// this deliberately small cosmetic fixture has no Theater-owned match View.
+		if (C.Total == 2.25f && C.Kind != EKind::TacticalPoint) continue;
+		Access::Purpose(*Screen, C.Kind, C.Contest, bSuccess, false);
+		const int32 CompletedBefore = Access::CompletedCount(*Screen);
+		Access::TickMotion(*Screen, 1.45f);
+		TestEqual(TEXT("Capture completes before result hold"), Screen->GetInlineFormulaRevealPhase(), EPhase::Settling);
+		Access::TickMotion(*Screen, .02f);
+		TestEqual(TEXT("Accepted result enters hold"), Screen->GetInlineFormulaRevealPhase(), EPhase::ResultHold);
+		TestTrue(TEXT("Held digit is authoritative and static"), Access::Current(*Screen).bStaticResult
+			&& Access::Current(*Screen).CenterValue == (bSuccess ? C.Maximum : 1));
+		Access::TickMotion(*Screen, C.Total - 1.48f);
+		TestTrue(TEXT("Next interaction stays gated until complete cycle"), Screen->IsInlineFormulaRevealInputBlocked());
+		Access::TickMotion(*Screen, .02f);
+		TestFalse(TEXT("No empty wait after complete cycle"), Screen->IsInlineFormulaRevealInputBlocked());
+		TestEqual(TEXT("Exactly one accepted event completes"), Access::CompletedCount(*Screen), CompletedBefore + 1);
+		Access::TickMotion(*Screen, 1.f);
+		TestEqual(TEXT("Later ticks cannot complete it twice"), Access::CompletedCount(*Screen), CompletedBefore + 1);
+	}
+	for (EKind Kind : {EKind::CornerParticipantSelection, EKind::CornerRoute})
+	{
+		Access::Begin(*Screen, 6, 3, Event++); Access::Corner(*Screen);
+		Access::Purpose(*Screen, Kind, Kind == EKind::CornerRoute ? TEXT("Corner.Route") : TEXT("Corner.Participants"), false);
+		TestTrue(FString::Printf(TEXT("Corner intermediate hold %.6f matches .79 seconds"), Access::Hold(*Screen)),
+			FMath::IsNearlyEqual(Access::Hold(*Screen), .79f, .0001f));
+	}
+	Access::Begin(*Screen, 12, 9, Event++); Access::Hero(*Screen);
+	Access::TickMotion(*Screen, 1.46f);
+	Access::Refresh(*Screen, .73f);
+	const auto* Shell = Screen->GetWidgetFromName(TEXT("TacticalPointRollRevealSurface"));
+	TestTrue(TEXT("Hero fades inside shortened hold, before completion"), Shell->GetRenderOpacity() > 0.f && Shell->GetRenderOpacity() < 1.f);
+	Access::TickMotion(*Screen, .07f);
+	TestEqual(TEXT("Completion restores board focus"), Screen->GetLocalRackWidget()->GetColorAndOpacity(), FLinearColor::White);
+	return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexRollActivationContinuityTest,
 	"FMCodex.LocalPlay.RollPresentation.ActivationContinuity",
@@ -523,7 +613,8 @@ public:
 class FRollPresentationPIEPath final : public IAutomationLatentCommand
 {
 public:
-	FRollPresentationPIEPath(FAutomationTestBase* InTest,int32 InD12Value) : Test(InTest),D12Value(InD12Value) {}
+	FRollPresentationPIEPath(FAutomationTestBase* InTest,int32 InD12Value,bool bInTimingOnly=false)
+		: Test(InTest),D12Value(InD12Value),bTimingOnly(bInTimingOnly) {}
 	virtual bool Update() override
 	{
 		if (FPlatformTime::Seconds()-Started > 60)
@@ -607,7 +698,7 @@ public:
 		}
 		else if (Phase == EFMCodexUMGInlineFormulaRevealPhase::ResultHold)
 		{
-			if (!bTypeRoll && bResultShot && !bContextShot && GEditor->PlayWorld->GetTimeSeconds()-HoldStarted>.8f)
+			if (!bTypeRoll && bResultShot && !bContextShot && GEditor->PlayWorld->GetTimeSeconds()-HoldStarted>.4f)
 			{
 				Capture(TEXT("06_BoardContext_HeroFocus")); bContextShot=true;
 				const auto& G=Frame->GetCachedGeometry();
@@ -660,7 +751,14 @@ public:
 				Screen->GetLocalRackWidget()->GetColorAndOpacity()==FLinearColor::White
 				&& Screen->GetPitchWidget()->GetColorAndOpacity()==FLinearColor::White
 				&& Screen->GetMatchHeader()->GetColorAndOpacity()==FLinearColor::White);
-			if (RestoredAt<0) { RestoredAt=GEditor->PlayWorld->GetTimeSeconds(); return false; }
+			if (RestoredAt<0)
+			{
+				RestoredAt=GEditor->PlayWorld->GetTimeSeconds();
+				const double Elapsed=RestoredAt-RollGameStarted;
+				Test->AddInfo(FString::Printf(TEXT("INTERMEDIATE_ROLL_PACING game=%.3f target=2.250"),Elapsed));
+				if (bTimingOnly) Test->TestTrue(TEXT("Natural D12 cycle completes near 2.25 seconds"),Elapsed>=2.24 && Elapsed<2.50);
+				return false;
+			}
 			if (GEditor->PlayWorld->GetTimeSeconds()-RestoredAt<.30) return false;
 			Capture(TEXT("05_Board_Restored"));
 			if (D12Value==4)
@@ -690,6 +788,7 @@ private:
 	int32 MotionIndex=0;
 	void CaptureMotion()
 	{
+		if (bTimingOnly) return;
 		const double Now=GEditor->PlayWorld->GetTimeSeconds();
 		if (Now-LastMotion < .066) return;
 		LastMotion=Now;
@@ -697,6 +796,7 @@ private:
 	}
 	void Capture(const TCHAR* State, bool bMotion=false)
 	{
+		if (bTimingOnly) return;
 		// Read real current Slate output. No clock pause, result forcing or
 		// synthetic frames. Defer compression until after the gameplay path.
 		auto Window=GEditor->PlayWorld->GetGameViewport()->GetWindow();
@@ -715,6 +815,7 @@ private:
 	}
 	void SaveEvidence()
 	{
+		if (bTimingOnly) return;
 		const FString Directory=FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir()
 			/TEXT("Stage8_10B_2/PIE")/(D12Value==4 ? TEXT("Ordinary") : TEXT("SetPiece")));
 		IFileManager::Get().MakeDirectory(*Directory,true);
@@ -731,6 +832,7 @@ private:
 	}
 	FAutomationTestBase* Test;
 	const int32 D12Value;
+	const bool bTimingOnly;
 	double Started = FPlatformTime::Seconds(), RollStarted = 0, MatchStarted = 0;
 	double RollGameStarted = 0, HoldStarted = 0;
 	int32 LastPhase = -1, LastCell = -1;
@@ -747,12 +849,13 @@ void FFMCodexRollPresentationPIETest::GetTests(TArray<FString>& Names,TArray<FSt
 {
 	Names.Add(TEXT("Ordinary")); Commands.Add(TEXT("Ordinary"));
 	Names.Add(TEXT("SetPiece")); Commands.Add(TEXT("SetPiece"));
+	Names.Add(TEXT("TimingSmoke")); Commands.Add(TEXT("TimingSmoke"));
 }
 bool FFMCodexRollPresentationPIETest::RunTest(const FString& Parameters)
 {
 	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartRollPresentationPIE()));
 	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.0f));
-	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FRollPresentationPIEPath(this,Parameters==TEXT("Ordinary") ? 4 : 9)));
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FRollPresentationPIEPath(this,Parameters==TEXT("SetPiece") ? 9 : 4,Parameters==TEXT("TimingSmoke"))));
 	ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());
 	return true;
 }

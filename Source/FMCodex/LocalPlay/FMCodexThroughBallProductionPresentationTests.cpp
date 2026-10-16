@@ -2252,13 +2252,13 @@ bool FFMCodexThroughBallProductionBehindGoldenPathTest::RunTest(
 			&& !OneOnOneFormulaWidget->GetPresentation().bCanContinue
 			&& OneOnOneScreen->GetInteractionPanel()->GetVisibility()
 				== ESlateVisibility::Collapsed);
-	OneOnOneScreen->AdvanceInlineFormulaRevealForTesting(3.00f);
-	TestTrue(TEXT("Intermediate Narrative retains the full readable duration"),
+	OneOnOneScreen->AdvanceInlineFormulaRevealForTesting(.40f);
+	TestTrue(TEXT("Intermediate Narrative remains visible until the 2.25-second boundary"),
 		OneOnOneScreen->IsInlineFormulaRevealInputBlocked()
 		&& OneOnOneScreen->GetWidgetFromName(TEXT("TheaterOutcome"))->GetVisibility()!=ESlateVisibility::Collapsed
 		&& OneOnOneScreen->GetWidgetFromName(TEXT("TheaterNearMethods"))->GetVisibility()==ESlateVisibility::Collapsed);
 	OneOnOneScreen->RefreshFromPresentation(OneOnOne); OneOnOneScreen->PauseInlineFormulaRevealTimerForTesting();
-	OneOnOneScreen->AdvanceInlineFormulaRevealForTesting(.11f);
+	OneOnOneScreen->AdvanceInlineFormulaRevealForTesting(.02f);
 	CheckTheater(*this,*OneOnOneScreen);
 	TestEqual(TEXT("Direct choice helper is concise"),CastChecked<UTextBlock>(OneOnOneScreen->GetWidgetFromName(TEXT("TheaterNearDirectHint")))->GetText().ToString(),FString(TEXT("比较射门与门将单刀")));
 	TestEqual(TEXT("Chip helper spans its own button with no horizontal offset"),CastChecked<UHorizontalBoxSlot>(OneOnOneScreen->GetWidgetFromName(TEXT("TheaterNearCombinationHint"))->Slot)->GetPadding(),FMargin(0));
@@ -2590,7 +2590,13 @@ bool FFMCodexThroughBallProductionAntiAndChipGoldenPathsTest::RunTest(
 		TestEqual(TEXT("Chip uses continuous v2 capture"),Chip->GetInlineFormulaRevealPhase(),EFMCodexUMGInlineFormulaRevealPhase::Settling);
 		Chip->AdvanceInlineFormulaRevealForTesting(.54f);
 		TestEqual(TEXT("Chip authoritative landing is EED7A6"),Reel->GetCenterDigitWidget()->GetColorAndOpacity().GetSpecifiedColor(),FLinearColor::FromSRGBColor(FColor(238,215,166)));
-		Chip->AdvanceInlineFormulaRevealForTesting(2.61f); CheckTheater(*this,*Chip,true);
+		Chip->AdvanceInlineFormulaRevealForTesting(.80f);
+		TestTrue(TEXT("Both Chip Goal and Miss remain gated after the fast-roll deadline"), Chip->IsInlineFormulaRevealInputBlocked());
+		Chip->AdvanceInlineFormulaRevealForTesting(1.77f);
+		TestTrue(TEXT("Both scoring outcomes retain the complete original hold"), Chip->IsInlineFormulaRevealInputBlocked());
+		Chip->AdvanceInlineFormulaRevealForTesting(.02f);
+		TestFalse(TEXT("Both scoring outcomes complete at 4.04 seconds"), Chip->IsInlineFormulaRevealInputBlocked());
+		CheckTheater(*this,*Chip,true);
 	}
 	TestTrue(TEXT("Fresh Chip terminal has one exclusive production root"),
 		ChipReconstructed->GetThroughBallResolutionSurface()->GetVisibility()

@@ -1517,7 +1517,7 @@ bool FFMCodexUnifiedRollReelRevealTest::RunTest(const FString& Parameters)
 				== ESlateVisibility::HitTestInvisible
 			&& RevealedLivePipBottom->GetVisibility()
 				== ESlateVisibility::HitTestInvisible);
-	TacticalScreen->AdvanceInlineFormulaRevealForTesting(2.35f);
+	TacticalScreen->AdvanceInlineFormulaRevealForTesting(.56f);
 	TestTrue(TEXT("Deployment remains blocked through readable resource hold"),
 		TacticalScreen->IsInlineFormulaRevealInputBlocked());
 	TacticalScreen->AdvanceInlineFormulaRevealForTesting(0.03f);

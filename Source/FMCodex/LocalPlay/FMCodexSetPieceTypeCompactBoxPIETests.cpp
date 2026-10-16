@@ -111,8 +111,8 @@ public:
 		Test->TestTrue(TEXT("Real PIE observed cycling, modern capture, landed value and disclosed hold"), bCycling && bModernCapture && bDisclosed);
 		Test->TestTrue(TEXT("Same PIE also observes Hero authoritative landed accent"), bHeroLanded);
 		// Sampling can miss one timer tick at either edge; the focused test checks
-		// the exact .18 + 2.40 boundary without screenshot/readback latency.
-		Test->TestTrue(TEXT("Natural clock preserves readable ResultHold"), HoldStart >= 0 && Now - HoldStart >= 2.45f && Now - DisclosedAt >= 2.25f);
+		// the exact .18 + .61 boundary without screenshot/readback latency.
+		Test->TestTrue(TEXT("Natural clock preserves readable ResultHold"), HoldStart >= 0 && Now - HoldStart >= .66f && Now - DisclosedAt >= .46f);
 		const auto* Taker = Screen->GetWidgetFromName(TEXT("TheaterTakerBounds"));
 		Test->TestTrue(TEXT("Near FK Theater takes over after Type hold"), Taker && Taker->GetVisibility() == ESlateVisibility::SelfHitTestInvisible);
 		Test->TestEqual(TEXT("Canonical next action remains taker selection"), Controller->GetInteractionView().InteractionCategory, EFMCodexLocalMatchInteractionCategory::SelectSetPieceCarrier);

@@ -1822,8 +1822,8 @@ public:
   if(Step==6)
   {
    const float Hold=Game-HighlightGame;
-   Test->TestTrue(TEXT("Real participant highlight hold uses readable 2.4-second token"),HighlightGame>=0 && Hold>=2.2f && Hold<2.8f);
-   Test->AddInfo(FString::Printf(TEXT("CORNER_PARTICIPANT_HOLD %s readable_game=%.3f wall=%.3f target=2.400"),*Mode,Hold,FPlatformTime::Seconds()-HighlightWall));
+   Test->TestTrue(TEXT("Real participant highlight uses shortened intermediate hold"),HighlightGame>=0 && Hold>=.41f && Hold<1.01f);
+   Test->AddInfo(FString::Printf(TEXT("CORNER_PARTICIPANT_HOLD %s readable_game=%.3f wall=%.3f target=0.610"),*Mode,Hold,FPlatformTime::Seconds()-HighlightWall));
    if(Low)
    {
     const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_13B_1/PIE")/Mode;

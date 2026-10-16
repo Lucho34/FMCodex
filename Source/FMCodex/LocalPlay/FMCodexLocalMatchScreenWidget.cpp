@@ -74,13 +74,40 @@ namespace FMCodexLocalMatchScreenWidget
 	constexpr float TheaterFormulaFadeDuration = 0.12f;
 	constexpr float NarrativeDisclosureDelay = 0.38f;
 	constexpr float FormulaReadableResultHoldDuration = 2.40f;
-	constexpr float ThroughBallBehindReadableResultHoldDuration = 3.10f;
 	constexpr float TacticalPointReadableResultHoldDuration = 2.40f;
 	constexpr float FormulaResultHoldDuration =
 		FormulaDisclosureDelay + FormulaReadableResultHoldDuration;
 	constexpr float TacticalPointResultHoldDuration =
 		FormulaDisclosureDelay + TacticalPointReadableResultHoldDuration;
 	constexpr float RouteResultHoldDuration = 1.45f;
+	// Keep the accepted v2 trajectory; shorten only confirmed intermediate holds.
+	constexpr float IntermediateRollPresentationDuration = 2.25f;
+	constexpr float IntermediateRollResultHoldDuration = IntermediateRollPresentationDuration
+		- TheaterCyclingDuration - TheaterLandingDuration;
+
+	bool IsIntermediateRoll(const FFMCodexCrossRollRevealIdentity& Identity)
+	{
+		using EKind = EFMCodexUMGCrossRollRevealKind;
+		switch (Identity.Kind)
+		{
+		case EKind::TacticalPoint:
+		case EKind::InitialRoute:
+		case EKind::ThroughBallInitialRoute:
+		case EKind::SetPieceType:
+		case EKind::CornerParticipantSelection:
+		case EKind::CornerRoute:
+			return true;
+		case EKind::Attack:
+			return Identity.ContestId == TEXT("ThroughBall.AntiOffside")
+				|| Identity.ContestId == TEXT("ThroughBall.BehindDefense.P1");
+		case EKind::Defense:
+			return Identity.ContestId == TEXT("ThroughBall.BehindDefense.P1");
+		default:
+			// Scoring operands (including the first of a pair), unknown and
+			// unmigrated events retain their existing timing, whatever the outcome.
+			return false;
+		}
+	}
 	constexpr float FastVelocityCellsPerSecond = 8.0f;
 	constexpr float MainDecelerationEndVelocityCellsPerSecond = 3.0f;
 	constexpr float FinalSlowVelocityCellsPerSecond = 1.5f;
@@ -4389,6 +4416,35 @@ bool UFMCodexLocalMatchScreenWidget::UsesTheaterRollMotion() const
 			|| ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Defense);
 }
 
+float UFMCodexLocalMatchScreenWidget::ActiveRollResultHoldDuration() const
+{
+	using namespace FMCodexLocalMatchScreenWidget;
+	// Use only the accepted purpose, never dice values, score or success/failure.
+	// Legacy consumers keep their existing presentation contract.
+	if (UsesTheaterRollMotion() && IsIntermediateRoll(ActiveCrossRollReveal))
+		return IntermediateRollResultHoldDuration;
+
+	// The shared participant reveal needs time to read BOTH selected identities.
+	// Reuse the existing readable-result token and elapsed-time clock; no new timer.
+	const bool bReadableCornerParticipants = ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection
+		&& FMCodexResolutionTheaterPrototype::IsCornerResolutionEnabled();
+	return bReadableCornerParticipants ? FormulaResultHoldDuration : ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind::InitialRoute
+		|| ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind
+				::ThroughBallInitialRoute
+		|| ActiveCrossRollReveal.Kind
+			== EFMCodexUMGCrossRollRevealKind
+				::PassControlInitialRoute
+		|| ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::CornerRoute
+		|| ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection
+			? RouteResultHoldDuration
+			: ActiveCrossRollReveal.Kind
+				== EFMCodexUMGCrossRollRevealKind::TacticalPoint
+					? TacticalPointResultHoldDuration
+					: FormulaResultHoldDuration;
+}
+
 FFMCodexUMGRollReelViewModel
 UFMCodexLocalMatchScreenWidget::BuildActiveRollReelPresentation() const
 {
@@ -4492,33 +4548,7 @@ void UFMCodexLocalMatchScreenWidget::AdvanceInlineFormulaReveal(
 		if (InlineFormulaRevealPhase
 			== EFMCodexUMGInlineFormulaRevealPhase::ResultHold)
 		{
-			// The shared participant reveal needs time to read BOTH selected identities.
-			// Reuse the existing readable-result token and elapsed-time clock; no new timer.
-			const bool bReadableCornerParticipants = ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection
-				&& FMCodexResolutionTheaterPrototype::IsCornerResolutionEnabled();
-			// ThroughBall's automatic success handoff gets 3.1 readable seconds
-			// AFTER its Narrative appears, using the same elapsed clock and dedupe.
-			const bool bBehindIntermediate=TheaterMotion.bActive
-				&& ActiveCrossRollReveal.Kind==EFMCodexUMGCrossRollRevealKind::Defense
-				&& ActiveCrossRollReveal.ContestId==TEXT("ThroughBall.BehindDefense.P1")
-				&& CachedResolvedInlineFormula.bNarrativeAvailable
-				&& CachedResolvedInlineFormula.bNarrativeAttackSuccess;
-			const float HoldDuration = bBehindIntermediate ? NarrativeDisclosureDelay+ThroughBallBehindReadableResultHoldDuration
-				: bReadableCornerParticipants ? FormulaResultHoldDuration : ActiveCrossRollReveal.Kind
-					== EFMCodexUMGCrossRollRevealKind::InitialRoute
-				|| ActiveCrossRollReveal.Kind
-					== EFMCodexUMGCrossRollRevealKind
-						::ThroughBallInitialRoute
-				|| ActiveCrossRollReveal.Kind
-					== EFMCodexUMGCrossRollRevealKind
-						::PassControlInitialRoute
-				|| ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::CornerRoute
-				|| ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::CornerParticipantSelection
-					? RouteResultHoldDuration
-					: ActiveCrossRollReveal.Kind
-						== EFMCodexUMGCrossRollRevealKind::TacticalPoint
-							? TacticalPointResultHoldDuration
-							: FormulaResultHoldDuration;
+			const float HoldDuration = ActiveRollResultHoldDuration();
 			const float Remaining = FMath::Max(
 				0.0f, HoldDuration - InlineFormulaRevealPhaseElapsed);
 			const float Consumed = FMath::Min(DeltaSeconds, Remaining);
@@ -4723,7 +4753,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshTacticalRollActivation(const float C
 		&& IsInlineFormulaRevealInputBlocked();
 	// Fast exit fits inside the existing readable hold; never extend the event.
 	const float Exit = bActive && InlineFormulaRevealPhase == EFMCodexUMGInlineFormulaRevealPhase::ResultHold
-		? FMath::SmoothStep(0.f, .12f, FMCodexLocalMatchScreenWidget::TacticalPointResultHoldDuration-InlineFormulaRevealPhaseElapsed) : 1.f;
+		? FMath::SmoothStep(0.f, .12f, ActiveRollResultHoldDuration()-InlineFormulaRevealPhaseElapsed) : 1.f;
 	RefreshHeroBoardFocus(bActive ? Ease(0.f,.12f)*Exit : 0.f);
 	TacticalPointRevealSurface->SetRenderOpacity((.40f + .60f*Shell)*Exit);
 	TacticalPointRevealSurface->SetRenderScale(FVector2D(.98f+.02f*Shell, .90f+.10f*Shell));

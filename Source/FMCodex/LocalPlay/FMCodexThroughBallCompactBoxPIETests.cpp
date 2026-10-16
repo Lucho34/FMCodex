@@ -194,7 +194,7 @@ public:
 			if (!Ready(Now,.3f)) return false;
 			if (!Test->TestEqual(TEXT("Route reaches correct first Formula attack"),C->GetInteractionView().InteractionCategory,
 				bBehind?Category::RollThroughBallBehindDefenseAttack:Category::RollThroughBallFeetAttack)) return true;
-			Test->TestTrue(TEXT("Route completed modern motion and readable hold"),Modern[0] && Landed[0] && Now-HoldStart[0]>=1.35f);
+			Test->TestTrue(TEXT("Route completed modern motion and readable hold"),Modern[0] && Landed[0] && Now-HoldStart[0]>=.69f);
 			CheckFormula(*S);
 			if (!bBehind) Capture(TEXT("B_FeetFormula.png"));
 			if (!Override(*C,bBehind?EFMCodexLocalDevRollTarget::ThroughBallBehindDefenseP1:EFMCodexLocalDevRollTarget::ThroughBallFeetAttack,6)) return true;
@@ -222,7 +222,7 @@ public:
 				&& S->GetWidgetFromName(TEXT("TheaterPrimaryBounds"))->GetVisibility()==ESlateVisibility::Collapsed);
 			if (bPolish)
 			{
-				Test->TestTrue(TEXT("Behind narrative remains readable for about 3.1 seconds"),NarrativeSeen>=0 && ChoiceSeen-NarrativeSeen>=3.05f && ChoiceSeen-NarrativeSeen<=3.25f);
+				Test->TestTrue(TEXT("Behind narrative remains inside the shortened .41-second window"),NarrativeSeen>=0 && ChoiceSeen-NarrativeSeen>=.36f && ChoiceSeen-NarrativeSeen<=.56f);
 				Test->AddInfo(FString::Printf(TEXT("POLISH_INTERMEDIATE readableSeconds=%.3f"),ChoiceSeen-NarrativeSeen));
 			}
 			if (!bPolish) Capture(TEXT("D_OneOnOneChoice.png"));

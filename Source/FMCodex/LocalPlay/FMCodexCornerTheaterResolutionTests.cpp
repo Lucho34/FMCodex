@@ -67,21 +67,19 @@ bool FCornerResolution::RunTest(const FString& P)
     {TestFalse(TEXT("No future formula during route"),Shown(Screen,TEXT("TheaterAttackValue")));TestTrue(TEXT("Known identities persist through route"),Shown(Screen,TEXT("TheaterDefensePeople")));}
    }
    const auto Phase=S->GetInlineFormulaRevealPhase();A->RefreshPlayerFacingUI();TestEqual(TEXT("Repeated safe View does not restart motion"),S->GetInlineFormulaRevealPhase(),Phase);
-   if(K==Kind::RequestCornerParticipantSelectionRoll && Tie)
+   if(K==Kind::RequestCornerParticipantSelectionRoll)
    {
-    // Step the existing clock to first disclosed highlight, then prove it survives
-    // the old 1.27-second readable window on both independent viewer surfaces.
+    // The shared intermediate budget applies to both viewer surfaces.
     for(auto* Screen:{S,W})
     {
-     for(int32 I=0;I<40 && Screen->GetInlineFormulaSurface()->GetPresentation().RouteResultLabel.IsEmpty();++I)
-      Screen->AdvanceInlineFormulaRevealForTesting(.1f);
+     Screen->AdvanceInlineFormulaRevealForTesting(1.65f);
      TestTrue(TEXT("Participant result was disclosed"),!Screen->GetInlineFormulaSurface()->GetPresentation().RouteResultLabel.IsEmpty());
-     Screen->AdvanceInlineFormulaRevealForTesting(2.2f);
-     TestTrue(TEXT("Participant highlight readable for at least 2.2 seconds"),Shown(Screen,TEXT("TheaterParticipantDraw"))&&Screen->IsInlineFormulaRevealInputBlocked());
+     Screen->AdvanceInlineFormulaRevealForTesting(.59f);
+     TestTrue(TEXT("Participant highlight stays readable until the 2.25-second boundary"),Shown(Screen,TEXT("TheaterParticipantDraw"))&&Screen->IsInlineFormulaRevealInputBlocked());
      const auto Held=Screen->GetInlineFormulaRevealPhase();A->RefreshPlayerFacingUI();
-     TestEqual(TEXT("Repeated View preserves extended hold"),Screen->GetInlineFormulaRevealPhase(),Held);
-     Screen->AdvanceInlineFormulaRevealForTesting(.3f);
-     TestFalse(TEXT("Shared reveal exits after 2.4 readable seconds"),Screen->IsInlineFormulaRevealInputBlocked());
+     TestEqual(TEXT("Repeated View preserves shortened hold"),Screen->GetInlineFormulaRevealPhase(),Held);
+     Screen->AdvanceInlineFormulaRevealForTesting(.02f);
+     TestFalse(TEXT("Shared reveal exits after the 2.25-second cycle"),Screen->IsInlineFormulaRevealInputBlocked());
     }
    }
    F.Settle();
