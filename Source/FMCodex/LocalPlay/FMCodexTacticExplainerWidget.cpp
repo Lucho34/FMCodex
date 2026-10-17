@@ -138,6 +138,20 @@ void UFMCodexTacticExplainerWidget::ReleaseSlateResources(bool bReleaseChildren)
 { Super::ReleaseSlateResources(bReleaseChildren); Navigation.Reset(); Content.Reset(); Scroll.Reset(); }
 TSharedRef<SWidget> UFMCodexTacticExplainerWidget::RebuildWidget()
 {
+ if(bEmbedded)
+ {
+  Navigation=SNew(SVerticalBox); // Same content builder; no other-tactic navigation.
+  auto Result=SNew(SBorder).BorderImage(Panel()).Padding(1)
+   [SNew(SVerticalBox)
+    +SVerticalBox::Slot().AutoHeight()[SNew(SBorder).BorderImage(Card()).Padding(FMargin(18,8))
+     [SNew(SHorizontalBox)
+      +SHorizontalBox::Slot().FillWidth(1).VAlign(VAlign_Center)[Label(NSLOCTEXT("FMCodexGuide","ReferenceOnly","战术说明 · 仅供参考"),18,true)]
+      +SHorizontalBox::Slot().AutoWidth()[SNew(SButton).ButtonStyle(FCoreStyle::Get(),"NoBorder").ContentPadding(FMargin(10,0))
+       .OnClicked_Lambda([this](){OnClose.Broadcast();return FReply::Handled();})[Label(TEXT("×"),26)]]]]
+    +SVerticalBox::Slot().FillHeight(1)[SAssignNew(Scroll,SScrollBox)
+     +SScrollBox::Slot().Padding(20,12)[SAssignNew(Content,SVerticalBox)]]];
+  RefreshContent(); return Result;
+ }
  auto Body=SNew(SHorizontalBox)
  +SHorizontalBox::Slot().AutoWidth()[SNew(SBox).WidthOverride(330)[SNew(SBorder).BorderImage(FCoreStyle::Get().GetBrush("NoBrush")).Padding(FMargin(30,25))[SAssignNew(Navigation,SVerticalBox)]]]
  +SHorizontalBox::Slot().AutoWidth()[SNew(SBox).WidthOverride(1)[SNew(SBorder).BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush")).BorderBackgroundColor(Theme::Border())]]
@@ -162,7 +176,7 @@ void UFMCodexTacticExplainerWidget::RefreshContent()
 {
  if(!Content || !Navigation) return;
  // Static navigation and shell stay mounted while only their selected attributes change.
- if(Navigation->GetChildren()->Num()==0)
+ if(!bEmbedded && Navigation->GetChildren()->Num()==0)
  {
   for(int32 I=0;I<FFMCodexTacticExplainerCatalog::Get().Num();++I)
   {
@@ -184,22 +198,23 @@ void UFMCodexTacticExplainerWidget::RefreshContent()
  // The accepted fixed-width modal is scaled as a whole. Seed wrapping from its
  // current logical content width instead of SWrapBox's first-frame default 100.
  const float Width=Content->GetCachedGeometry().GetLocalSize().X>0.f
-  ? Content->GetCachedGeometry().GetLocalSize().X : 1022.f;
+  ? Content->GetCachedGeometry().GetLocalSize().X : bEmbedded?838.f:1022.f;
  const float ColumnWidth=(Width-24.f)*.5f;
  auto Page=SNew(SVerticalBox);
  const auto& T=*FFMCodexTacticExplainerCatalog::Find(TacticId); const auto& R=GetRoute();
  Page->AddSlot().AutoHeight()[Label(T.Name,32,true)];
- Page->AddSlot().AutoHeight().Padding(0,4,0,12)[Label(T.Purpose,19)];
+ auto Purpose=Label(T.Purpose,19); Purpose->SetAutoWrapText(true);
+ Page->AddSlot().AutoHeight().Padding(0,4,0,12)[Purpose];
  auto Pills=SNew(SWrapBox).PreferredSize(Width).InnerSlotPadding(FVector2D(8,8));
  for(const auto& P:T.Routes)
  {
   const auto Id=P.Id; const bool Active=Id==RouteId;
   Pills->AddSlot()[SNew(SButton).ButtonStyle(Button(Active)).OnClicked_Lambda([this,Id](){SelectRoute(Id);return FReply::Handled();})[Label(P.Name,18,Active,Active?Theme::Ink():Theme::Text())]];
  }
- Page->AddSlot().AutoHeight().Padding(0,0,0,20)[Pills];
+ Page->AddSlot().AutoHeight().Padding(0,0,0,bEmbedded?12:20)[Pills];
  if(bDetails)
  {
-  Page->AddSlot().AutoHeight().Padding(0,0,0,16)[Heading(TEXT("计算方式"))];
+  Page->AddSlot().AutoHeight().Padding(0,0,0,bEmbedded?8:16)[Heading(TEXT("计算方式"))];
   if(!R.Precondition.IsEmpty()) Page->AddSlot().AutoHeight().Padding(0,0,0,16)[CopyCard(TEXT("前置判定"),R.Precondition)];
   if(R.bProcedural)
   {
@@ -213,13 +228,13 @@ void UFMCodexTacticExplainerWidget::RefreshContent()
     +SHorizontalBox::Slot().FillWidth(1).Padding(0,0,12,0)[FormulaCard(TEXT("进攻"),R.AttackCalculation,true,ColumnWidth)]
     +SHorizontalBox::Slot().FillWidth(1).Padding(12,0,0,0)[FormulaCard(TEXT("防守"),R.DefenseCalculation,false,ColumnWidth)]];
    if(!R.CalculationNote.IsEmpty()) { auto Note=Label(R.CalculationNote,18,false,Theme::Secondary()); Note->SetAutoWrapText(true); Page->AddSlot().AutoHeight().Padding(0,12,0,0)[Note]; }
-   Page->AddSlot().AutoHeight().Padding(0,16,0,0)[CopyCard(TEXT("结果"),R.Result)];
+   Page->AddSlot().AutoHeight().Padding(0,bEmbedded?12:16,0,0)[CopyCard(TEXT("结果"),R.Result)];
   }
  }
  else
  {
-  Page->AddSlot().AutoHeight().Padding(0,2,0,12)[MemoryLine(R.Memory,Width)];
-  Page->AddSlot().AutoHeight().Padding(0,0,0,12)[Heading(TEXT("角色与关键属性"))];
+  Page->AddSlot().AutoHeight().Padding(0,2,0,bEmbedded?8:12)[MemoryLine(R.Memory,Width)];
+  Page->AddSlot().AutoHeight().Padding(0,0,0,bEmbedded?8:12)[Heading(TEXT("角色与关键属性"))];
   Page->AddSlot().AutoHeight()[SNew(SHorizontalBox)
    +SHorizontalBox::Slot().FillWidth(1).Padding(0,0,12,0)[RoleCard(TEXT("进攻"),R.Attack)]
    +SHorizontalBox::Slot().FillWidth(1).Padding(12,0,0,0)[RoleCard(TEXT("防守"),R.Defense)]];
@@ -228,7 +243,8 @@ void UFMCodexTacticExplainerWidget::RefreshContent()
   for(FName Id:R.Traits) Chips->AddSlot()[SNew(SBorder).BorderImage(Panel()).Padding(FMargin(18,9))[Label(FPlayerTraitFormula::DisplayName(Id),18)]];
   if(R.Traits.IsEmpty()) Chips->AddSlot()[Label(TEXT("此方法无相关属性特性"),20,false,Theme::Secondary())];
   Page->AddSlot().AutoHeight()[Chips];
-  Page->AddSlot().AutoHeight().Padding(0,12,0,0)[Label(FFMCodexTacticExplainerCatalog::SkillNote(),15,false,Theme::Secondary())];
+  auto Note=Label(FFMCodexTacticExplainerCatalog::SkillNote(),15,false,Theme::Secondary()); Note->SetAutoWrapText(true);
+  Page->AddSlot().AutoHeight().Padding(0,12,0,0)[Note];
  }
  Page->AddSlot().AutoHeight().HAlign(HAlign_Right).Padding(0,bDetails?6:10,0,0)
  [SNew(SButton).ButtonStyle(Button()).OnClicked_Lambda([this](){ShowDetails(!bDetails);return FReply::Handled();})[Label(bDetails?TEXT("‹  返回概览"):TEXT("查看计算方式  ›"),19,true)]];
@@ -244,7 +260,7 @@ void UFMCodexTacticExplainerWidget::RefreshContent()
 FString UFMCodexTacticExplainerWidget::CollectPlayerFacingText() const
 {
  const auto& T=*FFMCodexTacticExplainerCatalog::Find(TacticId); const auto& R=GetRoute();
- FString Out=TEXT("战术说明\n查看战术用途、角色需求与详细规则\n基础进攻\n定位球\n")+T.Name.ToString()+TEXT("\n")+T.Purpose.ToString();
+ FString Out=(bEmbedded?FString(TEXT("战术说明 · 仅供参考\n")):FString(TEXT("战术说明\n查看战术用途、角色需求与详细规则\n基础进攻\n定位球\n")))+T.Name.ToString()+TEXT("\n")+T.Purpose.ToString();
  for(const auto& P:T.Routes) Out+=TEXT("\n")+P.Name.ToString();
  if(bDetails)
  {

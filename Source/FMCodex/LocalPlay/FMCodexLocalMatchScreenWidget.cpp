@@ -1,4 +1,5 @@
 #include "FMCodexLocalMatchScreenWidget.h"
+#include "FMCodexDeploymentTacticalGuide.h"
 #include "FMCodexTacticExplainerWidget.h"
 #if !UE_BUILD_SHIPPING
 #include "FMCodexGuidedLesson1.h"
@@ -470,6 +471,7 @@ TSharedRef<SWidget> UFMCodexLocalMatchScreenWidget::RebuildWidget()
 
 void UFMCodexLocalMatchScreenWidget::NativeDestruct()
 {
+	if (InteractionPanel && InteractionPanel->GetTacticalGuide()) InteractionPanel->GetTacticalGuide()->Close();
 	StopInlineFormulaRevealTimer();
 	CancelTacticalDetailDismiss();
 	HideTacticalDetail();
@@ -498,6 +500,11 @@ void UFMCodexLocalMatchScreenWidget::SetMatchController(
 void UFMCodexLocalMatchScreenWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	if (InteractionPanel && InteractionPanel->GetTacticalGuide())
+	{
+		InteractionPanel->GetTacticalGuide()->AdvanceEntrance(InDeltaTime, MyGeometry.GetLocalSize());
+		if (PitchBounds) InteractionPanel->GetTacticalGuide()->UpdateDetailBounds(MyGeometry,PitchBounds->GetCachedGeometry());
+	}
 	if (!WidgetTree || !MatchHeader) return;
 	FMCodexTacticalScene::UpdatePreview(*WidgetTree,TacticalScene);
 	if (TacticalScene.Tick(InDeltaTime)) RefreshVisuals();
@@ -977,6 +984,7 @@ bool UFMCodexLocalMatchScreenWidget::IsScreenRequestPending() const
 
 void UFMCodexLocalMatchScreenWidget::ResetPresentationSession()
 {
+	if (InteractionPanel && InteractionPanel->GetTacticalGuide()) InteractionPanel->GetTacticalGuide()->ResetContext();
 	TacticalScene = {};
 	ResetInlineFormulaRevealState();
 	if (WidgetTree && WidgetTree->FindWidget(TEXT("ResolutionTheater")))
@@ -3072,6 +3080,11 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		DetailSlot->SetHorizontalAlignment(HAlign_Center);
 		DetailSlot->SetVerticalAlignment(VAlign_Bottom);
 	}
+
+	// Normal overlay order, not a Slate popup: the existing Full Card paints above help.
+	auto* GuideLayer = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(),TEXT("DeploymentGuideLayer"));
+	GuideLayer->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	Root->AddChildToOverlay(GuideLayer);
 
 	DetailOverlayCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
 		UCanvasPanel::StaticClass(), TEXT("FullCardDetailOverlayCanvas"));
@@ -5498,6 +5511,13 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		Presentation.ActionWaitActorText,
 		bCentralOwnsActionPrompt ? FText::GetEmpty() : Presentation.ActionWaitActionText);
 	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
+	bool bEnableContextualGuide = true;
+#if !UE_BUILD_SHIPPING
+	bEnableContextualGuide = !MatchController || !MatchController->GetGuidedLesson1();
+#endif
+	InteractionPanel->RefreshTacticalGuide(Presentation, bAllowHandSkillReveal, bEnableContextualGuide);
+	if (auto* Guide=InteractionPanel->GetTacticalGuide())
+		Guide->AttachDetailLayer(Cast<UCanvasPanel>(WidgetTree->FindWidget(TEXT("DeploymentGuideLayer"))));
 	InteractionPanel->SetVisibility(
 		Presentation.FullTime.bVisible || bOneOnOneDisclosureGate
 			|| (bCentralOwnsActionPrompt && !Presentation.bActionWaitPromptReadOnly)

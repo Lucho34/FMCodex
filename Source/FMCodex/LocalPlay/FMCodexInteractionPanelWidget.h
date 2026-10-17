@@ -15,6 +15,7 @@ class UHorizontalBox;
 class UTextBlock;
 class UVerticalBox;
 class SWidget;
+class UFMCodexDeploymentTacticalGuide;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(
 	FFMCodexInteractionStartMatchRequested);
@@ -77,6 +78,8 @@ public:
 
 	const FFMCodexUMGInteractionViewModel& GetPresentation() const;
 	bool IsInteractionBlocked() const;
+	void RefreshTacticalGuide(const FFMCodexUMGMatchScreenViewModel& View, bool bResultDismissed, bool bEnabled);
+	UFMCodexDeploymentTacticalGuide* GetTacticalGuide() const { return TacticalGuide; }
 	/** Keep the existing header as supplemental status; no second prompt widget. */
 	void SetActionWaitPromptMode(bool bEnabled, bool bReadOnly,
 		const FText& ActorText, const FText& ActionText);
@@ -311,6 +314,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> DeploymentTacticalReferenceButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UFMCodexDeploymentTacticalGuide> TacticalGuide;
+	bool bContextualTacticalGuide = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> DeclineButton;

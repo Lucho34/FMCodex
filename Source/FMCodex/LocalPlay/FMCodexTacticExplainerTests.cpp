@@ -117,14 +117,16 @@ bool FExplainerNavigation::RunTest(const FString&)
  TestTrue(TEXT("Tactic and route updates preserve shell, navigation and scroll widgets"),W->TakeWidget()==Root
   && FindExplainerNode(Root,TEXT("STextBlock"),TEXT("基础进攻"))==Navigation && FindExplainerNode(Root,TEXT("SScrollBox"))==Scroll);
  const FString Mounted=MountedExplainerText(Root);
- TestTrue(TEXT("Complete low-cross page is mounted together with no stale high-cross traits"),Mounted.Contains(TEXT("低球传中协防")) && !Mounted.Contains(TEXT("高球传中协防")));
+ const FString LowHelper=FPlayerTraitFormula::DisplayName(TEXT("Trait.CrossLowHelperDefense")).ToString();
+ const FString HighHelper=FPlayerTraitFormula::DisplayName(TEXT("Trait.CrossHighHelperDefense")).ToString();
+ TestTrue(TEXT("Complete low-cross page is mounted together with no stale high-cross traits"),Mounted.Contains(LowHelper) && !Mounted.Contains(HighHelper));
  StaticCastSharedPtr<SScrollBox>(Scroll)->SetScrollOffset(100.f);
  W->SelectRoute(TEXT("Cross.High"));
  TestEqual(TEXT("Meaningful route switch resets scroll immediately"),W->GetScrollOffsetForTest(),0.f);
- TestTrue(TEXT("High route swaps a coherent page while retaining navigation"),MountedExplainerText(Root).Contains(TEXT("高球传中协防")) && !MountedExplainerText(Root).Contains(TEXT("低球传中协防"))
+ TestTrue(TEXT("High route swaps a coherent page while retaining navigation"),MountedExplainerText(Root).Contains(HighHelper) && !MountedExplainerText(Root).Contains(LowHelper)
   && FindExplainerNode(Root,TEXT("STextBlock"),TEXT("基础进攻"))==Navigation);
  W->SelectRoute(TEXT("Cross.Low"));
- TestTrue(TEXT("Overview changes to Low attributes and canonical Traits"),Overview.Contains(TEXT("速度")) && Overview.Contains(TEXT("反应")) && Overview.Contains(TEXT("低球传中协防")) && !Overview.Contains(TEXT("高球传中协防")));
+ TestTrue(TEXT("Overview changes to Low attributes and canonical Traits"),Overview.Contains(TEXT("速度")) && Overview.Contains(TEXT("反应")) && Overview.Contains(LowHelper) && !Overview.Contains(HighHelper));
  TestTrue(TEXT("Conditional GK visible"),Overview.Contains(TEXT("门将（参与时）")));
  TestFalse(TEXT("Removed helper sentence absent"),Overview.Contains(TEXT("各角色的参与条件")));
  TestTrue(TEXT("Skill note retained"),Overview.Contains(TEXT("技能范围")));

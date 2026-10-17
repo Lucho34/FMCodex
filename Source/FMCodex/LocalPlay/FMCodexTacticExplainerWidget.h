@@ -14,6 +14,8 @@ class FMCODEX_API UFMCodexTacticExplainerWidget : public UWidget
  GENERATED_BODY()
 public:
  FExplainerClose OnClose;
+ /** Configure before mounting: reuse the complete page without the overview/modal shell. */
+ void SetEmbedded(bool bInEmbedded) { bEmbedded=bInEmbedded; }
  bool SelectTactic(FName Id);
  bool SelectRoute(FName Id);
  void ShowDetails(bool bShow);
@@ -33,6 +35,7 @@ private:
  void RefreshContent();
  FName TacticId=TEXT("LongShot"), RouteId=TEXT("LongShot.Direct");
  bool bDetails=false;
+ bool bEmbedded=false;
  TSharedPtr<SVerticalBox> Navigation,Content;
  TSharedPtr<SScrollBox> Scroll;
 };

@@ -2983,3 +2983,13 @@ Session 将已有 Local／服务器私有 Recovery provider 传给三个早期�
 详情绑定时计算瞬时 context，沿用 TP／Reel 门控与既有刷新关闭机制。Hand Micro 与 Pitch Mini 只作入口，无新名称、点或计数；原 Carrier、防守文本强调独立保留。终结、换攻、重置及无关上下文清除新提示。Full 360×540、底板、数值色与等级徽章保持。
 
 验证预算：`FMCodex.LocalPlay.UI.RunnerCardContext.SemanticsAndProjection`（五项语义、收窄／清除、现有 DTO 往返）与 `FMCodex.LocalPlay.UI.RunnerCardContext.FullCardRendering`（属性／Binary、compact 隔离、手牌／场上详情入口）；直接复用既有 Carrier Full 与 defensive 渲染检查验证叠加路径，必要增量 Development Editor build 和 diff 检查。省略全部 broad suites、8.30C 重验、额外自动 PIE 与独立 Host/Remote 视觉；USER PIE REQUIRED，用户手动 staging/commit。
+
+## 2026-10-17 — Stage 8.30E：上下文战术信息与点击展开
+
+普通运动战部署的“战术说明”入口替换为结束部署右侧的零至四个战术信息 chip；依据进攻方既有公开手牌／场上 TP 技能提示去重，固定远射、内切、传中、直塞顺序，不另算完整合法性。结果窗口完全消失后统一 0.4 秒淡入、4px 归位，同公开上下文不重播。特殊路线和旧帮助依赖保留。
+
+hover 仅强调；点击打开持久、非模态、上方锚定的单战术详情。相同 chip／Esc／外部点击关闭，其他 chip 替换内容，外部点击继续送达游戏控件。复用既有说明目录及完整概览／计算视图，只有展示层局部状态，不提交 gameplay 命令。阶段退出、换攻、终场和重置清除旧信息。详细表现合同见 [Tactic Explainer](UI/Tactic_Explainer_Visual_Contract.md)。不修改卡面、Roll v2、规则、RNG 或联网合同。
+
+增量编译暴露上一阶段 Runner 测试辅助名称在 Unity 合并编译中的冲突；仅将辅助代码隔离至专属命名空间，保留原断言与生产行为。说明导航的旧协防名称断言改读 canonical display name；真实 PIE 暴露的热座换边动画重播通过使用公开进攻方身份修复，不以左右位置作为新上下文。验证限定新入口的聚焦语义／渲染、复用说明导航及一条真实 Local PIE，不运行全量玩法／联网／教程／Shipping suites。独立 Host／Remote 视觉延期；USER PIE REQUIRED，用户手动 staging／commit。
+
+8.30E 同阶段 USER PIE 修订：chip 显式双轴居中，消除固定高度内的多余上下内边距；详情使用中央球场内最大 880×800 区域，保留内容与字体，桌面普通说明无需滚动，小视口允许回退。详情改挂既有 Screen 普通覆盖层，原 Full Card Canvas 后绘制，检查球员时说明不关闭。只补指定 InteractionAndGeometry 与必要增量构建，不重复已有语义或 PIE 矩阵；最终 USER PIE 仍未接受。

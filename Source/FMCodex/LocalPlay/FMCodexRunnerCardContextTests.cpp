@@ -20,7 +20,7 @@
 #include "Components/TextBlock.h"
 #include "Slate/WidgetRenderer.h"
 
-namespace
+namespace FMCodexRunnerCardContextTests
 {
 using Context = FFMCodexAttackingCardContext;
 using Category = EFMCodexUMGInteractionCategory;
@@ -77,6 +77,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRunnerContextSemantics, "FMCodex.LocalPlay.UI.
  EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FRunnerContextSemantics::RunTest(const FString&)
 {
+ using namespace FMCodexRunnerCardContextTests;
  FFixture F;
  auto C = F.Get();
  TestTrue(TEXT("Receiver without initiating Skills previews all five owned traits and three attributes"),
@@ -155,6 +156,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRunnerContextRendering, "FMCodex.LocalPlay.UI.
  EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FRunnerContextRendering::RunTest(const FString&)
 {
+ using namespace FMCodexRunnerCardContextTests;
  UWorld* World = UWorld::CreateWorld(EWorldType::Game, false);
  GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(World);
  auto* W = CreateWidget<UFMCodexPlayerCardWidget>(World); auto Slate = W->TakeWidget(); FWidgetRenderer Renderer(false);

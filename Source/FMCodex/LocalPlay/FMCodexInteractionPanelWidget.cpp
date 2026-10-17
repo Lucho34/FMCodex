@@ -1,4 +1,5 @@
 #include "FMCodexInteractionPanelWidget.h"
+#include "FMCodexDeploymentTacticalGuide.h"
 #include "FMCodexBroadcastPanel.h"
 #include "FMCodexMatchShellStyle.h"
 
@@ -176,6 +177,17 @@ void UFMCodexInteractionPanelWidget::RequestDeployment(
 	{
 		OnDeployOrdinaryRequested.Broadcast(CardId, SlotId);
 	}
+}
+
+void UFMCodexInteractionPanelWidget::RefreshTacticalGuide(
+	const FFMCodexUMGMatchScreenViewModel& View, bool bResultDismissed, bool bEnabled)
+{
+	bContextualTacticalGuide = bEnabled && View.Header.RouteKind == EMatchPlayCurrentAttackRouteKind::Ordinary;
+	if (DeploymentTacticalReferenceButton)
+		DeploymentTacticalReferenceButton->SetVisibility(
+			View.Interaction.Category == EFMCodexUMGInteractionCategory::Deploy && !bContextualTacticalGuide
+				? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	if (TacticalGuide) TacticalGuide->Refresh(View, bResultDismissed && bEnabled);
 }
 
 void UFMCodexInteractionPanelWidget::RequestFinishDeployment()
@@ -458,6 +470,12 @@ void UFMCodexInteractionPanelWidget::BuildWidgetTree()
 	FinishBounds->SetMinDesiredHeight(66.0f);
 	FinishBounds->AddChild(FinishButton);
 	PrimaryActions->AddChildToHorizontalBox(FinishBounds);
+	if (!TacticalGuide)
+		TacticalGuide = WidgetTree->ConstructWidget<UFMCodexDeploymentTacticalGuide>(
+			UFMCodexDeploymentTacticalGuide::StaticClass(), TEXT("DeploymentTacticalGuide"));
+	else TacticalGuide->RemoveFromParent();
+	TacticalGuide->SetVisibility(ESlateVisibility::Collapsed);
+	PrimaryActions->AddChildToHorizontalBox(TacticalGuide)->SetVerticalAlignment(VAlign_Center);
 	UTextBlock* ContinueLabel = nullptr;
 	ContinueButton = MakeButton(
 		*WidgetTree, TEXT("InteractionContinueButton"), ContinueLabel,
@@ -652,7 +670,7 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	SetButton(NoLegalButton, Presentation.bCanResolveNoLegal,
 		Presentation.NoLegalActionLabel);
 	SetButton(DeploymentTacticalReferenceButton,
-		Presentation.Category == EFMCodexUMGInteractionCategory::Deploy,
+		Presentation.Category == EFMCodexUMGInteractionCategory::Deploy && !bContextualTacticalGuide,
 		TEXT("TACTICAL REFERENCE"));
 
 	const bool bHasDynamicChoices = !RenderedOptionWidgets.IsEmpty();
