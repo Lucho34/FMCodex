@@ -1,4 +1,6 @@
 #include "FMCodexInteractionPanelWidget.h"
+#include "FMCodexTacticalDetailPanelWidget.h"
+#include "FMCodexTacticalDetailPresentation.h"
 #include "FMCodexDeploymentTacticalGuide.h"
 #include "FMCodexBroadcastPanel.h"
 #include "FMCodexMatchShellStyle.h"
@@ -737,23 +739,26 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 		const FFMCodexUMGSelectionChoiceViewModel& Choice =
 			Presentation.SelectionChoices[ChoiceIndex];
 		if (Presentation.Category == EFMCodexUMGInteractionCategory::SelectSkill
-			&& (Choice.SkillType == ESkillRuleType::Cross || Choice.SkillType == ESkillRuleType::CutInsideShot))
+			&& (Choice.SkillType == ESkillRuleType::Cross || Choice.SkillType == ESkillRuleType::CutInsideShot || Choice.SkillType == ESkillRuleType::LongShot))
 		{
 			// These are elective intentions, not predicted route results. Skill eligibility
 			// comes exclusively from this projected option; Branch is authorized later.
-			const bool Cut = Choice.SkillType == ESkillRuleType::CutInsideShot;
+			const bool Cut = Choice.SkillType != ESkillRuleType::Cross;
+			const bool Long = Choice.SkillType == ESkillRuleType::LongShot;
 			for (const auto Intent : {Cut ? EFMCodexUMGBranchIntent::DirectShot : EFMCodexUMGBranchIntent::CrossHigh,
 				Cut ? EFMCodexUMGBranchIntent::DeadCorner : EFMCodexUMGBranchIntent::CrossLow})
 			{
 				auto* Cross = MakeOptionWidget(FName(*FString::Printf(TEXT("CrossChoice%d_%d"), ChoiceIndex, int32(Intent))));
-				const FText Label = Cut ? (Intent == EFMCodexUMGBranchIntent::DirectShot
+				const FText Label = Long ? (Intent == EFMCodexUMGBranchIntent::DirectShot
+					? NSLOCTEXT("LongShotFlow", "DirectChoice", "远射（直接射门）")
+					: NSLOCTEXT("LongShotFlow", "CornerChoice", "远射（射向死角）")) : Cut ? (Intent == EFMCodexUMGBranchIntent::DirectShot
 					? NSLOCTEXT("CutInsideFlow", "DirectChoice", "内切（直接射门）")
 					: NSLOCTEXT("CutInsideFlow", "CornerChoice", "内切（射向死角）"))
 					: (Intent == EFMCodexUMGBranchIntent::CrossHigh
 					? NSLOCTEXT("CrossFlow", "HighChoice", "传中（高球）")
 					: NSLOCTEXT("CrossFlow", "LowChoice", "传中（低球）"));
 				Cross->ConfigureCrossChoice(Label.ToString(), Choice.OptionId, Intent);
-				Cross->OnBranchRequested.AddDynamic(this, &UFMCodexInteractionPanelWidget::HandleBranchOption);
+				Cross->OnTacticBranchRequested.AddDynamic(this, &UFMCodexInteractionPanelWidget::HandleTacticBranchOption);
 				Cross->OnCrossDetailRequested.AddDynamic(this, &UFMCodexInteractionPanelWidget::HandleCrossDetailRequested);
 				Cross->OnTacticalDetailDismissed.AddDynamic(this, &UFMCodexInteractionPanelWidget::HandleTacticalDetailDismissed);
 				Cross->SetIsEnabled(Choice.bEnabled);
@@ -825,6 +830,13 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 			FName(*FString::Printf(TEXT("BranchIntentOption%d"), Index)));
 		Option->ConfigureBranch(
 			Choice.Label, Choice.SecondaryLabel, Choice.Intent);
+		if (Presentation.Category==EFMCodexUMGInteractionCategory::SelectLongShotBranch)
+		{
+			auto* Detail=WidgetTree->ConstructWidget<UFMCodexTacticalDetailPanelWidget>();
+			Detail->TakeWidget();
+			Detail->RefreshFromPresentation(FFMCodexTacticalDetailPresentationBuilder::BuildLongShotChoice(Choice.Intent));
+			Option->SetToolTip(Detail);
+		}
 		Option->OnBranchRequested.AddDynamic(
 			this, &UFMCodexInteractionPanelWidget::HandleBranchOption);
 		if (UHorizontalBoxSlot* ChoiceSlot =
@@ -975,6 +987,14 @@ void UFMCodexInteractionPanelWidget::HandleRunnerOption(const FName CardId)
 void UFMCodexInteractionPanelWidget::HandleHelperOption(const FName CardId)
 {
 	RequestHelper(CardId);
+}
+
+void UFMCodexInteractionPanelWidget::HandleTacticBranchOption(FName SkillId, EFMCodexUMGBranchIntent Intent)
+{
+ // Carry the selected skill identity: LongShot and CutInside share enum values.
+ if (bInteractionBlocked || Presentation.Category != EFMCodexUMGInteractionCategory::SelectSkill) return;
+ if (Presentation.SelectionChoices.ContainsByPredicate([&](const auto& C){return C.OptionId==SkillId && C.bEnabled;}))
+  OnCrossRequested.Broadcast(SkillId,Intent);
 }
 
 void UFMCodexInteractionPanelWidget::HandleBranchOption(

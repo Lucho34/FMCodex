@@ -53,9 +53,12 @@ bool FFMCodexNextRoundCountdownTest::RunTest(const FString&)
 	A::Clock(*S).Cancel(); A::Scene(*S).Celebration.Start(true, 2.f); Tick(20.f);
 	TestEqual(TEXT("Celebration consumes no reading/countdown time"), A::Clock(*S).Sequence, int64(0));
 	TestEqual(TEXT("Celebration cannot submit"), Backend.Sends, 0);
-	A::Scene(*S).Celebration.Tick(2.f); Tick(0.f); Tick(2.49f);
+	A::Scene(*S).Celebration.Tick(2.f); Tick(0.f); Tick(2.5f);
+	TestFalse(TEXT("Former 2.5-second boundary remains in reading"), A::Clock(*S).bCounting);
+	Tick(.49f);
 	TestEqual(TEXT("Complete result reading has no countdown"), Text(), FString(TEXT("下一回合")));
-	Tick(.02f); TestEqual(TEXT("After reading show 5"), Text(), FString(TEXT("下一回合（5）")));
+	Tick(.02f); TestEqual(TEXT("After three-second reading show 5"), Text(), FString(TEXT("下一回合（5）")));
+	TestEqual(TEXT("Reading never consumes countdown time"), A::Clock(*S).CountdownElapsed, 0.f);
 	Show(); Tick(.5f); Show(); Tick(.5f);
 	TestEqual(TEXT("Repeated refresh does not reset elapsed time"), Text(), FString(TEXT("下一回合（4）")));
 	Tick(1.f); TestEqual(TEXT("Next visible second is 3"), Text(), FString(TEXT("下一回合（3）")));
@@ -88,18 +91,18 @@ bool FFMCodexNextRoundCountdownTest::RunTest(const FString&)
 	A::Tick(*Rebuilt, 10.f); Rebuilt->RequestContinueResolution();
 	TestEqual(TEXT("Widget reconstruction and delayed old View cannot submit again"), Backend.Sends, 1);
 	Rebuilt->ClearMatchController();
-	NewContext(); Tick(2.5f); Tick(1.f); S->RequestContinueResolution(); Tick(10.f);
+	NewContext(); Tick(3.f); Tick(1.f); S->RequestContinueResolution(); Tick(10.f);
 	TestEqual(TEXT("Early manual click cancels former expiry"), Backend.Sends, 2);
-	NewContext(); Tick(2.5f); V.Interaction.ExpectedActorLabel = TEXT("玩家 B"); Show();
+	NewContext(); Tick(3.f); V.Interaction.ExpectedActorLabel = TEXT("玩家 B"); Show();
 	TestFalse(TEXT("Actor change cancels countdown"), A::Clock(*S).bCounting);
-	Tick(2.5f); V.Header.CurrentPhaseLabel = TEXT("不同阶段"); Show();
+	Tick(3.f); V.Header.CurrentPhaseLabel = TEXT("不同阶段"); Show();
 	TestFalse(TEXT("Phase change cancels countdown"), A::Clock(*S).bCounting);
-	Tick(2.5f); V.Interaction.PrimaryAction.bAvailable = false; Show(); Tick(10.f);
+	Tick(3.f); V.Interaction.PrimaryAction.bAvailable = false; Show(); Tick(10.f);
 	TestEqual(TEXT("Capability withdrawal cancels without command"), Backend.Sends, 2);
 	V.Interaction.PrimaryAction.bAvailable = true;
 	for (int32 Gate = 0; Gate < 4; ++Gate)
 	{
-		NewContext(); Tick(2.5f);
+		NewContext(); Tick(3.f);
 		V.bActionWaitPromptReadOnly = Gate == 0;
 		V.Header.bMatchEnded = Gate == 1;
 		V.Resolution.bVisible = V.Resolution.bNonBlockingNotification = Gate == 2;
@@ -110,18 +113,73 @@ bool FFMCodexNextRoundCountdownTest::RunTest(const FString&)
 		V.bActionWaitPromptReadOnly = V.Header.bMatchEnded = V.Resolution.bVisible = V.Resolution.bNonBlockingNotification = false;
 		Backend.Pending = false;
 	}
-	NewContext(); Backend.Reject = true; Tick(2.5f); Tick(5.f); Tick(30.f); Show(); Tick(30.f);
+	NewContext(); Backend.Reject = true; Tick(3.f); Tick(5.f); Tick(30.f); Show(); Tick(30.f);
 	TestEqual(TEXT("Rejected automatic attempt never loops"), Backend.Sends, 3);
 	Backend.Reject = false; S->RequestContinueResolution();
 	TestEqual(TEXT("Explicit manual retry remains possible"), Backend.Sends, 4);
-	NewContext(); Tick(2.5f); A::Destruct(*S);
+	NewContext(); Tick(3.f); A::Destruct(*S);
 	TestEqual(TEXT("Destruction cancels elapsed clock"), A::Clock(*S).Sequence, int64(0));
 	S->ResetPresentationSession();
 	TestEqual(TEXT("Reset also clears adapter dedupe for a new match"), Backend.NextRoundDispatch.Sequence, int64(0));
-	V.Header.AttackSequence = 1; Show(); Tick(2.5f);
+	V.Header.AttackSequence = 1; Show(); Tick(3.f);
 	V.Interaction.Category = V.Interaction.PrimaryAction.Category = C::RollCrossAttack;
 	Show(); Tick(50.f); TestEqual(TEXT("Final formula dice remain manual"), Backend.Sends, 4);
 	S->ClearMatchController();
 	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexNextRoundCrossTheaterReadingTest,
+ "FMCodex.LocalPlay.NextRoundCountdown.CrossTheaterReading",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexNextRoundCrossTheaterReadingTest::RunTest(const FString&)
+{
+ using A=FFMCodexNextRoundTestAccess;
+ using C=EFMCodexUMGInteractionCategory;
+ // Already-disclosed terminal projections: this checks shared display timing,
+ // not tactical formulas or the authority that produced these facts.
+ for(auto Skill:{ESkillRuleType::Cross,ESkillRuleType::CutInsideShot,ESkillRuleType::LongShot})
+ {
+  struct FBackend:IFMCodexMatchScreenBackend
+  {
+   int Sends=0;
+   bool IsScreenIntentPending() const override{return false;}
+   EFMCodexMatchScreenSubmission SubmitScreenIntent(const FFMCodexMatchScreenRequest&) override
+   {++Sends;return EFMCodexMatchScreenSubmission::Queued;}
+  } Backend;
+  auto* S=NewObject<UFMCodexLocalMatchScreenWidget>();auto Root=S->TakeWidget();S->SetMatchBackend(&Backend);
+  FFMCodexUMGMatchScreenViewModel V;
+  V.Header.AttackSequence=1;V.Header.CurrentPhaseLabel=TEXT("结果");
+  V.Interaction.Category=C::AdvanceAfterTerminal;V.Interaction.ExpectedActorLabel=TEXT("玩家 A");
+  V.Interaction.PrimaryAction={};V.Interaction.PrimaryAction.bAvailable=true;
+  V.Interaction.PrimaryAction.Category=C::AdvanceAfterTerminal;V.Interaction.PrimaryAction.Label=TEXT("下一回合");
+  V.Interaction.bCanContinue=true;
+  auto& F=V.InlineFormula;
+  F.bVisible=F.bNarrativeAvailable=F.bCanContinue=true;
+  F.ContestId=Skill==ESkillRuleType::Cross?TEXT("Cross.High"):Skill==ESkillRuleType::LongShot?TEXT("LongShot.DirectShot"):TEXT("CutInsideShot.DirectShot");
+  F.NarrativeHeadline=TEXT("本次进攻未能破门。");F.SpatialOutcome=EMatchPlayResolutionDecisionOutcome::Miss;
+  F.PrimaryAction.bClaimsAction=F.PrimaryAction.bVisible=true;F.PrimaryAction.Action=V.Interaction.PrimaryAction;
+  if(Skill!=ESkillRuleType::Cross)
+  {
+   auto& Shot=V.LongShotResolution;Shot.bVisible=true;Shot.SkillType=Skill;
+   Shot.Stage=EFMCodexUMGLongShotStage::DirectShot;Shot.Formula=F;
+  }
+  S->RefreshFromPresentation(V);S->ForceLayoutPrepass();
+  if(!TestTrue(TEXT("Each theater exposes the original terminal CTA"),A::Ready(*S)))return false;
+  auto* Banner=S->GetWidgetFromName(TEXT("CrossResultPlate"));
+  auto* Label=CastChecked<UTextBlock>(S->GetWidgetFromName(TEXT("TheaterContinueLabel")));
+  A::Clock(*S).Cancel();A::Tick(*S,0.f);A::Tick(*S,2.5f);
+  TestTrue(TEXT("Banner remains readable at the old boundary"),Banner->IsVisible());
+  TestFalse(TEXT("No countdown overlap during reading"),A::Clock(*S).bCounting);
+  S->RefreshFromPresentation(V);A::Tick(*S,.49f);
+  TestTrue(TEXT("Repeated View retains banner until three seconds"),Banner->IsVisible());
+  A::Tick(*S,.02f);
+  TestEqual(TEXT("Reading hands off to five-second countdown"),Label->GetText().ToString(),FString(TEXT("下一回合（5）")));
+  TestEqual(TEXT("Only the narrative is retired at handoff"),Banner->GetVisibility(),ESlateVisibility::Hidden);
+  TestEqual(TEXT("The first countdown frame has consumed zero seconds"),A::Clock(*S).CountdownElapsed,0.f);
+  A::Tick(*S,4.99f);TestEqual(TEXT("No early auto continuation"),Backend.Sends,0);
+  A::Tick(*S,.02f);TestEqual(TEXT("Expiry submits once through existing Continue"),Backend.Sends,1);
+  S->ClearMatchController();
+ }
+ return true;
 }
 #endif

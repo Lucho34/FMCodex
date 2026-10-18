@@ -94,6 +94,8 @@ public:
 	FFMCodexInteractionTacticalDetailRequested OnTacticalDetailRequested;
 	UPROPERTY()
 	FFMCodexCrossDetailRequested OnCrossDetailRequested;
+	UPROPERTY()
+	FFMCodexCrossDetailRequested OnTacticBranchRequested;
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Presentation")
 	FFMCodexInteractionTacticalDetailRequested OnTacticalDetailDismissed;

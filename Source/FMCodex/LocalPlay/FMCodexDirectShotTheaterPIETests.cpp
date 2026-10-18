@@ -416,7 +416,7 @@ public:
 				if (Label == TEXT("下一回合（5）") && !bSawFive)
 				{
 					bSawFive = true; CountdownSeen = Now;
-					Test->TestTrue(TEXT("Natural result has 2.5 seconds reading time"),Now-ResultSeen >= 2.4);
+					Test->TestTrue(TEXT("Natural result has 3 seconds reading time"),Now-ResultSeen >= 2.9);
 					Test->TestFalse(TEXT("Narrative closes before the visible countdown"),Shown(TEXT("TheaterOutcome")));
 				}
 				if (Label == TEXT("下一回合（4）")) bSawFour = true;

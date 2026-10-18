@@ -18,6 +18,8 @@ inline constexpr float OutcomeActionSeconds=1.15f, OutcomeHoldSeconds=.30f;
 inline constexpr float OutcomeSeconds=OutcomeActionSeconds+OutcomeHoldSeconds;
 inline constexpr float LongShotPreviewCycleSeconds=2.2f, PreviewTransitionSeconds=.15f;
 inline constexpr float LongShotPressureArrival=.44f;
+inline constexpr float LongShotOutcomeActionSeconds=1.8f, LongShotReleaseFraction=.28f;
+inline const FVector2D LongShotCarrierAnchor(270,385), LongShotMarkerAnchor(620,310);
 inline constexpr float CrossSetupSeconds=.5f, CrossIntentSeconds=.8f;
 inline constexpr float CrossOutcomeActionSeconds=1.44f, CrossOutcomeHoldSeconds=.30f;
 inline constexpr float CrossOutcomeSeconds=CrossOutcomeActionSeconds+CrossOutcomeHoldSeconds;
@@ -50,6 +52,7 @@ struct FFacts
  bool bRoutePending=false;
  bool bManualWaiting=false;
  bool bCutInside=false;
+ bool bLongShot=false;
  EMethod Method=EMethod::Direct;
  EMatchPlayResolutionParticipantRole Highlight=EMatchPlayResolutionParticipantRole::None;
  TArray<FParticipant> Participants;
@@ -92,7 +95,7 @@ struct FState
  float CutInsideIdleTime=0.f;
  float CutInsideMotion=0.f;
  bool IsCutInsideIdle() const;
- bool IsBroadcast() const {return Facts.bCutInside || IsCross(Facts.Method);}
+ bool IsBroadcast() const {return Facts.bCutInside || Facts.bLongShot || IsCross(Facts.Method);}
  bool IsCrossIdle() const;
  float CrossIdleBreath() const;
  float CrossIdleDashOffset() const;

@@ -260,6 +260,8 @@ private:
 
 	UFUNCTION()
 	void HandleBranchOption(EFMCodexUMGBranchIntent Intent);
+	UFUNCTION()
+	void HandleTacticBranchOption(FName SkillId, EFMCodexUMGBranchIntent Intent);
 
 	UFUNCTION()
 	void HandleOneOnOneOption(EFMCodexUMGOneOnOneChoice Choice);

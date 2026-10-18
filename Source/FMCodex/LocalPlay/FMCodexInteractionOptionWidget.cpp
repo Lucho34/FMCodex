@@ -292,7 +292,7 @@ void UFMCodexInteractionOptionWidget::HandleSimpleClicked()
 void UFMCodexInteractionOptionWidget::HandleCardClicked()
 {
 	if (BindingMode == EBindingMode::TacticalCard && BranchIntent != EFMCodexUMGBranchIntent::None)
-		OnBranchRequested.Broadcast(BranchIntent);
+		OnTacticBranchRequested.Broadcast(CardId, BranchIntent);
 	else OnCardRequested.Broadcast(CardId);
 }
 

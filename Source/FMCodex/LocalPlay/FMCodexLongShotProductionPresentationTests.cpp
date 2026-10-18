@@ -14,6 +14,16 @@
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Misc/AutomationTest.h"
+#include "FMCodexTacticalDetailPanelWidget.h"
+#include "FMCodexTacticalDetailPresentation.h"
+#include "FMCodexFormulaTooltipTestUtils.h"
+#include "FMCodexTacticalScene.h"
+#include "Components/Border.h"
+#include "Blueprint/WidgetTree.h"
+#if WITH_EDITOR && !UE_BUILD_SHIPPING
+#include "../NetworkPlay/FMCodexNetworkPlayerFacingTestFixture.h"
+#endif
+
 
 namespace FMCodexLongShotProductionPresentationTests
 {
@@ -21,6 +31,8 @@ namespace FMCodexLongShotProductionPresentationTests
 		const EFMCodexLocalMatchInteractionCategory Category)
 	{
 		FFMCodexLocalMatchInteractionView View;
+		View.bMatchActive = true;
+		View.MajorPhase = EFMCodexLocalMatchMajorPhase::Resolution;
 		View.bCurrentAttackActive = true;
 		View.AttackSequence = 7;
 		View.CurrentAttackingPlayer = EInitialTurnOrderPlayer::PlayerA;
@@ -161,109 +173,14 @@ bool FFMCodexLongShotProductionBranchOwnershipTest::RunTest(
 	const FFMCodexUMGMatchScreenViewModel Screen =
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			View, FFMCodexLocalMatchResolutionFeedback(), FString());
-	TestTrue(TEXT("LongShot production shell is visible"),
-		Screen.LongShotResolution.bVisible);
-	TestTrue(TEXT("Production shell suppresses generic resolution"),
-		Screen.LongShotResolution.bSuppressLegacyResolution);
-	TestEqual(TEXT("Branch stage is explicit"),
-		Screen.LongShotResolution.Stage,
-		EFMCodexUMGLongShotStage::BranchChoice);
-	TestEqual(TEXT("Both authority-projected choices are central"),
-		Screen.LongShotResolution.BranchChoices.Num(), 2);
-	if (Screen.LongShotResolution.BranchChoices.Num() == 2)
-	{
-		TestEqual(TEXT("Direct primary copy is exact"),
-			Screen.LongShotResolution.BranchChoices[0].Label,
-			FString(TEXT("直接射门")));
-		TestEqual(TEXT("Direct secondary copy is exact"),
-			Screen.LongShotResolution.BranchChoices[0].SecondaryLabel,
-			FString(TEXT("（看远射、抢断）")));
-		TestEqual(TEXT("Dead-corner primary copy is exact"),
-			Screen.LongShotResolution.BranchChoices[1].Label,
-			FString(TEXT("射向死角")));
-		TestEqual(TEXT("Dead-corner secondary copy is exact"),
-			Screen.LongShotResolution.BranchChoices[1].SecondaryLabel,
-			FString(TEXT("（只看两枚掷点）")));
-	}
-	TestEqual(TEXT("Typed category remains LongShot-specific"),
-		Screen.Interaction.Category,
-		EFMCodexUMGInteractionCategory::SelectLongShotBranch);
-
-	UFMCodexLongShotResolutionSurfaceWidget* Surface =
-		NewObject<UFMCodexLongShotResolutionSurfaceWidget>(
-			GetTransientPackage());
-	Surface->TakeWidget();
-	Surface->RefreshFromPresentation(Screen.LongShotResolution);
-	TestFalse(TEXT("Local hot-seat does not opt into viewer-relative network prompt"), Screen.bMirrorActionWaitPrompt);
-	TestEqual(TEXT("Optional network actor line leaves Local layout unchanged"),
-		Surface->GetWidgetFromName(TEXT("CentralActionPrompt"))->GetVisibility(), ESlateVisibility::Collapsed);
-	const auto& Widgets = Surface->GetBranchChoiceWidgets();
-	TestEqual(TEXT("LongShot renders two horizontal option widgets"),
-		Widgets.Num(), 2);
-	if (Widgets.Num() == 2)
-	{
-		UFMCodexInteractionOptionWidget* Direct = Widgets[0];
-		UFMCodexInteractionOptionWidget* Dead = Widgets[1];
-		Direct->TakeWidget();
-		Dead->TakeWidget();
-		UButton* DirectButton = Cast<UButton>(
-			Direct->GetWidgetFromName(TEXT("InteractionOptionButton")));
-		UButton* DeadButton = Cast<UButton>(
-			Dead->GetWidgetFromName(TEXT("InteractionOptionButton")));
-		UTextBlock* DirectPrimary = Cast<UTextBlock>(
-			Direct->GetWidgetFromName(TEXT("InteractionOptionLabel")));
-		UTextBlock* DirectSecondary = Cast<UTextBlock>(
-			Direct->GetWidgetFromName(TEXT("InteractionOptionSecondaryLabel")));
-		UTextBlock* DeadSecondary = Cast<UTextBlock>(
-			Dead->GetWidgetFromName(TEXT("InteractionOptionSecondaryLabel")));
-		USizeBox* DirectBounds = Cast<USizeBox>(
-			Direct->GetWidgetFromName(TEXT("InteractionOptionBounds")));
-		USizeBox* DeadBounds = Cast<USizeBox>(
-			Dead->GetWidgetFromName(TEXT("InteractionOptionBounds")));
-		TestTrue(TEXT("Both complete two-line options are clickable"),
-			DirectButton != nullptr && DirectButton->GetIsEnabled()
-				&& DeadButton != nullptr && DeadButton->GetIsEnabled());
-		TestTrue(TEXT("Both secondary lines are visible without wrapping"),
-			DirectPrimary != nullptr && !DirectPrimary->GetAutoWrapText()
-				&& DirectSecondary != nullptr
-				&& DirectSecondary->GetVisibility()
-					== ESlateVisibility::HitTestInvisible
-				&& !DirectSecondary->GetAutoWrapText()
-				&& DeadSecondary != nullptr
-				&& DeadSecondary->GetVisibility()
-					== ESlateVisibility::HitTestInvisible
-				&& !DeadSecondary->GetAutoWrapText());
-		TestTrue(TEXT("Choice geometry is equal and stable"),
-			DirectBounds != nullptr && DeadBounds != nullptr
-				&& DirectBounds->GetWidthOverride()
-					== DeadBounds->GetWidthOverride()
-				&& DirectBounds->GetHeightOverride()
-					== DeadBounds->GetHeightOverride());
-		if (DirectButton == nullptr || DeadButton == nullptr)
-		{
-			AddError(TEXT("LongShot branch option buttons were not constructed."));
-			return false;
-		}
-
-		Surface->ResetBranchDispatchForTesting();
-		TestTrue(TEXT("Static branch choices bind no hover behavior"),
-			!DirectButton->OnHovered.IsBound()
-				&& !DirectButton->OnUnhovered.IsBound()
-				&& !DeadButton->OnHovered.IsBound()
-				&& !DeadButton->OnUnhovered.IsBound()
-				&& Surface->GetBranchDispatchCountForTesting() == 0);
-		DirectButton->OnClicked.Broadcast();
-		TestTrue(TEXT("Direct click dispatches exactly one typed intent"),
-			Surface->GetBranchDispatchCountForTesting() == 1
-				&& Surface->GetLastBranchDispatchForTesting()
-					== EFMCodexUMGBranchIntent::DirectShot);
-		Surface->ResetBranchDispatchForTesting();
-		DeadButton->OnClicked.Broadcast();
-		TestTrue(TEXT("Dead-corner click dispatches exactly one typed intent"),
-			Surface->GetBranchDispatchCountForTesting() == 1
-				&& Surface->GetLastBranchDispatchForTesting()
-					== EFMCodexUMGBranchIntent::DeadCorner);
-	}
+	TestFalse(TEXT("Unselected LongShot stays on the board"),Screen.LongShotResolution.bVisible);
+	TestEqual(TEXT("Authority still exposes both original methods"),Screen.Interaction.BranchChoices.Num(),2);
+	auto* Reopened=NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());Reopened->TakeWidget();Reopened->RefreshFromPresentation(Screen);
+	TestFalse(TEXT("Rebuilt branch choice has no pitch theater"),Reopened->GetTacticalScene().Facts.bActive);
+	TestTrue(TEXT("Branch retry dock remains visible"),Reopened->GetInteractionPanel()->GetVisibility()==ESlateVisibility::Visible);
+	const auto& RetryOptions=Reopened->GetInteractionPanel()->GetRenderedOptionWidgets();
+	TestEqual(TEXT("Two dock choices on reconstruction"),RetryOptions.Num(),2);
+	for(const auto& Option:RetryOptions)TestNotNull(TEXT("Restored choice has contextual hover"),Option->GetToolTip());
 
 	FFMCodexLocalMatchResolutionFeedback Rejected;
 	Rejected.bVisible = true;
@@ -273,6 +190,105 @@ bool FFMCodexLongShotProductionBranchOwnershipTest::RunTest(
 			View, Rejected, TEXT("rejected"));
 	TestFalse(TEXT("Rejection releases generic diagnostic ownership"),
 		Diagnostic.LongShotResolution.bSuppressLegacyResolution);
+#if WITH_EDITOR && !UE_BUILD_SHIPPING
+	using namespace FMCodexPlayerFacingOrdinaryUITests;
+	// Reuse the accepted Cross transport harness. This is adapter/authority
+	// evidence with delayed ACK/View, not a second real Host/Remote PIE run.
+	for (const bool Direct : {true,false})
+	{
+		FUIFixture F(!Direct,false,false);
+		if (!TestTrue(TEXT("Canonical LongShot tactical choice"),F.SkillFixture(false,ESkillRuleType::LongShot))) return false;
+		auto* PC=F.Attacker(); auto* S=PC->GetPlayerMatchScreen();
+		struct FDeferredBackend : FBackend
+		{
+			FFMCodexNetworkPlayerIntentAck Ack;
+			Submission SubmitScreenIntent(const FFMCodexMatchScreenRequest& R) override
+			{
+				if (!FFMCodexNetworkMatchScreenActions::Begin(R,PC->GetOwnerView(),F->Client(PC),Last)) return Submission::Rejected;
+				++Sends; return Submission::Queued;
+			}
+			void DeliverView() { Ack=F->Mode->SubmitConnectionPlayerIntent(PC,Last); F->Client(PC).ObserveView(PC->GetOwnerView()); PC->RefreshPlayerFacingUI(); }
+			void DeliverAck()
+			{
+				F->Client(PC).ObserveAck(Ack); PC->RefreshPlayerFacingUI();
+				if (Ack.Code!=Code::Accepted) PC->GetPlayerMatchScreen()->NotifyScreenRequestRejected();
+			}
+		} Backend;
+		Backend.F=&F; Backend.PC=PC; S->SetMatchBackend(&Backend);
+		const auto Model=S->GetPresentation();
+		const auto* Choice=Model.Interaction.SelectionChoices.FindByPredicate([](const auto& X){return X.SkillType==ESkillRuleType::LongShot;});
+		if (!TestNotNull(TEXT("Safe LongShot option"),Choice)) return false;
+		const auto& Options=S->GetInteractionPanel()->GetRenderedOptionWidgets();
+		int32 ExpectedOptions=Model.Interaction.SelectionChoices.Num();
+		for (const auto& C:Model.Interaction.SelectionChoices)
+			if (C.SkillType==ESkillRuleType::Cross || C.SkillType==ESkillRuleType::CutInsideShot || C.SkillType==ESkillRuleType::LongShot) ++ExpectedOptions;
+		TestEqual(TEXT("Only variant skills expand; other choices remain"),Options.Num(),ExpectedOptions);
+		TestEqual(TEXT("Existing decline remains available"),S->GetInteractionPanel()->GetPresentation().bCanDecline,Model.Interaction.bCanDecline);
+		FUnchanged BeforeHover(F);
+		UButton* Clicked=nullptr;
+		for (bool InspectDirect:{true,false})
+		{
+			const FString Label=InspectDirect?TEXT("远射（直接射门）"):TEXT("远射（射向死角）");
+			const auto* Option=Options.FindByPredicate([&](const auto& O){return O->GetLabel()==Label;});
+			if (!TestNotNull(TEXT("Explicit method button"),Option)) return false;
+			auto* Button=CastChecked<UButton>((*Option)->GetWidgetFromName(TEXT("InteractionOptionButton")));
+			Button->OnHovered.Broadcast();
+			const auto& Detail=S->GetTacticalDetailPanel()->GetPresentation();
+			TestEqual(TEXT("Only the hovered canonical branch"),Detail.Branches.Num(),1);
+			TestEqual(TEXT("Hover title matches method"),Detail.DisplayName,Label);
+			const auto Copy=S->GetTacticalDetailPanel()->CollectPlayerFacingText();
+			TestFalse(TEXT("Other method excluded from hover"),Copy.Contains(InspectDirect?TEXT("射向死角"):TEXT("直接射门")));
+			TestTrue(TEXT("Existing method-specific rule explanation"),Copy.Contains(InspectDirect?TEXT("进攻掷点 1–2：射门偏出"):TEXT("总和 11–12")));
+			if (InspectDirect==Direct) Clicked=Button;
+			Button->OnUnhovered.Broadcast();
+		}
+		BeforeHover.Verify(*this,F); TestEqual(TEXT("Hover sends no commands"),Backend.Sends,0);
+		TestEqual(TEXT("Cross high hover still filters one table"),FFMCodexTacticalDetailPresentationBuilder::BuildCrossChoice(EFMCodexUMGBranchIntent::CrossHigh).Branches.Num(),1);
+		TestEqual(TEXT("Cross low hover still names its own branch"),FFMCodexTacticalDetailPresentationBuilder::BuildCrossChoice(EFMCodexUMGBranchIntent::CrossLow).DisplayName,FString(TEXT("低球传中")));
+		const int32 EntropyBefore=F.Entropy->Calls;
+		Clicked->OnClicked.Broadcast();
+		TestEqual(TEXT("Only original Skill sent first"),Backend.Last.IntentKind,Kind::SubmitSkill);
+		TestFalse(TEXT("Selection clears hover"),S->GetTacticalDetailPanel()->GetPresentation().bValid);
+		S->RequestCrossTactic(Choice->OptionId,Direct?EFMCodexUMGBranchIntent::DirectShot:EFMCodexUMGBranchIntent::DeadCorner);
+		S->AdvanceCrossFlow(5); TestEqual(TEXT("Pending duplicate click cannot send another Skill"),Backend.Sends,1);
+		Backend.DeliverView(); S->AdvanceCrossFlow(5);
+		TestEqual(TEXT("View without ACK cannot submit method"),Backend.Sends,1);
+		TestFalse(TEXT("No theater flash before method is authorized"),S->GetPresentation().LongShotResolution.bVisible);
+		TestTrue(TEXT("Queued selection suppresses redundant dock choices"),S->GetInteractionPanel()->GetPresentation().BranchChoices.IsEmpty());
+		Backend.DeliverAck(); S->AdvanceCrossFlow(0);
+		TestEqual(TEXT("Original Branch follows confirmed Skill"),Backend.Last.IntentKind,Kind::SubmitBranchIntent);
+		TestEqual(TEXT("Exact existing method identity"),Backend.Last.Branch.Intent,Direct?Branch::DirectShot:Branch::DeadCorner);
+		auto* Rebuilt=NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());Rebuilt->TakeWidget();
+		Rebuilt->SetMatchBackend(&Backend);Rebuilt->RefreshFromPresentation(S->GetPresentation());
+		Rebuilt->AdvanceCrossFlow(5);Rebuilt->SetMatchBackend(nullptr);
+		S->RefreshFromPresentation(S->GetPresentation());S->AdvanceCrossFlow(5);
+		TestEqual(TEXT("Reconstruction and repeated view do not duplicate method"),Backend.Sends,2);
+		if (!Direct)
+		{
+			// A real validation rejection must clear the early draft and expose the
+			// existing manual retry controls, without changing the gameplay phase.
+			++Backend.Last.ExpectedAttackSequence; // Keep positive: zero is InvalidPayload, not a stale sequence.
+			Backend.DeliverView();Backend.DeliverAck();
+			TestEqual(TEXT("Stale method rejected by common authority boundary"),Backend.Ack.Code,Code::StaleAttackSequence);
+			TestEqual(TEXT("Rejected draft is cleared"),Backend.CrossPresentationFlow.Draft,EFMCodexUMGBranchIntent::None);
+			TestEqual(TEXT("Existing method choices available for retry"),S->GetInteractionPanel()->GetPresentation().BranchChoices.Num(),2);
+			TestTrue(TEXT("Rejected selection restores a visible retry dock"),S->GetInteractionPanel()->IsVisible());
+			S->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::DeadCorner);
+		}
+		Backend.DeliverView();Backend.DeliverAck();S->AdvanceCrossFlow(0);
+		TestEqual(TEXT("Existing method accepted"),Backend.Ack.Code,Code::Accepted);
+		TestTrue(TEXT("Selected method enters existing theater"),S->GetPresentation().LongShotResolution.bVisible);
+		TestEqual(TEXT("No second in-theater method chooser"),S->GetWidgetFromName(TEXT("TheaterNearMethods"))->GetVisibility(),ESlateVisibility::Collapsed);
+		TestEqual(TEXT("Correct manual dice phase"),S->GetPresentation().Interaction.Category,
+			Direct?EFMCodexUMGInteractionCategory::RollLongShotDirectAttack:EFMCodexUMGInteractionCategory::RollLongShotDeadCorner);
+		const int32 Sends=Backend.Sends;
+		S->SkipTacticalScene();S->SkipTacticalScene();S->AdvanceCrossFlow(10);
+		TestEqual(TEXT("Waiting never automatically rolls final dice"),Backend.Sends,Sends);
+		TestEqual(TEXT("Skill and method consume no gameplay RNG"),F.Entropy->Calls,EntropyBefore);
+		TestEqual(TEXT("Leaving selection clears draft"),Backend.CrossPresentationFlow.Draft,EFMCodexUMGBranchIntent::None);
+		S->SetMatchBackend(nullptr);
+	}
+#endif
 	return true;
 }
 
@@ -432,6 +448,25 @@ bool FFMCodexLongShotProductionDirectFormulaAndGateTest::RunTest(
 	TestTrue(TEXT("Fresh terminal snapshot owns Next Round"),
 		MissScreen.LongShotResolution.Formula.PrimaryAction.Claims(
 			MissScreen.Interaction.PrimaryAction));
+	auto* Shared=NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());Shared->TakeWidget();
+	Shared->RefreshFromPresentation(PendingScreen);Shared->SkipTacticalScene();Shared->SkipTacticalScene();
+	TestTrue(TEXT("LongShot uses broadcast coordinates"),Shared->GetTacticalScene().IsBroadcast());
+	TestEqual(TEXT("Same navy footer height"),CastChecked<USizeBox>(Shared->GetWidgetFromName(TEXT("CrossBroadcastBounds")))->GetHeightOverride(),200.f);
+	TestEqual(TEXT("Broadcast identifies LongShot"),CastChecked<UTextBlock>(Shared->GetWidgetFromName(TEXT("CrossBroadcastType")))->GetText().ToString(),FString(TEXT("远射")));
+	TestFalse(TEXT("No redundant in-theater selector"),Shared->GetWidgetFromName(TEXT("TheaterNearMethods"))->GetVisibility()!=ESlateVisibility::Collapsed);
+	const auto* Hover=Shared->GetWidgetFromName(TEXT("TheaterAttackBaseHover"));
+	const auto Tip=FMCodexFormulaTooltipTestUtils::Text(Hover->GetToolTip());
+	TestTrue(TEXT("Stage I tooltip retains LongShot context and supplied subtotal"),Tip.Contains(TEXT("远射直接射门")) && Tip.Contains(TEXT("最终基础值 4")));
+	Shared->RefreshFromPresentation(MissScreen);
+	TestTrue(TEXT("Immediate miss still waits for mandatory attack reveal"),Shared->IsInlineFormulaRevealInputBlocked());
+	Shared->PauseInlineFormulaRevealTimerForTesting();
+	Shared->AdvanceInlineFormulaRevealForTesting(1.8f);
+	Shared->AdvanceInlineFormulaRevealForTesting(3.f);
+	for(int I=0;I<3;++I)Shared->SkipTacticalScene();
+	TestTrue(TEXT("Immediate miss uses compact result card"),Shared->GetWidgetFromName(TEXT("CutInsideMissBounds"))->GetVisibility()!=ESlateVisibility::Collapsed);
+	TestFalse(TEXT("Immediate miss never offers a defense comparison"),Shared->GetWidgetFromName(TEXT("TheaterDefensePanelBounds"))->GetVisibility()!=ESlateVisibility::Collapsed);
+	TestFalse(TEXT("Stable result has no reveal-in-progress copy"),CastChecked<UTextBlock>(Shared->GetWidgetFromName(TEXT("TheaterStatus")))->GetText().ToString().Contains(TEXT("正在揭示")));
+
 	return true;
 }
 
@@ -446,7 +481,8 @@ bool FFMCodexLongShotProductionSurfaceExclusivityTest::RunTest(
 	using namespace FMCodexLongShotProductionPresentationTests;
 	(void)Parameters;
 	FFMCodexLocalMatchInteractionView View = BaseLongShotView(
-		EFMCodexLocalMatchInteractionCategory::SelectLongShotBranch);
+		EFMCodexLocalMatchInteractionCategory::RollLongShotDirectAttack);
+	AddDirectContest(View,false,0,false,0);
 	View.BranchIntentOptions = {
 		EMatchPlayElectiveBranchIntent::DirectShot,
 		EMatchPlayElectiveBranchIntent::DeadCorner
@@ -459,12 +495,13 @@ bool FFMCodexLongShotProductionSurfaceExclusivityTest::RunTest(
 		NewObject<UFMCodexLocalMatchScreenWidget>(GetTransientPackage());
 	Screen->TakeWidget();
 	Screen->RefreshFromPresentation(Production);
+	Screen->SkipTacticalScene();Screen->SkipTacticalScene();
 	TestFalse(TEXT("Production ownership collapses generic resolution root"),
 		Screen->IsLegacyResolutionOverlayVisible());
 	TestTrue(TEXT("Production surface remains visible"),
 		Screen->GetLongShotResolutionSurface() != nullptr
 			&& Screen->GetLongShotResolutionSurface()->GetPresentation().bVisible);
-	TestEqual(TEXT("Central branch choice collapses lower duplicate"),
+	TestEqual(TEXT("Manual roll in theater collapses the duplicate dock"),
 		Screen->GetInteractionPanel()->GetVisibility(),
 		ESlateVisibility::Collapsed);
 
@@ -492,6 +529,8 @@ bool FFMCodexLongShotProductionDeadCornerSequentialRevealTest::RunTest(
 {
 	using namespace FMCodexLongShotProductionPresentationTests;
 	(void)Parameters;
+	for(const bool Goal:{true,false})
+	{
 	FFMCodexLocalMatchInteractionView Pending = BaseLongShotView(
 		EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner);
 	AddLongShotBranch(Pending, EMatchPlayLongShotActualBranch::DeadCorner);
@@ -516,15 +555,15 @@ bool FFMCodexLongShotProductionDeadCornerSequentialRevealTest::RunTest(
 	Terminal.ResolutionFacts.bHasPendingRoll = false;
 	Terminal.ResolutionFacts.NextPendingRollSequenceIndex = INDEX_NONE;
 	Terminal.ResolutionFacts.Rolls[0] = DeadRoll(
-		0, EMatchPlayCurrentAttackPostRouteRollPurpose::PairedAttackA, 5, true);
+		0, EMatchPlayCurrentAttackPostRouteRollPurpose::PairedAttackA, Goal?5:2, true);
 	Terminal.ResolutionFacts.Rolls[1] = DeadRoll(
-		1, EMatchPlayCurrentAttackPostRouteRollPurpose::PairedAttackB, 6, true);
+		1, EMatchPlayCurrentAttackPostRouteRollPurpose::PairedAttackB, Goal?6:3, true);
 	FMatchPlayResolutionDecisionFact Decision;
 	Decision.DecisionId = TEXT("DeadCorner.Outcome");
 	Decision.Semantics = EMatchPlayResolutionRollSemantics::OutcomeDecision;
 	Decision.RollSequenceIndices = { 0, 1 };
 	Decision.bResolved = true;
-	Decision.Outcome = EMatchPlayResolutionDecisionOutcome::Goal;
+	Decision.Outcome = Goal?EMatchPlayResolutionDecisionOutcome::Goal:EMatchPlayResolutionDecisionOutcome::Miss;
 	Terminal.ResolutionFacts.Decisions = { Decision };
 	const FFMCodexUMGMatchScreenViewModel TerminalScreen =
 		FFMCodexLocalMatchUMGPresentationBuilder::Build(
@@ -547,7 +586,9 @@ bool FFMCodexLongShotProductionDeadCornerSequentialRevealTest::RunTest(
 	TestTrue(TEXT("First hold discloses pair A"), First.bDeadCornerAVisible);
 	TestFalse(TEXT("First hold does not leak pair B"), First.bDeadCornerBVisible);
 
-	Screen->AdvanceInlineFormulaRevealForTesting(3.0f);
+	Screen->AdvanceInlineFormulaRevealForTesting(2.23f); // Total 4.03: first final die budget not complete.
+	TestEqual(TEXT("No decisive flight before 4.04 seconds per die"),Screen->GetTacticalScene().Facts.Outcome,FMCodexTacticalScene::EOutcome::None);
+	Screen->AdvanceInlineFormulaRevealForTesting(.77f);
 	const auto& SecondRolling =
 		Screen->GetLongShotResolutionSurface()->GetPresentation();
 	TestTrue(TEXT("Second reveal retains pair A"),
@@ -555,7 +596,7 @@ bool FFMCodexLongShotProductionDeadCornerSequentialRevealTest::RunTest(
 	TestFalse(TEXT("Second roll stays covered before hold"),
 		SecondRolling.bDeadCornerBVisible);
 	TestTrue(TEXT("Second roll keeps first die and target, not the total"),
-		SecondRolling.PairedRollResultLabel == TEXT("第一枚 D6：5")
+		SecondRolling.PairedRollResultLabel == (Goal?TEXT("第一枚 D6：5"):TEXT("第一枚 D6：2"))
 			&& SecondRolling.OutcomeHintLabel
 				== TEXT("两枚点数总和达到 11 或以上：进球")
 			&& !SecondRolling.PrimaryAction.bVisible);
@@ -565,7 +606,7 @@ bool FFMCodexLongShotProductionDeadCornerSequentialRevealTest::RunTest(
 	TestTrue(TEXT("Second hold discloses pair B"),
 		SecondHeld.bDeadCornerBVisible);
 	TestTrue(TEXT("Second hold replaces target with accepted arithmetic"),
-		SecondHeld.PairedRollResultLabel == TEXT("D6 5 + D6 6 = 11")
+		SecondHeld.PairedRollResultLabel == (Goal?TEXT("D6 5 + D6 6 = 11"):TEXT("D6 2 + D6 3 = 5"))
 			&& SecondHeld.OutcomeHintLabel.IsEmpty());
 	TestTrue(TEXT("Second hold exposes authoritative reel result"),
 		SecondHeld.RollReel.bAuthoritativeValue
@@ -586,7 +627,76 @@ bool FFMCodexLongShotProductionDeadCornerSequentialRevealTest::RunTest(
 	TestEqual(TEXT("No historical pair replay remains active"),
 		Screen->GetInlineFormulaRevealPhase(),
 		EFMCodexUMGInlineFormulaRevealPhase::Settled);
+	}
 	return true;
 }
+
+#if WITH_EDITOR && !UE_BUILD_SHIPPING
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexShotFinalTextTest,
+ "FMCodex.LocalPlay.LongShotProduction.06.FinalVisibleText",
+ EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexShotFinalTextTest::RunTest(const FString&)
+{
+ using namespace FMCodexPlayerFacingOrdinaryUITests;
+ // Reuse the in-process authority/action harness; no synthetic correct CTA is
+ // injected into the view, and no independent Host/Remote run is claimed.
+ auto Shown=[](const UWidget* W)
+ {
+  for(;W;W=W->GetParent())if(!W->IsVisible())return false;
+  return true;
+ };
+ for(const bool Cut:{false,true})
+ {
+  FUIFixture F(Cut,false,false);
+  const auto Family=Cut?ESkillRuleType::CutInsideShot:ESkillRuleType::LongShot;
+  if(!TestTrue(TEXT("Reach canonical skill selection"),F.SkillFixture(false,Family)))return false;
+  auto* Actor=F.Attacker();auto* Defender=F.Defender();
+  auto* S=Actor->GetPlayerMatchScreen();auto* D=Defender->GetPlayerMatchScreen();
+  const auto* Choice=S->GetPresentation().Interaction.SelectionChoices.FindByPredicate(
+   [&](const auto& X){return X.SkillType==Family && X.bEnabled;});
+  if(!TestNotNull(TEXT("Authorized shot skill"),Choice))return false;
+  S->RequestSubmitSkill(Choice->OptionId);
+  if(!TestEqual(TEXT("Skill accepted before branch"),F.Backend(Actor).LastCode,Code::Accepted))return false;
+  if(!Cut)
+  {
+   const auto& Options=S->GetInteractionPanel()->GetRenderedOptionWidgets();
+   if(!TestEqual(TEXT("Original branch options retained"),Options.Num(),2))return false;
+   auto* Hint=CastChecked<UTextBlock>(Options[0]->GetWidgetFromName(TEXT("InteractionOptionSecondaryLabel")));
+   TestTrue(TEXT("Direct hint is actually visible"),Shown(Hint));
+   TestEqual(TEXT("Rendered principal-attribute hint"),Hint->GetText().ToString(),FString(TEXT("（射门 vs 防守）")));
+   TestEqual(TEXT("Other branch hint unchanged"),Options[1]->GetSecondaryLabel(),FString(TEXT("（只看两枚掷点）")));
+  }
+  S->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::DirectShot);
+  if(!TestEqual(TEXT("Original direct branch accepted"),F.Backend(Actor).LastCode,Code::Accepted))return false;
+  for(auto* Screen:{S,D}){Screen->SkipTacticalScene();Screen->SkipTacticalScene();}
+  F.Entropy->Word=2; // Canonical attack D6=3 reaches the defense phase.
+  S->RequestContinueResolution();
+  if(!TestEqual(TEXT("Manual attack roll accepted"),F.Backend(Actor).LastCode,Code::Accepted))return false;
+  F.Settle();
+  for(auto* PC:{Actor,Defender})
+  {
+   PC->RefreshPlayerFacingUI();
+   PC->GetPlayerMatchScreen()->SkipTacticalScene();
+   PC->GetPlayerMatchScreen()->SkipTacticalScene();
+  }
+  const auto Category=Cut?EFMCodexUMGInteractionCategory::RollCutInsideShotDirectDefense
+   :EFMCodexUMGInteractionCategory::RollLongShotDirectDefense;
+  auto* Button=CastChecked<UButton>(D->GetWidgetFromName(TEXT("TheaterContinue")));
+  auto* Label=CastChecked<UTextBlock>(D->GetWidgetFromName(TEXT("TheaterContinueLabel")));
+  TestEqual(TEXT("Distinct typed defense category retained"),D->GetPresentation().Interaction.PrimaryAction.Category,Category);
+  TestEqual(TEXT("Authority assigns operation to defender"),Defender->GetOwnerView().ExpectedActingSide,Defender->GetOwnerView().ViewerSide);
+  TestTrue(TEXT("Final defense button and label are visible and enabled"),Shown(Button) && Shown(Label) && Button->GetIsEnabled());
+  TestEqual(TEXT("Final rendered defense CTA after all refreshes"),Label->GetText().ToString(),FString(TEXT("防守方掷点")));
+  TestFalse(TEXT("Non-owner cannot operate the defense CTA"),Shown(S->GetWidgetFromName(TEXT("TheaterContinue"))) && S->GetWidgetFromName(TEXT("TheaterContinue"))->GetIsEnabled());
+  const int32 Before=F.Backend(Defender).Sends;
+  Button->OnClicked.Broadcast();
+  TestEqual(TEXT("Visible button sends one request"),F.Backend(Defender).Sends,Before+1);
+  TestEqual(TEXT("Button retains family-specific typed intent"),F.Backend(Defender).Last.IntentKind,
+   Cut?Kind::CutInsideShotDirectDefenseRoll:Kind::LongShotDirectDefenseRoll);
+  TestEqual(TEXT("Defender request accepted by authority"),F.Backend(Defender).LastCode,Code::Accepted);
+ }
+ return true;
+}
+#endif
 
 #endif

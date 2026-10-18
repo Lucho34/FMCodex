@@ -798,6 +798,7 @@ bool IsThroughBallEventConsumer(const FFMCodexUMGThroughBallResolutionViewModel&
 bool WantsTheater(const FFMCodexUMGMatchScreenViewModel& Screen, const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed)
 {
 	if (!IsEnabled() || Screen.FullTime.bVisible || Screen.Resolution.bRejected) return false;
+	if (Screen.LongShotResolution.SkillType==ESkillRuleType::LongShot && Screen.LongShotResolution.Stage==EFMCodexUMGLongShotStage::BranchChoice) return false;
 	if (IsThroughBallEventConsumer(Screen.ThroughBallResolution)) return true;
 	if (IsOrdinaryShotConsumer(Screen.LongShotResolution)
 		&& (Screen.LongShotResolution.Stage==EFMCodexUMGLongShotStage::BranchChoice
@@ -1255,24 +1256,24 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& P, const FFMCodexUMGMatchHeaderViewModel& H, bool bPending)
 {
-	const bool Cut=IsOrdinaryShotConsumer(Screen.LongShotResolution) && Screen.LongShotResolution.SkillType==ESkillRuleType::CutInsideShot;
-	const bool CutChoice=Cut && Screen.LongShotResolution.Stage==EFMCodexUMGLongShotStage::BranchChoice;
-	const bool CutDead=Cut && Screen.LongShotResolution.Stage==EFMCodexUMGLongShotStage::DeadCorner;
+	const bool ShotBroadcast=IsOrdinaryShotConsumer(Screen.LongShotResolution);
+	const bool ShotChoice=ShotBroadcast && Screen.LongShotResolution.Stage==EFMCodexUMGLongShotStage::BranchChoice;
+	const bool ShotDead=ShotBroadcast && Screen.LongShotResolution.Stage==EFMCodexUMGLongShotStage::DeadCorner;
 	for(const auto Name:{TEXT("CrossBroadcastType"),TEXT("CrossBroadcastPhase")})
-		Find<UTextBlock>(Tree,Name)->SetJustification(CutDead?ETextJustify::Center:ETextJustify::Left);
-	const bool CutMiss=Cut && !CutDead && P.bNarrativeAvailable && !P.bDiceRevealVisible
+		Find<UTextBlock>(Tree,Name)->SetJustification(ShotDead?ETextJustify::Center:ETextJustify::Left);
+	const bool ShotMiss=ShotBroadcast && !ShotDead && P.bNarrativeAvailable && !P.bDiceRevealVisible
 		&& P.SpatialOutcome==EMatchPlayResolutionDecisionOutcome::ImmediateMiss;
-	Show(*Tree.FindWidget(TEXT("CutInsideMissBounds")),CutMiss);
+	Show(*Tree.FindWidget(TEXT("CutInsideMissBounds")),ShotMiss);
 	// Center the desired width of the complete identity/card/action group.
-	Find<UBorder>(Tree,TEXT("CrossBroadcastBand"))->SetHorizontalAlignment(CutDead || CutMiss?HAlign_Center:HAlign_Fill);
-	for(const auto Name:{TEXT("CutInsidePairRule"),TEXT("CutInsidePairGoalRule")})Show(*Tree.FindWidget(Name),CutDead);
-	Find<USizeBox>(Tree,TEXT("CrossBroadcastIdentity"))->SetWidthOverride(CutDead || CutMiss?160.f:236.f);
-	CastChecked<UHorizontalBoxSlot>(Tree.FindWidget(TEXT("TheaterAttackSide"))->Slot)->SetSize(FSlateChildSize(CutDead?ESlateSizeRule::Automatic:ESlateSizeRule::Fill));
-	if(CutDead)Show(*Tree.FindWidget(TEXT("TheaterAttackBadge")),false);
-	CastChecked<UVerticalBoxSlot>(Tree.FindWidget(TEXT("TheaterPair"))->Slot)->SetPadding(FMargin(0,CutDead?0:14,0,0));
+	Find<UBorder>(Tree,TEXT("CrossBroadcastBand"))->SetHorizontalAlignment(ShotDead || ShotMiss?HAlign_Center:HAlign_Fill);
+	for(const auto Name:{TEXT("CutInsidePairRule"),TEXT("CutInsidePairGoalRule")})Show(*Tree.FindWidget(Name),ShotDead);
+	Find<USizeBox>(Tree,TEXT("CrossBroadcastIdentity"))->SetWidthOverride(ShotDead || ShotMiss?160.f:236.f);
+	CastChecked<UHorizontalBoxSlot>(Tree.FindWidget(TEXT("TheaterAttackSide"))->Slot)->SetSize(FSlateChildSize(ShotDead?ESlateSizeRule::Automatic:ESlateSizeRule::Fill));
+	if(ShotDead)Show(*Tree.FindWidget(TEXT("TheaterAttackBadge")),false);
+	CastChecked<UVerticalBoxSlot>(Tree.FindWidget(TEXT("TheaterPair"))->Slot)->SetPadding(FMargin(0,ShotDead?0:14,0,0));
 	// Share only the accepted broadcast skin and geometry; the supplied action,
 	// formula and dice remain owned by their existing tactical consumer.
-	const bool Cross=Cut || P.ContestId==TEXT("Cross.Setup") || P.ContestId==TEXT("Cross.Route") || IsFormulaContest(P.ContestId);
+	const bool Cross=ShotBroadcast || P.ContestId==TEXT("Cross.Setup") || P.ContestId==TEXT("Cross.Route") || IsFormulaContest(P.ContestId);
 	Show(*Tree.FindWidget(TEXT("CrossRouteNotice")),false);
 	auto* Row=Find<UHorizontalBox>(Tree,TEXT("CrossBroadcastRow"));
 	auto* Duel=Find<UHorizontalBox>(Tree,TEXT("TheaterDuel"));
@@ -1281,7 +1282,7 @@ void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewMo
 	auto* BottomHome=Find<USizeBox>(Tree,TEXT("TheaterBottomHome"));
 	auto* Methods=Find<UHorizontalBox>(Tree,TEXT("TheaterNearMethods"));
 	auto* MethodsHome=Find<USizeBox>(Tree,TEXT("TheaterMethodsHome"));
-	if(!CutChoice && Methods->GetParent()==Row){Methods->RemoveFromParent();MethodsHome->AddChild(Methods);}
+	if(!ShotChoice && Methods->GetParent()==Row){Methods->RemoveFromParent();MethodsHome->AddChild(Methods);}
 	if (Cross && Duel->GetParent()!=Row)
 	{
 		Duel->RemoveFromParent(); Bottom->RemoveFromParent();
@@ -1295,7 +1296,7 @@ void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewMo
 		// Fixed homes preserve the live Slate order on return to another tactic.
 		DuelHome->AddChild(Duel); BottomHome->AddChild(Bottom);
 	}
-	if(CutChoice && Methods->GetParent()!=Row)
+	if(ShotChoice && Methods->GetParent()!=Row)
 	{
 		Methods->RemoveFromParent();Bottom->RemoveFromParent();
 		Row->AddChildToHorizontalBox(Methods)->SetVerticalAlignment(VAlign_Center);
@@ -1381,9 +1382,9 @@ void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewMo
 	{
 		auto* Button=Find<UButton>(Tree,Name);
 		auto Style=Button->GetStyle();
-		Style.SetNormal(FSlateRoundedBoxBrush(Cut?Color(43,225,200):Mint,9.f,Alpha(White,Cut?.18f:.55f),1.f));
+		Style.SetNormal(FSlateRoundedBoxBrush(ShotBroadcast?Color(43,225,200):Mint,9.f,Alpha(White,ShotBroadcast?.18f:.55f),1.f));
 		Button->SetStyle(Style);
-		CastChecked<UHorizontalBoxSlot>(Button->GetParent()->GetParent()->Slot)->SetPadding(Cut?FMargin(10,0):FMargin(20,18));
+		CastChecked<UHorizontalBoxSlot>(Button->GetParent()->GetParent()->Slot)->SetPadding(ShotBroadcast?FMargin(10,0):FMargin(20,18));
 	}
 	for (const auto Name:{TEXT("TheaterHigh"),TEXT("TheaterLow")})
 		CastChecked<USizeBox>(Tree.FindWidget(Name)->GetParent())->SetWidthOverride(Cross?145.f:240.f);
@@ -1433,27 +1434,27 @@ void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewMo
 	auto* Status=Find<UTextBlock>(Tree,TEXT("TheaterStatus")); Status->SetAutoWrapText(true);
 	SetText(Tree,TEXT("TheaterStatus"),bPending?LOCTEXT("PendingRequest","操作已提交，等待确认").ToString()
 		:Route && !P.RouteResultLabel.IsEmpty()?LOCTEXT("CrossRouteConfirmed","路线已确认").ToString()
-  :P.bDiceRevealVisible?(Cut && P.RollReel.bStaticResult && P.RollReel.bAuthoritativeValue
+  :P.bDiceRevealVisible?(ShotBroadcast && P.RollReel.bStaticResult && P.RollReel.bAuthoritativeValue
    ?LOCTEXT("CutRollLanded","掷点已落定"):LOCTEXT("CrossRevealing","正在揭示掷点")).ToString()
 		:Screen.Interaction.Category==C::RollCrossRoute && !Screen.bActionWaitPromptReadOnly?LOCTEXT("CrossAutoReady","等待掷点").ToString()
 		:Screen.bMirrorActionWaitPrompt?Screen.ActionWaitActorText.ToString()+TEXT("\n")+Screen.ActionWaitActionText.ToString()
 		:FFMCodexPlayerUIPresentationText::MatchScreenLabel(Screen.Interaction.ExpectedActorLabel).ToString());
 	Show(*Status,true);
-	if(Cut)
+	if(ShotBroadcast)
 	{
-		if(CutDead)
+		if(ShotDead)
 		{
-			const auto* Description=FTacticalRuleDescriptionCatalog::FindBySkillType(ESkillRuleType::CutInsideShot);
-			const auto* Branch=Description?Description->Branches.FindByPredicate([](const auto& B){return B.BranchId==TEXT("CutInside.DeadCorner");}):nullptr;
+			const auto* Description=FTacticalRuleDescriptionCatalog::FindBySkillType(Screen.LongShotResolution.SkillType);
+			const auto* Branch=Description?Description->Branches.FindByPredicate([&](const auto& B){return B.BranchId==(Screen.LongShotResolution.SkillType==ESkillRuleType::LongShot?TEXT("LongShot.DeadCorner"):TEXT("CutInside.DeadCorner"));}):nullptr;
 			Find<UTextBlock>(Tree,TEXT("CutInsidePairRule"))->SetText(Branch?FText::Format(LOCTEXT("CutPairDiceCount","掷 {0} 枚六面骰，点数相加"),FText::AsNumber(Branch->OutcomeRollCount)):FText::GetEmpty());
-			TArray<FString> RuleLines;FFMCodexTacticalDetailPresentationBuilder::BuildShotBranchExplanation(ESkillRuleType::CutInsideShot,false).ToString().ParseIntoArrayLines(RuleLines);
+			TArray<FString> RuleLines;FFMCodexTacticalDetailPresentationBuilder::BuildShotBranchExplanation(Screen.LongShotResolution.SkillType,false).ToString().ParseIntoArrayLines(RuleLines);
 			SetText(Tree,TEXT("CutInsidePairGoalRule"),RuleLines.Num()>1?RuleLines.Last():FString());
 			Find<UTextBlock>(Tree,TEXT("CutInsidePairGoalRule"))->SetColorAndOpacity(P.bNarrativeAvailable && !P.bDiceRevealVisible && P.SpatialOutcome==EMatchPlayResolutionDecisionOutcome::Goal?Aqua:Quiet);
 			const auto Player=FFMCodexPlayerUIPresentationText::MatchScreenLabel(P.AttackRow.Side==H.LeftPlayerSide?H.LeftPlayerLabel:H.RightPlayerLabel);
 			Find<UTextBlock>(Tree,TEXT("TheaterAttackSide"))->SetText(FText::Format(LOCTEXT("CutPairTitle","{0} · 射向死角"),Player));
 		}
-		Show(*Duel,!CutChoice && !CutMiss);
-		if(CutMiss)
+		Show(*Duel,!ShotChoice && !ShotMiss);
+		if(ShotMiss)
 		{
 			// Only copy displayed facts after the existing narrative/spatial gate.
 			const auto Player=FFMCodexPlayerUIPresentationText::MatchScreenLabel(P.AttackRow.Side==H.LeftPlayerSide?H.LeftPlayerLabel:H.RightPlayerLabel);
@@ -1463,15 +1464,15 @@ void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewMo
 			Plate->SetBrush(Find<UBorder>(Tree,TEXT("TheaterAttackPanel"))->Background);
 			Plate->SetBrushColor(FLinearColor::White);
 		}
-		Show(*Tree.FindWidget(TEXT("TheaterDefensePanelBounds")),!CutChoice && !CutDead && P.bShowFormulaRows && P.bShowDefenseRow);
-		Show(*Tree.FindWidget(TEXT("TheaterVS"))->GetParent(),!CutChoice && !CutDead && P.bShowFormulaRows && P.bShowDefenseRow);
-		Show(*Tree.FindWidget(TEXT("TheaterAttackBaseCaption")),!CutChoice && !CutDead && P.bShowFormulaRows);
-		Find<USizeBox>(Tree,TEXT("TheaterAttackPanelBounds"))->SetWidthOverride(CutDead?520.f:420.f);
-		Find<UTextBlock>(Tree,TEXT("CrossBroadcastType"))->SetText(LOCTEXT("CutBroadcast","内切"));
-		Find<UTextBlock>(Tree,TEXT("CrossBroadcastPhase"))->SetText(CutChoice?LOCTEXT("CutChoose","选择射门方式")
-			:CutDead?LOCTEXT("ShotDeadCorner","射向死角"):LOCTEXT("NearDirect","直接射门"));
+		Show(*Tree.FindWidget(TEXT("TheaterDefensePanelBounds")),!ShotChoice && !ShotDead && P.bShowFormulaRows && P.bShowDefenseRow);
+		Show(*Tree.FindWidget(TEXT("TheaterVS"))->GetParent(),!ShotChoice && !ShotDead && P.bShowFormulaRows && P.bShowDefenseRow);
+		Show(*Tree.FindWidget(TEXT("TheaterAttackBaseCaption")),!ShotChoice && !ShotDead && P.bShowFormulaRows);
+		Find<USizeBox>(Tree,TEXT("TheaterAttackPanelBounds"))->SetWidthOverride(ShotDead?520.f:420.f);
+		Find<UTextBlock>(Tree,TEXT("CrossBroadcastType"))->SetText(Screen.LongShotResolution.SkillType==ESkillRuleType::LongShot?LOCTEXT("LongBroadcast","远射"):LOCTEXT("CutBroadcast","内切"));
+		Find<UTextBlock>(Tree,TEXT("CrossBroadcastPhase"))->SetText(ShotChoice?LOCTEXT("CutChoose","选择射门方式")
+			:ShotDead?LOCTEXT("ShotDeadCorner","射向死角"):LOCTEXT("NearDirect","直接射门"));
 		Show(*Tree.FindWidget(TEXT("CrossBroadcastPhase")),true);
-		Show(*Tree.FindWidget(TEXT("CrossBroadcastReason")),!CutChoice && !CutDead && !P.bNarrativeAvailable);
+		Show(*Tree.FindWidget(TEXT("CrossBroadcastReason")),!ShotChoice && !ShotDead && !P.bNarrativeAvailable);
 		for(const auto Name:{TEXT("TheaterDirectExplanationBounds"),TEXT("TheaterAlternativeExplanationBounds")})
 			Find<USizeBox>(Tree,Name)->SetHeightOverride(88.f);
 		for(const auto Name:{TEXT("TheaterNearDirectDiagram"),TEXT("TheaterNearCombinationDiagram")})Show(*Tree.FindWidget(Name),false);
@@ -1484,7 +1485,7 @@ void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewMo
 	// lane so a status without a button/reel is centered on its own.
 	Show(*Tree.FindWidget(TEXT("TheaterActionBounds")),HasActionContent);
 	CastChecked<UVerticalBoxSlot>(Status->Slot)->SetPadding(HasActionContent?FMargin(0,4,0,0):FMargin(0));
-	if (P.PrimaryAction.Action.Category==C::RollCrossAttack || (Cut && P.PrimaryAction.Action.Category==C::RollCutInsideShotDirectAttack))
+	if (P.PrimaryAction.Action.Category==C::RollCrossAttack || (ShotBroadcast && (P.PrimaryAction.Action.Category==C::RollCutInsideShotDirectAttack || P.PrimaryAction.Action.Category==C::RollLongShotDirectAttack)))
 		Find<UTextBlock>(Tree,TEXT("TheaterContinueLabel"))->SetText(LOCTEXT("CrossExecute","实施战术"));
 }
 FFMCodexUMGInlineFormulaRowViewModel ThroughBallContext(const FFMCodexUMGMatchScreenViewModel& Screen,
@@ -1651,6 +1652,7 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 		ShotContext.RollHelperLabel=Shot.OutcomeHintLabel;
 		ShotContext.DiceOwnerLabel=Shot.StatusLabel;
 		ShotContext.AttackRow=Shot.Formula.AttackRow;
+		ShotContext.SpatialOutcome=Shot.Formula.SpatialOutcome;
 	}
 	const auto& P=ShotContext;
 	const bool bNear=Screen.SetPiece.bVisible && Screen.SetPiece.Type==ESetPieceSelectedType::ShortFreeKick && IsNearFreeKickEnabled();

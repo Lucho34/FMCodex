@@ -559,7 +559,7 @@ void UFMCodexLocalMatchScreenWidget::RequestCrossTactic(FName SkillId, EFMCodexU
 		|| Presentation.Interaction.Category != C::SelectSkill
 		|| (!Cut && Intent != EFMCodexUMGBranchIntent::CrossHigh && Intent != EFMCodexUMGBranchIntent::CrossLow)) return;
 	const bool bOffered = Presentation.Interaction.SelectionChoices.ContainsByPredicate([SkillId,Cut](const auto& Choice)
-		{ return Choice.OptionId == SkillId && Choice.SkillType == (Cut ? ESkillRuleType::CutInsideShot : ESkillRuleType::Cross) && Choice.bEnabled; });
+		{ return Choice.OptionId == SkillId && (Cut ? (Choice.SkillType == ESkillRuleType::CutInsideShot || Choice.SkillType == ESkillRuleType::LongShot) : Choice.SkillType == ESkillRuleType::Cross) && Choice.bEnabled; });
 	if (!bOffered) return;
 	auto& Flow = MatchBackend->CrossPresentationFlow;
 	Flow.Observe(Presentation.Header.AttackSequence);
@@ -578,7 +578,7 @@ void UFMCodexLocalMatchScreenWidget::AdvanceCrossFlow(float DeltaSeconds)
 	auto& Flow = MatchBackend->CrossPresentationFlow;
 	Flow.Observe(Presentation.Header.AttackSequence);
 	const auto& Interaction = Presentation.Interaction;
-	const bool bCutSetup = Presentation.LongShotResolution.SkillType == ESkillRuleType::CutInsideShot
+	const bool bCutSetup = (Presentation.LongShotResolution.SkillType == ESkillRuleType::CutInsideShot || Presentation.LongShotResolution.SkillType == ESkillRuleType::LongShot)
 		&& Presentation.LongShotResolution.Stage == EFMCodexUMGLongShotStage::BranchChoice;
 	const bool bSetup = bCutSetup || Presentation.InlineFormula.ContestId == TEXT("Cross.Setup");
 	const bool bRoute = Interaction.Category == C::RollCrossRoute;
@@ -586,7 +586,7 @@ void UFMCodexLocalMatchScreenWidget::AdvanceCrossFlow(float DeltaSeconds)
 	if (!bSetup && Interaction.Category != C::SelectSkill) Flow.Draft = EFMCodexUMGBranchIntent::None;
 	if (IsScreenRequestPending() || IsInlineFormulaRevealInputBlocked() || TacticalScene.IsAnimating()
 		|| Presentation.bActionWaitPromptReadOnly || Presentation.FullTime.bVisible) return;
-	if (bSetup && Interaction.Category == C::SelectBranchIntent && !Flow.bBranchSubmitted
+	if (bSetup && (Interaction.Category == C::SelectBranchIntent || Interaction.Category == C::SelectLongShotBranch) && !Flow.bBranchSubmitted
 		&& Flow.Draft != EFMCodexUMGBranchIntent::None
 		&& Interaction.BranchChoices.ContainsByPredicate([&](const auto& Choice){ return Choice.Intent == Flow.Draft; }))
 	{
@@ -616,7 +616,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 	TheaterPresentation.ThroughBallResolution=BuildDisplayedThroughBallResolution();
 	const bool bActive = WantsTheater(TheaterPresentation, Displayed);
 	const bool bWarmCross=Presentation.Interaction.Category==EFMCodexUMGInteractionCategory::SelectSkill
-  && Presentation.Interaction.SelectionChoices.ContainsByPredicate([](const auto& C){return C.SkillType==ESkillRuleType::Cross || C.SkillType==ESkillRuleType::CutInsideShot;});
+  && Presentation.Interaction.SelectionChoices.ContainsByPredicate([](const auto& C){return C.SkillType==ESkillRuleType::Cross || C.SkillType==ESkillRuleType::CutInsideShot || C.SkillType==ESkillRuleType::LongShot;});
 	if ((bActive || bWarmCross) && !WidgetTree->FindWidget(TEXT("ResolutionTheater")))
 	{
 		UButton* Primary = nullptr; UButton* High = nullptr; UButton* Low = nullptr;
@@ -662,6 +662,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 		{ if (Weak.IsValid()) Weak->SkipTacticalScene(); });
 		if (FMCodexTacticalScene::IsCross(TacticalScene.Facts.Method) && TacticalScene.IsAnimating())
 			CastChecked<UTextBlock>(WidgetTree->FindWidget(TEXT("TheaterStatus")))->SetText(NSLOCTEXT("CrossFlow","InMotion","传中进行中"));
+		if (TacticalScene.Facts.bLongShot && TacticalScene.IsAnimating())
+			CastChecked<UTextBlock>(WidgetTree->FindWidget(TEXT("TheaterStatus")))->SetText(NSLOCTEXT("LongShotFlow","InMotion","远射进行中"));
 		if (TacticalScene.Facts.bCutInside && TacticalScene.IsAnimating())
 			CastChecked<UTextBlock>(WidgetTree->FindWidget(TEXT("TheaterStatus")))->SetText(NSLOCTEXT("CutInsideFlow","InMotion","内切进行中"));
 
@@ -1436,6 +1438,7 @@ void UFMCodexLocalMatchScreenWidget::ShowTacticalDetail(FName SkillId, EFMCodexU
 	}
 	const FFMCodexUMGTacticalDetailViewModel Detail =
 		Choice->SkillType==ESkillRuleType::Cross ? FFMCodexTacticalDetailPresentationBuilder::BuildCrossChoice(Intent)
+		: Choice->SkillType==ESkillRuleType::LongShot ? FFMCodexTacticalDetailPresentationBuilder::BuildLongShotChoice(Intent)
 		: Choice->SkillType==ESkillRuleType::CutInsideShot ? FFMCodexTacticalDetailPresentationBuilder::BuildCutInsideChoice(Intent)
 		: FFMCodexTacticalDetailPresentationBuilder::Build(Choice->SkillType);
 	if (!Detail.bValid)
@@ -5469,7 +5472,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	// Broadcast theater covers the board. Keep its widgets instead of rebuilding
 	// forty hidden cards on every view/ACK/reveal refresh. The next uncovered
 	// refresh repopulates them from the current safe presentation before reveal.
-	const bool bCrossCoversBoard = SpatialFacts.bActive && (SpatialFacts.bCutInside || FMCodexTacticalScene::IsCross(SpatialFacts.Method));
+	const bool bCrossCoversBoard = SpatialFacts.bActive && (SpatialFacts.bCutInside || SpatialFacts.bLongShot || FMCodexTacticalScene::IsCross(SpatialFacts.Method));
 	if (!bCrossCoversBoard)
 	{
 		auto DisplayedPitch = Presentation.PitchRegions;
@@ -5677,7 +5680,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		bCentralOwnsActionPrompt ? FText::GetEmpty() : Presentation.ActionWaitActionText);
 	auto DockInteraction = Presentation.Interaction;
 	if (MatchBackend && MatchBackend->CrossPresentationFlow.Draft != EFMCodexUMGBranchIntent::None
-		&& Presentation.LongShotResolution.SkillType == ESkillRuleType::CutInsideShot
+		&& (Presentation.LongShotResolution.SkillType == ESkillRuleType::CutInsideShot || Presentation.LongShotResolution.SkillType == ESkillRuleType::LongShot)
 		&& Presentation.LongShotResolution.Stage == EFMCodexUMGLongShotStage::BranchChoice)
 		DockInteraction.BranchChoices.Reset(); // One click already chose the method; ACK/View still owns dispatch.
 	InteractionPanel->RefreshFromPresentation(DockInteraction);

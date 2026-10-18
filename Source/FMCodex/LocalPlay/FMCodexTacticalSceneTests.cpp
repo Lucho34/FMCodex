@@ -78,7 +78,20 @@ bool FSceneFactsTest::RunTest(const FString&)
   TestEqual(TEXT("Marker role survives"),F.Participants[1].Role,EMatchPlayResolutionParticipantRole::Marker);
   const auto Expected=Side==Copy.Header.LeftPlayerSide?Copy.Header.LeftAttackTurnTracker.PrimarySideColor:Copy.Header.RightAttackTurnTracker.PrimarySideColor;
   TestTrue(TEXT("Accent follows ownership, not attack direction"),F.Participants[0].Accent.Equals(Expected));
-  TestTrue(TEXT("Both sides attack right"),CarrierAnchor.X<MarkerAnchor.X && MarkerAnchor.X<GoalAnchor.X);
+  FState Scene;Scene.Sync(F);Scene.Skip();Scene.Skip();
+  TestTrue(TEXT("LongShot shares broadcast but retains its own stage"),Scene.IsBroadcast() && Scene.Facts.bLongShot);
+  const auto Carrier=LongShotParticipantAnchor(Scene,EMatchPlayResolutionParticipantRole::Carrier);
+  // Left penalty-area edge in the accepted stadium's 1324 x 579.25 design frame.
+  auto OutsideArea=[](FVector2D Point){return Point.X+15.f<170.f+(Point.Y-280.f)*480.f/299.f;};
+  TestTrue(TEXT("Shooter and ball start clearly outside the penalty area"),OutsideArea(Carrier) && OutsideArea(LongShotOutcomeBall(Scene,0.f)));
+  auto Strike=Scene;Strike.Phase=EPhase::Outcome;Strike.Facts.Outcome=EOutcome::Goal;
+  Strike.Elapsed=LongShotOutcomeActionSeconds*LongShotReleaseFraction;
+  TestTrue(TEXT("The release remains outside the penalty area"),OutsideArea(LongShotOutcomeBall(Strike,LongShotReleaseFraction)));
+  TestTrue(TEXT("Defense stands between shooter and goal"),LongShotMarkerAnchor.X>Carrier.X && LongShotMarkerAnchor.X<CrossGoalAnchor.X);
+  TestTrue(TEXT("GK uses the validated goalmouth anchor"),LongShotParticipantAnchor(Scene,EMatchPlayResolutionParticipantRole::Goalkeeper).Equals(CrossParticipantAnchor(Scene,EMatchPlayResolutionParticipantRole::Goalkeeper)));
+  const auto Ball=LongShotOutcomeBall(Scene,0.f);Scene.Tick(.55f);
+  TestFalse(TEXT("Neutral preparation keeps moving while awaiting dice"),LongShotOutcomeBall(Scene,0.f).Equals(Ball));
+  TestFalse(TEXT("Unreleased ball remains outside goal"),IsInsideGoal(LongShotOutcomeBall(Scene,1.f),EMethod::CrossHigh));
   TestFalse(TEXT("Lesson / disabled surface excluded"),Project(Copy.LongShotResolution,Copy.Header,false).bActive);
   TArray<uint8> After;FMemoryWriter AfterWriter(After);FObjectAndNameAsStringProxyArchive AfterSave(AfterWriter,false);
   FFMCodexUMGMatchScreenViewModel::StaticStruct()->SerializeItem(AfterSave,&M,nullptr);
@@ -99,9 +112,9 @@ bool FSceneStoryboardTest::RunTest(const FString&)
   if(Method==EMethod::DeadCorner)M.LongShotResolution.Stage=EFMCodexUMGLongShotStage::DeadCorner;
   FState S;S.Sync(Project(M.LongShotResolution,M.Header,true));
   TestTrue(TEXT("Setup starts once"),S.Phase==EPhase::Setup);
-  S.Tick(SetupSeconds*.5f);S.Sync(Project(M.LongShotResolution,M.Header,true));TestEqual(TEXT("Repeated view does not reset"),S.Elapsed,SetupSeconds*.5f);
+  S.Tick(S.PhaseSeconds()*.5f);S.Sync(Project(M.LongShotResolution,M.Header,true));TestEqual(TEXT("Repeated view does not reset"),S.Elapsed,S.PhaseSeconds()*.5f);
   S.Skip();TestTrue(TEXT("Skip only advances to intent"),S.Phase==EPhase::Intent);
-  S.Tick(IntentSeconds);TestTrue(TEXT("Intent holds for formula"),S.Phase==EPhase::FormulaHold);
+  S.Tick(S.PhaseSeconds());TestTrue(TEXT("Intent holds for formula"),S.Phase==EPhase::FormulaHold);
   TestFalse(TEXT("Skip cannot bypass formula"),S.Skip());
   V.bDefenseRowActive=true;V.bAttackRowActive=false;V.bShowFormulaRows=true;
   S.Sync(Project(M.LongShotResolution,M.Header,true));
@@ -117,23 +130,16 @@ bool FSceneStoryboardTest::RunTest(const FString&)
   TestTrue(TEXT("Typed decision maps without arithmetic"),S.Facts.Outcome==(Outcome==EMatchPlayResolutionDecisionOutcome::Goal?EOutcome::Goal:Outcome==EMatchPlayResolutionDecisionOutcome::Miss?EOutcome::DefensiveSuccess:EOutcome::ImmediateMiss));
   auto Gated=V;S.Gate(Gated);TestFalse(TEXT("Terminal text waits for ball"),Gated.bNarrativeAvailable);
   TestEqual(TEXT("Formula values unchanged"),Gated.AttackRow.FinalValue,V.AttackRow.FinalValue);
-  const bool Pressure=Method==EMethod::Direct && Outcome==EMatchPlayResolutionDecisionOutcome::Miss;
-  TestEqual(TEXT("Only normal Direct defensive win illustrates Formula Marker pressure"),HasLongShotDefensivePressure(S),Pressure);
-  S.Tick(OutcomeActionSeconds*.6f);
+  S.Tick(LongShotOutcomeActionSeconds*.6f);
   const auto Marker=LongShotParticipantAnchor(S,EMatchPlayResolutionParticipantRole::Marker);
-  TestEqual(TEXT("ImmediateMiss and DeadCorner never gain defensive motion"),Marker.Equals(MarkerAnchor),!Pressure);
-  if(Pressure)
-  {
-   TestTrue(TEXT("Marker closes upward toward lane"),Marker.Y<MarkerAnchor.Y-30);
-   TestTrue(TEXT("Pressured delivery has no hard portrait contact"),(LongShotOutcomeBall(S,LongShotPressureArrival)-Marker).Size()>50);
-  }
+  TestTrue(TEXT("Aggregate failure never invents a block actor"),Marker.Equals(LongShotMarkerAnchor));
   auto NoMarker=S;NoMarker.Facts.Participants.RemoveAll([](const auto& P){return P.Role==EMatchPlayResolutionParticipantRole::Marker;});
   TestFalse(TEXT("Missing actual Marker never creates pressure actor"),HasLongShotDefensivePressure(NoMarker));
-  S.Tick(OutcomeActionSeconds*.4f+.001f);
+  S.Tick(LongShotOutcomeActionSeconds*.4f+.001f);
   TestTrue(TEXT("Action ends in visual hold before ResultHold"),S.Phase==EPhase::Outcome && S.IsOutcomeVisualHold());
   const auto End=LongShotOutcomeBall(S,1.f);
-  TestEqual(TEXT("Goal safely inside mouth; misses clearly outside"),IsInsideGoal(End),Outcome==EMatchPlayResolutionDecisionOutcome::Goal);
-  TestTrue(TEXT("GK never acquires unsupported ball control"),(End-KeeperAnchor).Size()>45);
+  TestEqual(TEXT("Goal safely inside mouth; misses clearly outside"),IsInsideGoal(End,EMethod::CrossHigh),Outcome==EMatchPlayResolutionDecisionOutcome::Goal);
+  TestTrue(TEXT("GK never acquires unsupported ball control"),(End-CrossParticipantAnchor(S,EMatchPlayResolutionParticipantRole::Goalkeeper)).Size()>45);
   S.Tick(OutcomeHoldSeconds*.5f);
   TestTrue(TEXT("Final ball and participant remain still"),S.IsOutcomeVisualHold() && LongShotOutcomeBall(S,1.f).Equals(End)
    && LongShotParticipantAnchor(S,EMatchPlayResolutionParticipantRole::Marker).Equals(Marker));
@@ -147,12 +153,7 @@ bool FSceneStoryboardTest::RunTest(const FString&)
   auto Accelerated=S;Accelerated.Celebration.Reset();Accelerated.Phase=EPhase::Outcome;Accelerated.Elapsed=.2f;Accelerated.Skip();
   TestTrue(TEXT("Skip retains final pose and endpoint"),Accelerated.Phase==EPhase::ResultHold && LongShotOutcomeBall(Accelerated,1.f).Equals(End)
    && LongShotParticipantAnchor(Accelerated,EMatchPlayResolutionParticipantRole::Marker).Equals(Marker));
-  if(Method==EMethod::DeadCorner)
-  {
-   const FVector2D Start=CarrierAnchor+FVector2D(48,21),Control(760,40);
-   const auto Accepted=FMath::Lerp(FMath::Lerp(Start,Control,.5f),FMath::Lerp(Control,End,.5f),.5f);
-   TestTrue(TEXT("DeadCorner accepted midflight geometry preserved"),LongShotOutcomeBall(S,.5f).Equals(Accepted));
-  }
+  TestTrue(TEXT("Goal follows chosen central/upper target"),Outcome!=EMatchPlayResolutionDecisionOutcome::Goal || End.Equals(CutInsideAimTarget(Method)));
   S.Celebration.Skip();
   TestFalse(TEXT("Result skip does not continue gameplay"),S.Skip());
  }
@@ -169,26 +170,10 @@ bool FSceneMethodTest::RunTest(const FString&)
  V.BranchIntentOptions={EMatchPlayElectiveBranchIntent::DirectShot,EMatchPlayElectiveBranchIntent::DeadCorner};
  auto M=FFMCodexLocalMatchUMGPresentationBuilder::Build(V,FFMCodexLocalMatchResolutionFeedback(),FString());
  FState S;S.Sync(Project(M.LongShotResolution,M.Header,true));
- TestEqual(TEXT("Method choice opens persistent scene"),S.Phase,EPhase::Preview);
- TestEqual(TEXT("Default intent is Direct"),S.PreviewMethod,EMethod::Direct);
- const auto MarkerBefore=LongShotParticipantAnchor(S,EMatchPlayResolutionParticipantRole::Marker);
- S.Tick(LongShotPreviewCycleSeconds*.5f);
- TestTrue(TEXT("Default Direct preview moves actual Marker without a result"),!LongShotParticipantAnchor(S,EMatchPlayResolutionParticipantRole::Marker).Equals(MarkerBefore));
- const auto DirectControl=LongShotAimControl(S);
- TestTrue(TEXT("GK is closer to mouth and forward of goal ground line"),KeeperAnchor.X>1100 && KeeperAnchor.X<GoalAnchor.X && KeeperAnchor.Y+32<159+(KeeperAnchor.X-1092)*96/178);
- TestFalse(TEXT("Preview does not block actual method selection"),S.IsAnimating());
- S.Preview(EMethod::DeadCorner);S.Tick(.15f);
- TestEqual(TEXT("Corner hover/focus transitions in 150ms"),S.CornerBlend,1.f);
- TestTrue(TEXT("DeadCorner targets a distinct upper corner inside the mouth"),IsInsideGoal(CornerAnchor)
-  && CornerAnchor.X<GoalAnchor.X && CornerAnchor.Y<GoalAnchor.Y && (CornerAnchor-GoalAnchor).Size()>60);
- TestTrue(TEXT("Corner suppresses Marker pressure movement"),LongShotParticipantAnchor(S,EMatchPlayResolutionParticipantRole::Marker).Equals(MarkerAnchor));
- TestTrue(TEXT("Corner aim lifts away from normal shooting lane"),LongShotAimControl(S).Y<DirectControl.Y-80);
- S.Sync(Project(M.LongShotResolution,M.Header,true));
- TestEqual(TEXT("Repeated view retains hovered method"),S.PreviewMethod,EMethod::DeadCorner);
- S.Preview(EMethod::Direct);S.Tick(.15f);TestEqual(TEXT("Direct preview returns to normal target"),S.CornerBlend,0.f);
- TestEqual(TEXT("Preview has no method intent mutation"),V.ElectiveBranchIntent,EMatchPlayElectiveBranchIntent::None);
- TestEqual(TEXT("No future outcome in preview"),S.Facts.Outcome,EOutcome::None);
- TestFalse(TEXT("Space cannot commit preview"),S.Skip());
+ TestEqual(TEXT("Method selection stays outside theater"),S.Phase,EPhase::Hidden);
+ TestFalse(TEXT("No broadcast before branch authorization"),FMCodexResolutionTheaterPrototype::WantsTheater(M,M.InlineFormula));
+ TestEqual(TEXT("Selection does not mutate authority"),V.ElectiveBranchIntent,EMatchPlayElectiveBranchIntent::None);
+ TestFalse(TEXT("Space cannot select a method"),S.Skip());
  // Production must provide a successful safe projection; intent/category alone
  // cannot substitute for missing or failed authoritative facts.
  V.InteractionCategory=EFMCodexLocalMatchInteractionCategory::RollLongShotDeadCorner;

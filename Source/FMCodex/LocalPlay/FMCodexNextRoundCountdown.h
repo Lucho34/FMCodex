@@ -25,7 +25,7 @@ struct FFMCodexNextRoundCountdown
 		if (!bCounting)
 		{
 			ReadingElapsed += Delta;
-			if (ReadingElapsed >= 2.5f) bCounting = true;
+			if (ReadingElapsed >= 3.f) bCounting = true;
 			return false; // Render (5) before consuming any countdown time.
 		}
 		CountdownElapsed += Delta;

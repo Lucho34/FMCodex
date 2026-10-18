@@ -338,6 +338,23 @@ FFMCodexUMGTacticalDetailViewModel FFMCodexTacticalDetailPresentationBuilder::Bu
 	return Detail;
 }
 
+FFMCodexUMGTacticalDetailViewModel FFMCodexTacticalDetailPresentationBuilder::BuildLongShotChoice(EFMCodexUMGBranchIntent Intent)
+{
+	const bool Direct = Intent == EFMCodexUMGBranchIntent::DirectShot;
+	if (!Direct && Intent != EFMCodexUMGBranchIntent::DeadCorner) return Build(ESkillRuleType::LongShot);
+	auto Detail = FMCodexTacticalDetailPresentation::BuildDetail(ESkillRuleType::LongShot,
+		Direct ? TEXT("LongShot.Direct") : TEXT("LongShot.DeadCorner"));
+	Detail.DisplayName = FText::Format(NSLOCTEXT("LongShotDetail", "MethodTitle", "远射（{0}）"),
+		FText::FromString(Detail.DisplayName)).ToString();
+	// The single-method hover puts this compact rule inside its information
+	// frame. Attribute equations remain in the existing live Formula surface.
+	Detail.CardHint = Direct
+		? FText::Format(NSLOCTEXT("FMCodexShotChoice","MissHint","进攻掷点 {0}"),
+			FFMCodexPlayerUIPresentationText::LongShotDirectOutcomeHint()).ToString()
+		: BuildShotBranchExplanation(ESkillRuleType::LongShot, false).ToString();
+	return Detail;
+}
+
 FFMCodexUMGOutcomeRollHintViewModel
 FFMCodexTacticalDetailPresentationBuilder::BuildOutcomeRollHint(
 	const ESkillRuleType SkillType, const FName BranchId)

@@ -207,7 +207,7 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 	// Explicit Cross/CutInside options share one stable footprint. Generic
 	// multi-branch deployment/reference panels retain their existing layout.
 	const bool bCompact = Presentation.Branches.Num() == 1
-		&& (Presentation.SkillType == ESkillRuleType::Cross || Presentation.SkillType == ESkillRuleType::CutInsideShot);
+		&& (Presentation.SkillType == ESkillRuleType::Cross || (Presentation.SkillType == ESkillRuleType::CutInsideShot || Presentation.SkillType == ESkillRuleType::LongShot));
 	auto* Bounds = CastChecked<USizeBox>(GetWidgetFromName(TEXT("TacticalDetailBounds")));
 	Bounds->SetWidthOverride(bCompact ? CompactWidth : PanelWidth);
 	if (bCompact) Bounds->SetHeightOverride(CompactHeight);
@@ -468,12 +468,12 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 			if (!bCompact || RowIndex > 0) AddSpaced(*BranchContent, RuleBounds, 3.f);
 			AddSpaced(*BranchContent, Row, 3.f);
 		}
-		if (bCompact && Presentation.SkillType == ESkillRuleType::CutInsideShot && !Presentation.CardHint.IsEmpty())
+		if (bCompact && (Presentation.SkillType == ESkillRuleType::CutInsideShot || Presentation.SkillType == ESkillRuleType::LongShot) && !Presentation.CardHint.IsEmpty())
 		{
 			auto* Hint = MakeText(*WidgetTree, TEXT("TacticalDetailBranchHint"), EFMCodexPlayerUITextRole::Secondary);
 			Hint->SetText(FText::FromString(Presentation.CardHint));
 			Hint->SetColorAndOpacity(FMCodexMatchShellStyle::Secondary());
-			if (Presentation.SkillType == ESkillRuleType::CutInsideShot && !Branch.bRollOnly)
+			if ((Presentation.SkillType == ESkillRuleType::CutInsideShot || Presentation.SkillType == ESkillRuleType::LongShot) && !Branch.bRollOnly)
 			{
 				// This is a static special-rule row, never a participant/attribute fact.
 				auto* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("TacticalDetailSpecialRow"));

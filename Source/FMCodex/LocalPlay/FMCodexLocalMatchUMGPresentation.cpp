@@ -2623,10 +2623,10 @@ namespace FMCodexLocalMatchUMGPresentation
 		}
 		if (bChoosingBranch)
 		{
-			// CutInside's existing method choice now belongs to the tactical dock.
+			// Ordinary shots choose their method in the tactical dock before entry.
 			// Keep the safe stage/choices for queued intent dispatch and recovery;
 			// enter the theater only after the authoritative method is selected.
-			if (bCutInside) Result.bVisible = false;
+			if (bCutInside || bLongShot) Result.bVisible = false;
 			Result.Stage = EFMCodexUMGLongShotStage::BranchChoice;
 			Result.StageLabel = bCross
 				? FFMCodexPlayerUIPresentationText
@@ -3655,6 +3655,8 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			: InteractionView.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory
 					::RollCutInsideShotDirectDefense
+				|| InteractionView.InteractionCategory
+					== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense
 					? FFMCodexPlayerUIPresentationText
 						::ShotDefenseRollAction().ToString()
 			: InteractionView.InteractionCategory
@@ -3802,8 +3804,8 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		{
 			SecondaryLabel = Intent
 					== EMatchPlayElectiveBranchIntent::DirectShot
-				? FFMCodexPlayerUIPresentationText::LongShotDirectChoiceHint()
-					.ToString()
+				? FFMCodexTacticalDetailPresentationBuilder::BuildBranchChoiceHint(
+					ESkillRuleType::LongShot, TEXT("LongShot.Direct")).ToString()
 				: Intent == EMatchPlayElectiveBranchIntent::DeadCorner
 					? FFMCodexPlayerUIPresentationText
 						::LongShotDeadCornerChoiceHint().ToString()

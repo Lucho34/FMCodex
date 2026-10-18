@@ -317,36 +317,7 @@ bool FFMCodexCutInsideProductionBranchSurfaceTest::RunTest(
 	TestTrue(TEXT("Interrupted choice can recover in the original tactical dock"),
 		MatchScreen->GetInteractionPanel()->GetVisibility()==ESlateVisibility::Visible
 		&& MatchScreen->GetInteractionPanel()->GetPresentation().BranchChoices.Num()==2);
-	for (const auto Skill : {ESkillRuleType::LongShot})
-	{
-		auto Variant=View; Variant.PresentedActionType=Skill;
-		Variant.InteractionCategory=Skill==ESkillRuleType::LongShot?ECategory::SelectLongShotBranch:ECategory::SelectBranchIntent;
-		auto Choice=Build(Variant);
-		MatchScreen->RefreshFromPresentation(Choice);
-		auto Text=[MatchScreen](const TCHAR* Name){return CastChecked<UTextBlock>(MatchScreen->GetWidgetFromName(Name))->GetText().ToString();};
-		TestEqual(TEXT("Shared attack context uses canonical selected Carrier"),Text(TEXT("TheaterAttackName0")),FString(TEXT("萨卡")));
-		TestEqual(TEXT("Context keeps ordinary Carrier role"),Text(TEXT("TheaterAttackRole0")),FString(TEXT("持球")));
-		TestTrue(TEXT("Direct summary keeps attributes and miss range without modifier or GK exposition"),
-			Text(TEXT("TheaterNearDirectHint")).Contains(Skill==ESkillRuleType::LongShot?TEXT("射门"):TEXT("控球 × 0.5"))
-			&& Text(TEXT("TheaterNearDirectHint")).Contains((Skill==ESkillRuleType::LongShot?TEXT("对抗盯人：防守\n进攻掷点 1–2：射门偏出"):TEXT("对抗盯人：防守 × 0.5 + 速度 × 0.5\n进攻掷点 1–2：射门偏出")))
-			&& !Text(TEXT("TheaterNearDirectHint")).Contains(TEXT("+ 2"))
-			&& !Text(TEXT("TheaterNearDirectHint")).Contains(TEXT("门将")));
-		TestEqual(TEXT("Pair explanation contains only the two-dice concept and success range"),
-			Text(TEXT("TheaterNearCombinationHint")),FString(TEXT("进攻方依次掷两枚骰子\n总和 11–12：进球")));
-		TestEqual(TEXT("Both shot branch consumers enter Theater"),MatchScreen->GetWidgetFromName(TEXT("ResolutionTheater"))->GetVisibility(),ESlateVisibility::SelfHitTestInvisible);
-		TestEqual(TEXT("Legacy branch modal is hidden"),MatchScreen->GetLongShotResolutionSurface()->GetVisibility(),ESlateVisibility::Collapsed);
-		TestTrue(TEXT("Both projected branch choices remain enabled"),MatchScreen->GetWidgetFromName(TEXT("TheaterNearDirect"))->GetIsEnabled()
-			&& MatchScreen->GetWidgetFromName(TEXT("TheaterNearCombination"))->GetIsEnabled());
-		Choice.LongShotResolution.BranchChoices.RemoveAll([](const auto& C){return C.Intent==EFMCodexUMGBranchIntent::DeadCorner;});
-		MatchScreen->RefreshFromPresentation(Choice);
-		TestFalse(TEXT("Absent safe choice stays disabled"),MatchScreen->GetWidgetFromName(TEXT("TheaterNearCombination"))->GetIsEnabled());
-		TestTrue(TEXT("Unavailable strip names the disabled option without inventing a threshold"),Text(TEXT("TheaterDetail")).Contains(TEXT("当前不可选择射向死角")));
-		Choice.LongShotResolution.BranchChoices.Empty(); Choice.bActionWaitPromptReadOnly=true;
-		MatchScreen->RefreshFromPresentation(Choice);
-		TestFalse(TEXT("Waiting viewer cannot execute either choice"),MatchScreen->GetWidgetFromName(TEXT("TheaterNearDirect"))->GetIsEnabled()
-			|| MatchScreen->GetWidgetFromName(TEXT("TheaterNearCombination"))->GetIsEnabled());
-		TestEqual(TEXT("Waiting strip explains the expected action"),Text(TEXT("TheaterDetail")),FString(TEXT("等待进攻方选择射门方式")));
-	}
+	// LongShot pre-theater choices are covered by LongShotProduction.BranchOwnership.
 #if WITH_EDITOR && !UE_BUILD_SHIPPING
 	using namespace FMCodexPlayerFacingOrdinaryUITests;
 	// Reuse the accepted Cross transport harness. This is adapter/authority
@@ -378,7 +349,7 @@ bool FFMCodexCutInsideProductionBranchSurfaceTest::RunTest(
 		const auto& Options=S->GetInteractionPanel()->GetRenderedOptionWidgets();
 		int32 ExpectedOptions=Model.Interaction.SelectionChoices.Num();
 		for (const auto& C:Model.Interaction.SelectionChoices)
-			if (C.SkillType==ESkillRuleType::Cross || C.SkillType==ESkillRuleType::CutInsideShot) ++ExpectedOptions;
+			if (C.SkillType==ESkillRuleType::Cross || C.SkillType==ESkillRuleType::CutInsideShot || C.SkillType==ESkillRuleType::LongShot) ++ExpectedOptions;
 		TestEqual(TEXT("Only variant skills expand; other choices remain"),Options.Num(),ExpectedOptions);
 		TestEqual(TEXT("Existing decline remains available"),S->GetInteractionPanel()->GetPresentation().bCanDecline,Model.Interaction.bCanDecline);
 		FUnchanged BeforeHover(F);
@@ -1194,7 +1165,7 @@ bool FFMCodexCutInsideBroadcastTest::RunTest(const FString&)
 	auto ChoiceModel=Build(Choice);Screen->RefreshFromPresentation(ChoiceModel);
 	TestFalse(TEXT("CutInside has no unselected theater"),ChoiceModel.LongShotResolution.bVisible || Screen->GetTacticalScene().Facts.bActive);
 	ChoiceModel.LongShotResolution.SkillType=ESkillRuleType::LongShot;ChoiceModel.LongShotResolution.bVisible=true;Screen->RefreshFromPresentation(ChoiceModel);
-	TestFalse(TEXT("LongShot never inherits CutInside broadcast"),Screen->GetTacticalScene().IsBroadcast() || Shown(TEXT("CrossBroadcastBounds")));
+	TestFalse(TEXT("Unselected LongShot also stays outside broadcast"),Screen->GetTacticalScene().IsBroadcast() || Shown(TEXT("CrossBroadcastBounds")));
 	TestEqual(TEXT("LongShot restores its methods home"),Screen->GetWidgetFromName(TEXT("TheaterNearMethods"))->GetParent()->GetFName(),FName(TEXT("TheaterMethodsHome")));
 	return true;
 }

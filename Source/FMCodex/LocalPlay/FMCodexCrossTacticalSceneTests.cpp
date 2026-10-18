@@ -326,9 +326,12 @@ bool FCrossBroadcastFlowTest::RunTest(const FString&)
   TestTrue(TEXT("Button fits its existing action region"),CastChecked<USizeBox>(S->GetWidgetFromName(TEXT("TheaterPrimaryBounds")))->GetWidthOverride()
    <=CastChecked<USizeBox>(S->GetWidgetFromName(TEXT("TheaterBottomBounds")))->GetWidthOverride());
   auto* Row=CastChecked<UHorizontalBox>(S->GetWidgetFromName(TEXT("CrossBroadcastRow")));
-  TestEqual(TEXT("Identity plus two comparison regions and action share one row"),Row->GetChildrenCount(),3);
+  TArray<UWidget*> VisibleChildren;
+  for(auto* Child:Row->GetAllChildren())
+   if(Child->GetVisibility()!=ESlateVisibility::Collapsed)VisibleChildren.Add(Child);
+  TestEqual(TEXT("Identity, comparison and action are the only visible row groups"),VisibleChildren.Num(),3);
   TestTrue(TEXT("Tactical identity lives in left footer"),Row->GetChildAt(0)==S->GetWidgetFromName(TEXT("CrossBroadcastIdentity")));
-  TestTrue(TEXT("Action group is far right"),Row->GetChildAt(2)==S->GetWidgetFromName(TEXT("TheaterBottomBounds")));
+  TestTrue(TEXT("Action group is far right"),!VisibleChildren.IsEmpty() && VisibleChildren.Last()==S->GetWidgetFromName(TEXT("TheaterBottomBounds")));
   TestEqual(TEXT("Broadcast header visible over pitch"),S->GetWidgetFromName(TEXT("CrossBroadcastHeader"))->GetVisibility(),ESlateVisibility::HitTestInvisible);
   TestEqual(TEXT("Original large title collapsed"),S->GetWidgetFromName(TEXT("TheaterTopBounds"))->GetVisibility(),ESlateVisibility::Collapsed);
   for(const auto* Prefix:{TEXT("TheaterAttack"),TEXT("TheaterDefense")})

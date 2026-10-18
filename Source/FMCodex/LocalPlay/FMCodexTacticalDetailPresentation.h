@@ -15,6 +15,7 @@ public:
 	static FText BuildThroughBallRouteHint();
 	static FFMCodexUMGTacticalDetailViewModel BuildCrossChoice(EFMCodexUMGBranchIntent Intent);
 	static FFMCodexUMGTacticalDetailViewModel BuildCutInsideChoice(EFMCodexUMGBranchIntent Intent);
+	static FFMCodexUMGTacticalDetailViewModel BuildLongShotChoice(EFMCodexUMGBranchIntent Intent);
 	static FFMCodexUMGTacticalDetailViewModel Build(
 		ESkillRuleType SkillType);
 

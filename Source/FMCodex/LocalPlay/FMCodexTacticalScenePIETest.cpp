@@ -1,6 +1,9 @@
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR && !UE_BUILD_SHIPPING
 #include "FMCodexLocalMatchPlayerController.h"
 #include "FMCodexLocalMatchScreenWidget.h"
+#include "FMCodexInteractionPanelWidget.h"
+#include "FMCodexInteractionOptionWidget.h"
+#include "FMCodexTacticalDetailPanelWidget.h"
 #include "FMCodexLocalDevRollOverride.h"
 #include "FMCodexRollReelWidget.h"
 #include "Components/Button.h"
@@ -113,7 +116,7 @@ public:
   {
    SawOutcome=true;
    T->TestTrue(TEXT("Outcome occurs after mandatory reveal"),!S->IsInlineFormulaRevealInputBlocked());
-   T->TestTrue(TEXT("Result text waits for outcome"),S->GetWidgetFromName(TEXT("TheaterOutcome"))->GetVisibility()==ESlateVisibility::Collapsed);
+   T->TestTrue(TEXT("Result text waits for outcome"),S->GetWidgetFromName(TEXT("CrossBroadcastOutcome"))->GetVisibility()==ESlateVisibility::Collapsed);
    if(State.IsOutcomeVisualHold())
    {
     T->TestEqual(TEXT("Action settles before final hold"),State.OutcomeActionProgress(),1.f);
@@ -187,7 +190,13 @@ public:
    {
     const auto* O=S->GetPresentation().Interaction.SelectionChoices.FindByPredicate([](const auto& X){return X.SkillType==ESkillRuleType::LongShot && X.bEnabled;});
     if(!T->TestNotNull(TEXT("Actual alternate production player has legal LongShot"),O))return true;
-    S->RequestSubmitSkill(O->OptionId);Next();return false;
+    const FString Label=Round==2?TEXT("远射（射向死角）"):TEXT("远射（直接射门）");
+    const auto* Option=S->GetInteractionPanel()->GetRenderedOptionWidgets().FindByPredicate([&](const auto& X){return X->GetLabel()==Label;});
+    if(!T->TestNotNull(TEXT("Pre-theater branch option"),Option))return true;
+    auto* Button=CastChecked<UButton>((*Option)->GetWidgetFromName(TEXT("InteractionOptionButton")));
+    Button->OnHovered.Broadcast();
+    T->TestTrue(TEXT("Method hover stays on board"),State.Phase==Phase::Hidden && S->GetTacticalDetailPanel()->GetPresentation().Branches.Num()==1);
+    Button->OnUnhovered.Broadcast();Button->OnClicked.Broadcast();Next();return false;
    }
    default:T->AddError(FString::Printf(TEXT("Unexpected role selection phase category=%d major=%d round=%d diagnostic=%s"),
     int(V.InteractionCategory),int(V.MajorPhase),Round,*C->GetLastDiagnostic().Message));return true;
@@ -196,64 +205,17 @@ public:
   }
   if(Step==4)
   {
-   auto* Direct=CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterNearDirect")));
-   auto* Corner=CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterNearCombination")));
+   if(State.Phase!=Phase::FormulaHold)return false;
    auto* Host=CastChecked<UNativeWidgetHost>(S->GetWidgetFromName(TEXT("TacticalScene")));
-   if(PreviewStep==0)
-   {
-    T->TestEqual(TEXT("Preview precedes method commit"),State.Phase,Phase::Preview);
-    T->TestEqual(TEXT("Method choice starts with Direct"),State.PreviewMethod,FMCodexTacticalScene::EMethod::Direct);
-    PreviewSurface=Host->GetContent();PreviewRollCount=C->GetInteractionView().AcceptedRolls.Num();
-    const auto& G=Host->GetCachedGeometry();const auto& RootG=S->GetCachedGeometry();
-    PreviewPosition=RootG.AbsoluteToLocal(G.GetAbsolutePosition());
-    PreviewSize=RootG.AbsoluteToLocal(G.LocalToAbsolute(G.GetLocalSize()))-PreviewPosition;
-    PreviewGeometryValid=true;
-    PreviewMarker=FMCodexTacticalScene::LongShotParticipantAnchor(State,EMatchPlayResolutionParticipantRole::Marker);
-    // Keep the real pointer off both buttons while exercising keyboard focus.
-    FSlateApplication::Get().SetCursorPos(SpatialWindow->GetPositionInScreen()+FVector2D(10,10));
-    PreviewStep=Round==0?1:8;Changed=FPlatformTime::Seconds()+.5;return false;
-   }
-   if(PreviewStep>0 && PreviewStep<8)
-   {
-    T->TestTrue(TEXT("Same Slate scene retained across previews"),PreviewSurface==Host->GetContent());
-    T->TestEqual(TEXT("Hover/focus consumes no accepted roll"),C->GetInteractionView().AcceptedRolls.Num(),PreviewRollCount);
-    T->TestEqual(TEXT("Hover/focus leaves authoritative method selection pending"),C->GetInteractionView().InteractionCategory,Category::SelectLongShotBranch);
-    const bool ExpectCorner=PreviewStep==2 || PreviewStep==4 || PreviewStep==6;
-    T->TestEqual(TEXT("Hover and keyboard preview route"),State.PreviewMethod,ExpectCorner?FMCodexTacticalScene::EMethod::DeadCorner:FMCodexTacticalScene::EMethod::Direct);
-    T->TestTrue(TEXT("Preview blend completes without stale geometry"),FMath::IsNearlyEqual(State.CornerBlend,ExpectCorner?1.f:0.f));
-    if(PreviewStep==1)
-    {
-     T->TestFalse(TEXT("Default preview is alive without taking a shot"),FMCodexTacticalScene::LongShotParticipantAnchor(State,EMatchPlayResolutionParticipantRole::Marker).Equals(PreviewMarker,.1f));
-     Capture(TEXT("01_DirectPreview.png"));Corner->TakeWidget()->OnMouseEnter(Corner->GetCachedGeometry(),FPointerEvent());
-    }
-    if(PreviewStep==2)
-    {
-     Capture(TEXT("02_DeadCornerPreview.png"));Corner->TakeWidget()->OnMouseLeave(FPointerEvent());
-     Direct->TakeWidget()->OnMouseEnter(Direct->GetCachedGeometry(),FPointerEvent());
-    }
-    if(PreviewStep==3)
-    {
-     Direct->TakeWidget()->OnMouseLeave(FPointerEvent());
-     FSlateApplication::Get().SetKeyboardFocus(Corner->TakeWidget(),EFocusCause::Navigation);
-    }
-    if(PreviewStep==4)FSlateApplication::Get().SetKeyboardFocus(Direct->TakeWidget(),EFocusCause::Navigation);
-    if(PreviewStep==5)Corner->TakeWidget()->OnMouseEnter(Corner->GetCachedGeometry(),FPointerEvent());
-    if(PreviewStep==6)Corner->TakeWidget()->OnMouseLeave(FPointerEvent());
-    ++PreviewStep;Changed=FPlatformTime::Seconds()+.2;return false;
-   }
-   (Round==2?Corner:Direct)->OnClicked.Broadcast();
-   SawSetup=State.Phase==Phase::Setup;
-   T->TestTrue(TEXT("Real method click starts the short setup beat"),SawSetup);
-   const auto& SelectedFacts=C->GetInteractionView().ResolutionFacts;
-   if(!T->TestTrue(*FString::Printf(TEXT("Real selected method safe projection: %s"),*SelectedFacts.ErrorMessage),
-    SelectedFacts.bSuccess && SelectedFacts.bHasActualBranch))return true;
-   if(Round==2)
-   {
-    T->TestEqual(TEXT("Real method remains DeadCorner"),SelectedFacts.ActualBranch.LongShot,EMatchPlayLongShotActualBranch::DeadCorner);
-    T->TestTrue(TEXT("DeadCorner has no authoritative Formula"),SelectedFacts.FormulaContests.IsEmpty());
-    T->TestEqual(TEXT("DeadCorner starts at paired A"),SelectedFacts.NextPendingRollSequenceIndex,0);
-   }
-   Next();return false;
+   const auto& G=Host->GetCachedGeometry();const auto& RootG=S->GetCachedGeometry();
+   PreviewPosition=RootG.AbsoluteToLocal(G.GetAbsolutePosition());
+   PreviewSize=RootG.AbsoluteToLocal(G.LocalToAbsolute(G.GetLocalSize()))-PreviewPosition;
+   PreviewGeometryValid=true;
+   T->TestTrue(TEXT("Selected LongShot uses accepted broadcast layout"),State.IsBroadcast() && State.Facts.bLongShot);
+   T->TestFalse(TEXT("No method chooser remains inside theater"),S->GetWidgetFromName(TEXT("TheaterNearMethods"))->IsVisible());
+   T->TestEqual(TEXT("Canonical branch was established before theater"),C->GetInteractionView().ResolutionFacts.ActualBranch.LongShot,
+    Round==2?EMatchPlayLongShotActualBranch::DeadCorner:EMatchPlayLongShotActualBranch::DirectShot);
+   Capture(TEXT("01_BroadcastReady.png"));Next();return false;
   }
   if(Step==5)
   {
@@ -270,14 +232,15 @@ public:
     float LastRoleBottom=0;
     for(const auto& P:State.Facts.Participants)
      LastRoleBottom=FMath::Max(LastRoleBottom,float(Root.AbsoluteToLocal(SG.LocalToAbsolute(
-      FMCodexTacticalScene::LongShotParticipantAnchor(State,P.Role)+FVector2D(0,82))).Y));
+      FVector2D(FMCodexTacticalScene::LongShotParticipantAnchor(State,P.Role).X,
+       FMCodexTacticalScene::LongShotParticipantAnchor(State,P.Role).Y*SG.GetLocalSize().Y/579.25f)+FVector2D(0,82))).Y));
     const float CardsTop=Root.AbsoluteToLocal(Duel.GetAbsolutePosition()).Y;
     const float ButtonBottom=Root.AbsoluteToLocal(Button.LocalToAbsolute(Button.GetLocalSize())).Y;
     T->TestTrue(TEXT("Raised Formula cards remain below every participant label"),CardsTop>LastRoleBottom+16);
-    T->TestTrue(TEXT("Roll CTA retains comfortable bottom breathing room"),Root.GetLocalSize().Y-ButtonBottom>40);
+    T->TestTrue(TEXT("Roll CTA retains comfortable bottom breathing room"),Root.GetLocalSize().Y-ButtonBottom>8);
     auto* Reserve=CastChecked<USizeBox>(S->GetWidgetFromName(TEXT("TheaterSpatialReserve")));
     auto* Lane=CastChecked<USizeBox>(S->GetWidgetFromName(TEXT("TheaterSpatialLane")));
-    T->TestTrue(TEXT("Committed stack rises without moving the pitch"),Reserve->GetHeightOverride()<Lane->GetHeightOverride());
+    T->TestTrue(TEXT("Broadcast reserves exactly the full pitch above the footer"),FMath::IsNearlyEqual(Reserve->GetHeightOverride(),Lane->GetHeightOverride()));
     const auto Padding=CastChecked<UOverlaySlot>(S->GetWidgetFromName(TEXT("TheaterCompositionFit"))->Slot)->GetPadding();
     T->TestTrue(TEXT("Lift keeps original available control height and scale"),FMath::IsNearlyEqual(
      Reserve->GetHeightOverride()+Padding.Bottom,Lane->GetHeightOverride()));
@@ -342,11 +305,12 @@ public:
    if(FPlatformTime::Seconds()-ResultReady<.5) return false;
    const auto* Scene=S->GetWidgetFromName(TEXT("TacticalScene"));
    const auto& SG=Scene->GetCachedGeometry();
-   const auto& TitleG=S->GetWidgetFromName(TEXT("TheaterOutcome"))->GetCachedGeometry();
+   const auto& TitleG=S->GetWidgetFromName(TEXT("CrossBroadcastOutcome"))->GetCachedGeometry();
    const auto& ButtonG=S->GetWidgetFromName(TEXT("TheaterContinue"))->GetCachedGeometry();
    T->AddInfo(FString::Printf(TEXT("SPATIAL_BOUNDS scene=%s size=%s titleBottom=%s buttonBottom=%s"),*SG.GetAbsolutePosition().ToString(),*SG.GetLocalSize().ToString(),
     *TitleG.LocalToAbsolute(TitleG.GetLocalSize()).ToString(),*ButtonG.LocalToAbsolute(ButtonG.GetLocalSize()).ToString()));
-   T->TestTrue(TEXT("Field begins below title"),SG.GetAbsolutePosition().Y>=TitleG.LocalToAbsolute(TitleG.GetLocalSize()).Y-1);
+   T->TestTrue(TEXT("Result banner overlays the upper pitch"),TitleG.GetAbsolutePosition().Y>=SG.GetAbsolutePosition().Y
+    && TitleG.LocalToAbsolute(TitleG.GetLocalSize()).Y<SG.LocalToAbsolute(SG.GetLocalSize()).Y);
    const auto& Root=S->GetCachedGeometry();
    T->TestTrue(TEXT("Continue remains inside viewport"),Root.AbsoluteToLocal(ButtonG.LocalToAbsolute(ButtonG.GetLocalSize())).Y<=Root.GetLocalSize().Y);
    T->TestTrue(TEXT("Natural roll and outcome observed"),SawRoll && SawOutcome);
@@ -355,22 +319,23 @@ public:
    T->TestEqual(TEXT("Only Goal celebrated"),SawCelebration,Round==1 || Round==2);
    if(Round==2)T->TestTrue(TEXT("DeadCorner celebration click skip verified"),CelebrationSkipped);
    const auto FinalMarker=FMCodexTacticalScene::LongShotParticipantAnchor(State,EMatchPlayResolutionParticipantRole::Marker);
-   T->TestEqual(TEXT("Only Direct defense win ends in Marker pressure pose"),FinalMarker.Equals(FMCodexTacticalScene::MarkerAnchor),Round!=0);
+   T->TestTrue(TEXT("Marker stays between shooter and goal without an invented block"),FinalMarker.Equals(FMCodexTacticalScene::LongShotMarkerAnchor));
    if(Round==0)T->TestFalse(TEXT("Aggregate defensive narrative does not assert a tackle/block/save"),
     S->GetPresentation().LongShotResolution.Formula.NarrativeHeadline.Contains(TEXT("抢断"))
     || S->GetPresentation().LongShotResolution.Formula.NarrativeHeadline.Contains(TEXT("扑救")));
-   T->TestTrue(TEXT("Narrative is prominent at the top"),S->GetWidgetFromName(TEXT("TheaterOutcome"))->GetVisibility()!=ESlateVisibility::Collapsed
-    && !CastChecked<URichTextBlock>(S->GetWidgetFromName(TEXT("TheaterOutcome")))->GetText().IsEmpty());
-   const auto Endpoint=FMCodexTacticalScene::OutcomeTarget(State.Facts.Outcome,State.Facts.Method);
-   T->TestEqual(TEXT("Goal lands inside; failure outside"),FMCodexTacticalScene::IsInsideGoal(Endpoint),Round==1 || Round==2);
+   T->TestTrue(TEXT("Narrative is prominent at the top"),S->GetWidgetFromName(TEXT("CrossBroadcastOutcome"))->GetVisibility()!=ESlateVisibility::Collapsed
+    && !CastChecked<URichTextBlock>(S->GetWidgetFromName(TEXT("CrossBroadcastOutcome")))->GetText().IsEmpty());
+   const auto Endpoint=FMCodexTacticalScene::LongShotOutcomeBall(State,1.f);
+   T->TestEqual(TEXT("Goal lands inside; failure outside"),FMCodexTacticalScene::IsInsideGoal(Endpoint,FMCodexTacticalScene::EMethod::CrossHigh),Round==1 || Round==2);
    if(bLayoutOnly)
    {
-    const float BallBottom=Root.AbsoluteToLocal(SG.LocalToAbsolute(Endpoint+FVector2D(0,10))).Y;
+    const float BallBottom=Root.AbsoluteToLocal(SG.LocalToAbsolute(FVector2D(Endpoint.X,Endpoint.Y*SG.GetLocalSize().Y/579.25f)+FVector2D(0,10))).Y;
     const float CardsTop=Root.AbsoluteToLocal(S->GetWidgetFromName(TEXT("TheaterDuel"))->GetCachedGeometry().GetAbsolutePosition()).Y;
     T->TestTrue(TEXT("Final failed-shot ball remains fully above the information cards"),CardsTop>BallBottom+8);
     T->AddInfo(FString::Printf(TEXT("LAYOUT_RESULT ballBottom=%.1f cardsTop=%.1f"),BallBottom,CardsTop));
    }
    if(Round==2)T->TestTrue(TEXT("Both procedural dice revealed naturally"),SawPairA && SawPairB);
+   if(Round==1)Capture(TEXT("03_GoalResult.png"));
    if(Round==2)Capture(TEXT("05_DeadCornerResult.png"));
    if(Round==0)Capture(bLayoutOnly?TEXT("04_DefensiveResult.png"):TEXT("03_DefensiveResult.png"));
    T->AddInfo(FString::Printf(TEXT("TACTICAL_SCENE_PIE round=%d carrier=%s participants=%d setup=%d intent=%d roll=%d outcome=%d result=1 geometryPhases=%d"),Round,*Carrier.ToString(),State.Facts.Participants.Num(),SawSetup,SawIntent,SawRoll,SawOutcome,CheckedGeometry.Num()));
@@ -396,8 +361,7 @@ private:
  {
   auto Window=GEditor->PlayWorld->GetGameViewport()->GetWindow();TArray<FColor> Pixels;FIntVector Size=FIntVector::ZeroValue;
   if(!Window || !FSlateApplication::Get().TakeScreenshot(Window->GetContent(),Pixels,Size)){T->AddError(TEXT("PIE capture failed"));return;}
-  const FString Dir=FPaths::ProjectSavedDir()/(bLayoutOnly?TEXT("Stage8_24A/LayoutPolish/PIE")
-   :bGoalOnly?TEXT("GoalCelebrationPolish/PIE"):TEXT("Stage8_24A/FinalPolish/PIE"));
+  const FString Dir=FPaths::ProjectSavedDir()/TEXT("Stage8_30J/PIE");
   IFileManager::Get().MakeDirectory(*Dir,true);
   TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);FFileHelper::SaveArrayToFile(PNG,*(Dir/Name));
  }

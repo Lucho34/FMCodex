@@ -1,5 +1,15 @@
 # LongShot Production Presentation
 
+## Stage 8.30J — Broadcast theater (USER PIE pending)
+
+This section supersedes the legacy layout/branch-choice/GK-visibility descriptions below. The board offers `远射（直接射门）` and `远射（射向死角）`, each with its own canonical tactical hover. The gesture submits the original Skill first; only the acknowledged safe branch view authorizes the original Branch command. Pending, rejection and reconstruction retain the existing adapter guards. No final dice are automatic.
+
+Both selected branches share Cross/CutInside's full-width stadium, portrait style, goalmouth mapping, navy 200-unit footer, team borders, native FormulaFacts tooltip, result banner and existing celebration/countdown. A restored branch-pending view stays outside the theater with two retry choices. ImmediateMiss uses the compact shot-result card; DeadCorner uses the centered two-D6 card and has no invented defense formula.
+
+The shooter starts outside the penalty area, with the actual Marker between shooter and goal. A neutral preparation loops during manual waits and Roll v2. Only the displayed typed outcome starts the strike/flight; Goal uses the selected central/upper-corner target, ImmediateMiss goes wide, and aggregate Miss loses the shooting lane without inventing a block or goalkeeper save. The actual public GK identity stays at the established goalmouth even when it contributes no Formula term. Its small response starts only after outcome disclosure.
+
+Gameplay, Trait order, RNG, manual dice counts, approximately 4.04-second final-die budgets, countdown (5 seconds), early continuation and Recovery are unchanged. Stage 8.30J refinement updates shared result reading from 2.5 to 3.0 seconds across applicable theaters; the new timing awaits USER PIE. Current authoritative DirectShot uses Shooting, Defense + 3, and applicable Positioning × 0.5; older LongShot/Tackling/+2 audit text is historical and is not used to reconstruct formulas. The UI consumes supplied facts, never recomputes them.
+
 ## Scope
 
 LongShot uses one central production resolution surface from branch selection through terminal result. This surface renders authoritative `ResolutionFacts`, the current typed interaction, shared Formula presentation, shared Roll Reel presentation, and Tactical Resolution Narrative. It does not calculate legality, dice, Formula values, goalkeeper participation, winner, or terminal state.

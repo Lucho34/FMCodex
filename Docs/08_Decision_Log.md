@@ -2993,3 +2993,8 @@ hover 仅强调；点击打开持久、非模态、上方锚定的单战术详�
 增量编译暴露上一阶段 Runner 测试辅助名称在 Unity 合并编译中的冲突；仅将辅助代码隔离至专属命名空间，保留原断言与生产行为。说明导航的旧协防名称断言改读 canonical display name；真实 PIE 暴露的热座换边动画重播通过使用公开进攻方身份修复，不以左右位置作为新上下文。验证限定新入口的聚焦语义／渲染、复用说明导航及一条真实 Local PIE，不运行全量玩法／联网／教程／Shipping suites。独立 Host／Remote 视觉延期；USER PIE REQUIRED，用户手动 staging／commit。
 
 8.30E 同阶段 USER PIE 修订：chip 显式双轴居中，消除固定高度内的多余上下内边距；详情使用中央球场内最大 880×800 区域，保留内容与字体，桌面普通说明无需滚动，小视口允许回退。详情改挂既有 Screen 普通覆盖层，原 Full Card Canvas 后绘制，检查球员时说明不关闭。只补指定 InteractionAndGeometry 与必要增量构建，不重复已有语义或 PIE 矩阵；最终 USER PIE 仍未接受。
+
+
+## 2026-10-18 — Stage 8.30J 微调：共享结果阅读 3 秒
+
+用户明确将 Stage 8.30G 的结果横幅阅读从 2.5 秒调整为 3.0 秒，适用于既有共享 NextRoundCountdown 的全部战术表面。保持先结束揭示／球场动作／庆祝，再阅读，收起横幅后开始完整 5 秒倒计时；原手动提前继续、权限门控和 exactly-once continuation 不变。最终骰约 4.04 秒、庆祝、Recovery 与网络合同均不改。LongShot / CutInside 文本本轮只审计和建议，不自动改写。初次视觉验收已通过，新时长仍待 USER PIE。
