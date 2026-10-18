@@ -357,6 +357,9 @@ void UFMCodexResolutionPanelWidget::RefreshVisuals()
 	const auto& Style = FFMCodexPlayerUIStyle::Get();
 	auto* Frame = CastChecked<UBorder>(GetWidgetFromName(TEXT("ResolutionPanelFrame")));
 	auto* Step = CastChecked<UBorder>(GetWidgetFromName(TEXT("ResolutionStepRegion")));
+	// The completed-result countdown can hide this shared region. Every new
+	// projection, especially Recovery, must restore its own visibility.
+	Step->SetVisibility(bShowAccepted ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	Frame->SetBrush(*FCoreStyle::Get().GetBrush("WhiteBrush"));
 	Style.ApplyBorder(*Frame, EFMCodexPlayerUIColorRole::PanelBackground, Style.GetPanelPadding());
 	Style.ApplyBorder(*Step, EFMCodexPlayerUIColorRole::PanelRaised, Style.GetSectionPadding());

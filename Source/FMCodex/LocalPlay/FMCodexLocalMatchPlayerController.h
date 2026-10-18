@@ -187,6 +187,8 @@ private:
 	template <typename TResult>
 	void RecordCommandResult(const FString& CommandName, const TResult& Result)
 	{
+		// Covers the screen button and existing DEV/hotkey restart entry points.
+		if (Result.bSuccess && CommandName == TEXT("StartNewLocalMatch")) NextRoundDispatch = {};
 		const FFMCodexLocalMatchInteractionView PreviousView = InteractionView;
 		LastDiagnostic.CommandName = CommandName;
 		LastDiagnostic.bHostSuccess = Result.bSuccess;

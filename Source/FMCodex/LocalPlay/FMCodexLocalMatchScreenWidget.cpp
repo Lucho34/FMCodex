@@ -481,6 +481,7 @@ TSharedRef<SWidget> UFMCodexLocalMatchScreenWidget::RebuildWidget()
 
 void UFMCodexLocalMatchScreenWidget::NativeDestruct()
 {
+	NextRoundCountdown.Cancel();
 	TacticalScene.CrossEntrance={};
 	TacticalScene.CrossIdleTime=0.f; TacticalScene.Facts.bManualWaiting=false;
 	if (InteractionPanel && InteractionPanel->GetTacticalGuide()) InteractionPanel->GetTacticalGuide()->Close();
@@ -505,6 +506,7 @@ void UFMCodexLocalMatchScreenWidget::NativeDestruct()
 void UFMCodexLocalMatchScreenWidget::SetMatchController(
 	AFMCodexLocalMatchPlayerController* InController)
 {
+	if (MatchBackend != InController) NextRoundCountdown.Cancel();
 	MatchController = InController;
 	MatchBackend = InController;
 }
@@ -546,6 +548,7 @@ void UFMCodexLocalMatchScreenWidget::NativeTick(const FGeometry& MyGeometry, flo
 		FMCodexResolutionTheaterPrototype::RefreshHover(*WidgetTree);
 	FMCodexTacticalScene::AnimateCrossEntrance(*WidgetTree,TacticalScene);
 	AdvanceCrossFlow(InDeltaTime);
+	AdvanceNextRoundCountdown(InDeltaTime);
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestCrossTactic(FName SkillId, EFMCodexUMGBranchIntent Intent)
@@ -722,6 +725,7 @@ void UFMCodexLocalMatchScreenWidget::HandleTheaterLowRequested()
 
 void UFMCodexLocalMatchScreenWidget::ClearMatchController()
 {
+	NextRoundCountdown.Cancel();
 	MatchController = nullptr;
 	MatchBackend = nullptr;
 }
@@ -1061,6 +1065,7 @@ FVector2D UFMCodexLocalMatchScreenWidget::CalculateDetailOverlayPosition(
 
 void UFMCodexLocalMatchScreenWidget::SetMatchBackend(IFMCodexMatchScreenBackend* InBackend)
 {
+	NextRoundCountdown.Cancel();
 	MatchController = nullptr;
 	MatchBackend = InBackend;
 }
@@ -1072,6 +1077,8 @@ bool UFMCodexLocalMatchScreenWidget::IsScreenRequestPending() const
 
 void UFMCodexLocalMatchScreenWidget::ResetPresentationSession()
 {
+	NextRoundCountdown.Cancel();
+	if (MatchBackend) MatchBackend->NextRoundDispatch = {};
 	if (MatchBackend) MatchBackend->CrossPresentationFlow = {};
 	if (InteractionPanel && InteractionPanel->GetTacticalGuide()) InteractionPanel->GetTacticalGuide()->ResetContext();
 	TacticalScene = {};
@@ -1091,6 +1098,14 @@ void UFMCodexLocalMatchScreenWidget::ResetPresentationSession()
 
 void UFMCodexLocalMatchScreenWidget::NotifyScreenRequestRejected()
 {
+	if (MatchBackend && MatchBackend->NextRoundDispatch.bSubmitted
+		&& MatchBackend->NextRoundDispatch.Sequence == Presentation.Header.AttackSequence
+		&& Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::AdvanceAfterTerminal)
+	{
+		MatchBackend->NextRoundDispatch.bSubmitted = false;
+		MatchBackend->NextRoundDispatch.bAutoAttempted = true;
+	}
+	NextRoundCountdown.Cancel();
 	if (MatchBackend) MatchBackend->CrossPresentationFlow.Draft = EFMCodexUMGBranchIntent::None;
 	if (MatchBackend && MatchBackend->CrossPresentationFlow.bRouteSubmitted)
 		MatchBackend->CrossPresentationFlow.bRouteRejected = true;
@@ -1131,7 +1146,11 @@ EFMCodexMatchScreenSubmission UFMCodexLocalMatchScreenWidget::SubmitScreenReques
 void UFMCodexLocalMatchScreenWidget::RequestStartNewMatch()
 {
 	if (SubmitScreenRequest(EFMCodexMatchScreenIntent::StartMatch) == EFMCodexMatchScreenSubmission::Completed && MatchBackend)
+	{
 		MatchBackend->CrossPresentationFlow = {};
+		MatchBackend->NextRoundDispatch = {};
+		NextRoundCountdown.Cancel();
+	}
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestRollTacticalPoints()
@@ -1206,6 +1225,18 @@ void UFMCodexLocalMatchScreenWidget::RequestSubmitOneOnOneChoice(const EFMCodexU
 
 void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 {
+	const bool bNextRound = Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::AdvanceAfterTerminal;
+	const int64 Sequence = Presentation.Header.AttackSequence;
+	if (bNextRound)
+	{
+		if (!IsNextRoundReady()) return;
+		auto& Dispatch = MatchBackend->NextRoundDispatch;
+		Dispatch.Observe(Sequence);
+		if (Dispatch.Sequence != Sequence || Dispatch.bSubmitted) return;
+		Dispatch.bSubmitted = true; // Before the synchronous Local callback or async enqueue.
+		Dispatch.bAutoAttempted = true;
+		NextRoundCountdown.Cancel();
+	}
 #if WITH_DEV_AUTOMATION_TESTS
 	if (MatchBackend && !IsScreenRequestPending() && !IsInlineFormulaRevealInputBlocked())
 	{
@@ -1213,7 +1244,13 @@ void UFMCodexLocalMatchScreenWidget::RequestContinueResolution()
 		LastPrimaryActionDispatchForTesting = Presentation.Interaction.Category;
 	}
 #endif
-	SubmitScreenRequest(EFMCodexMatchScreenIntent::Continue);
+	const auto Submission = SubmitScreenRequest(EFMCodexMatchScreenIntent::Continue);
+	if (bNextRound && MatchBackend && MatchBackend->NextRoundDispatch.Sequence == Sequence
+		&& Submission == EFMCodexMatchScreenSubmission::Rejected)
+	{
+		MatchBackend->NextRoundDispatch.bSubmitted = false;
+		RefreshVisuals();
+	}
 }
 
 void UFMCodexLocalMatchScreenWidget::HandleStartNewMatchClicked()
@@ -5682,6 +5719,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	const auto& TheaterFormula = FMCodexResolutionTheaterPrototype::IsOrdinaryShotConsumer(DisplayedLongShot)
 		? DisplayedInlineFormula : StandaloneInlineFormula;
 	RefreshResolutionTheater(TheaterFormula, BuildDisplayedHeader(bOutcomeDisclosed));
+	AdvanceNextRoundCountdown(0.f);
 #if !UE_BUILD_SHIPPING
 	HandoffAuditRefresh.Broadcast(true);
 #endif

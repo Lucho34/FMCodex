@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "FMCodexLocalMatchUMGPresentation.h"
+#include "FMCodexNextRoundCountdown.h"
 
 /** Player-facing gestures only. No Side, result, roll or authoritative state. */
 enum class EFMCodexMatchScreenIntent : uint8
@@ -50,4 +51,5 @@ public:
 	virtual EFMCodexMatchScreenSubmission SubmitScreenIntent(const FFMCodexMatchScreenRequest& Request) = 0;
 	virtual bool IsScreenIntentPending() const = 0;
 	FFMCodexCrossPresentationFlow CrossPresentationFlow;
+	FFMCodexNextRoundDispatch NextRoundDispatch;
 };

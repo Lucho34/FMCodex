@@ -417,12 +417,18 @@ bool FCrossBroadcastFlowTest::RunTest(const FString&)
   Idle.Sync(ProjectCross(Revealing,Header,true));
   TestTrue(TEXT("Clicking roll does not snap the ball or player"),CrossIntentBall(Idle).Equals(AtRoll) && CrossParticipantAnchor(Idle,Role::Runner).Equals(RunnerAtRoll));
   Idle.Tick(.25f);
-  TestFalse(TEXT("Real dice reveal stops idle"),Idle.IsCrossIdle()); TestEqual(TEXT("Reveal pauses the loop clock"),Idle.CrossIdleTime,ExistingClock);
-  TestEqual(TEXT("Preparation settles visibly into the held delivery during roll"),Idle.CrossIdleSettle,1.f);
-  const auto SettledBall=CrossIntentBall(Idle);Idle.Tick(1.f);
-  TestTrue(TEXT("Roll retains the settled ball instead of restarting rehearsal"),CrossIntentBall(Idle).Equals(SettledBall));
-  Revealing.bDiceRevealVisible=false;Idle.Sync(ProjectCross(Revealing,Header,true));Idle.Tick(.2f);
-  TestTrue(TEXT("Next manual wait restarts preparation"),Idle.IsCrossIdle() && Idle.CrossIdleTime>0 && Idle.CrossIdleTime<ExistingClock);
+  TestTrue(TEXT("Dice reveal continues the existing loop"),Idle.IsCrossIdle());
+  TestTrue(TEXT("Reveal advances elapsed loop time"),FMath::IsNearlyEqual(Idle.CrossIdleTime,FMath::Fmod(ExistingClock+.25f,CrossIdleCycleSeconds)));
+  const auto RollingBall=CrossIntentBall(Idle),RollingRunner=CrossParticipantAnchor(Idle,Role::Runner);Idle.Tick(1.f);
+  TestTrue(TEXT("Ball and player continue moving during the roll"),!CrossIntentBall(Idle).Equals(RollingBall) && !CrossParticipantAnchor(Idle,Role::Runner).Equals(RollingRunner));
+  const float BeforeWait=Idle.CrossIdleTime;
+  Revealing.bDiceRevealVisible=false;Idle.Sync(ProjectCross(Revealing,Header,true));
+  TestEqual(TEXT("Next manual wait preserves the loop without a restart"),Idle.CrossIdleTime,BeforeWait);
+  Revealing.bNarrativeAvailable=true;Revealing.bDiceRevealVisible=true;Revealing.SpatialOutcome=EMatchPlayResolutionDecisionOutcome::Goal;
+  Idle.Sync(ProjectCross(Revealing,Header,true));Idle.Tick(.2f);
+  TestTrue(TEXT("Final reveal hold keeps rehearsing without exposing the result"),Idle.IsCrossIdle() && Idle.Facts.Outcome==EOutcome::None);
+  Revealing.bDiceRevealVisible=false;Idle.Sync(ProjectCross(Revealing,Header,true));
+  TestTrue(TEXT("Only displayed result hands the scene to the outcome animation"),!Idle.IsCrossIdle() && Idle.Phase==EPhase::Outcome && Idle.Facts.Outcome==EOutcome::Goal);
   Idle.Sync({});Idle.Tick(.1f);TestFalse(TEXT("Hidden scene cannot keep idle alive"),Idle.IsCrossIdle());
   TestEqual(TEXT("Teardown clears replay time"),Idle.CrossIdleTime,0.f);
   for(const auto Outcome:{EOutcome::Goal,EOutcome::DefensiveSuccess})

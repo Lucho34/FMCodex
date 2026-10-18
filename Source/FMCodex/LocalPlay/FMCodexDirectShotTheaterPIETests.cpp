@@ -6,6 +6,8 @@
 #include "FMCodexCardRackWidget.h"
 #include "FMCodexPlayerCardWidget.h"
 #include "FMCodexInteractionPanelWidget.h"
+#include "FMCodexResolutionPanelWidget.h"
+#include "Components/PanelWidget.h"
 #include "FMCodexOutcomePresentation.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
@@ -50,10 +52,11 @@ public:
 class FDirectShotPIE final : public IAutomationLatentCommand
 {
 public:
-	explicit FDirectShotPIE(FAutomationTestBase* InTest, bool bInDead=false, bool bInMiss=false)
-		: Test(InTest), bDead(bInDead), bMiss(bInMiss) {}
+	explicit FDirectShotPIE(FAutomationTestBase* InTest, bool bInDead=false, bool bInMiss=false, int32 InCountdownMode=0)
+		: Test(InTest), bDead(bInDead), bMiss(bInMiss), CountdownMode(InCountdownMode) {}
 	bool Update() override
 	{
+		if (Started == 0.) Started = FPlatformTime::Seconds();
 		if (FPlatformTime::Seconds()-Started>120.) {Test->AddError(FString::Printf(TEXT("Shot PIE timed out at step %d"),Step));return true;}
 		if (!GEditor || !GEditor->PlayWorld) return false;
 		auto* C=Cast<AFMCodexLocalMatchPlayerController>(GEditor->PlayWorld->GetFirstPlayerController());
@@ -129,7 +132,7 @@ public:
 			}
 			return false;
 		}
-		if (Step==0) {S->RequestStartNewMatch();Next();return false;}
+		if (Step==0) {if (CountdownMode != 2) S->RequestStartNewMatch();Next();return false;}
 		if (Step==1)
 		{
 			CheckTacticalButton(*S);
@@ -194,9 +197,12 @@ public:
 		{
 			if (FPlatformTime::Seconds()-Changed<1.) return false;
 			Test->TestTrue(TEXT("Actual shot choice now stays in Theater"),Shown(TEXT("ResolutionTheater")) && Shown(TEXT("TheaterNearMethods")));
+			if (CountdownMode == 0)
+			{
 			Test->TestTrue(TEXT("Actual branch has a named Carrier context"),Shown(TEXT("TheaterDuel")) && !Text(TEXT("TheaterAttackName0")).IsEmpty() && Text(TEXT("TheaterAttackRole0"))==TEXT("持球"));
 			Test->TestEqual(TEXT("Actual branch uses the concise direct summary"),Text(TEXT("TheaterNearDirectHint")),FString(TEXT("持球：远射\n对抗盯人：抢断\n进攻掷点 1–2：射门偏出")));
 			Test->TestEqual(TEXT("Actual pair choice keeps only the success condition"),Text(TEXT("TheaterNearCombinationHint")),FString(TEXT("进攻方依次掷两枚骰子\n总和 11–12：进球")));
+			}
 			if (bDead) Capture(TEXT("Shot_BranchChoice.png"));
 			CastChecked<UButton>(S->GetWidgetFromName(bDead?TEXT("TheaterNearCombination"):TEXT("TheaterNearDirect")))->OnClicked.Broadcast();
 			if (!Accepted(*C)) return true;Next();return false;
@@ -249,6 +255,41 @@ public:
 		}
 		if (Step==7)
 		{
+			if (CountdownMode != 0)
+			{
+				if (S->GetTacticalScene().IsAnimating() || S->GetTacticalScene().Celebration.IsActive())
+				{
+					Test->TestFalse(TEXT("Required scene/celebration never consumes countdown"),Text(TEXT("TheaterContinueLabel")).Contains(TEXT("（")));
+					return false;
+				}
+				const double Now = GEditor->PlayWorld->GetTimeSeconds();
+				if (ResultSeen < 0.) { ResultSeen = Now; TerminalSequence = S->GetPresentation().Header.AttackSequence; }
+				const FString Label = Text(TEXT("TheaterContinueLabel"));
+				if (Label == TEXT("下一回合（5）") && !bSawFive)
+				{
+					bSawFive = true; CountdownSeen = Now;
+					Test->TestTrue(TEXT("Natural result has 2.5 seconds reading time"),Now-ResultSeen >= 2.4);
+					Test->TestFalse(TEXT("Narrative closes before the visible countdown"),Shown(TEXT("TheaterOutcome")));
+				}
+				if (Label == TEXT("下一回合（4）")) bSawFour = true;
+				if (Label == TEXT("下一回合（3）")) bSawThree = true;
+				if (Label == TEXT("下一回合（2）"))
+				{
+					bSawTwo = true;
+					if (CountdownMode == 2)
+					{
+						CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue")))->OnClicked.Broadcast();
+						if (!Accepted(*C)) return true;
+						Test->TestTrue(TEXT("Manual click advances immediately"),S->GetPresentation().Header.AttackSequence == TerminalSequence+1);
+						Next(); return false;
+					}
+				}
+				if (Label == TEXT("下一回合（1）")) bSawOne = true;
+				if (S->GetPresentation().Header.AttackSequence == TerminalSequence) return false;
+				Test->TestTrue(TEXT("Auto continuation followed visible 5 / 4 / 3 / 2 / 1"),bSawFive && bSawFour && bSawThree && bSawTwo && bSawOne);
+				Test->TestTrue(TEXT("Natural countdown lasts five active seconds"),Now-CountdownSeen >= 4.95);
+				Next(); return false;
+			}
 			Test->TestTrue(TEXT("Both real motion paths and holds observed"),bAttackMotion && bDefenseMotion && bAttackLanded && bDefenseLanded);
 			Test->TestTrue(TEXT("Canonical terminal owns existing Outcome and CTA"),C->GetInteractionView().bTerminalPendingAdvance && Shown(TEXT("TheaterOutcome")) && Shown(TEXT("TheaterPrimaryBounds")));
 			Test->TestFalse(TEXT("Full Card remains denied during resolution"),S->IsDetailOverlayVisible());
@@ -256,6 +297,23 @@ public:
 			Test->AddInfo(FString::Printf(TEXT("DIRECT_SHOT_PIE carrier=%s attack=4 defense=3 motion=v2 natural_hold=1 terminal=1"),*Carrier.ToString()));
 			CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue")))->OnClicked.Broadcast();
 			if (!Accepted(*C)) return true;Next();return false;
+		}
+		if (CountdownMode != 0)
+		{
+			if (!bRecoveryChecked)
+			{
+				bRecoveryChecked = true;
+				Test->TestTrue(TEXT("Natural continuation exposes its Recovery notification"),
+					S->GetPresentation().Resolution.bNonBlockingNotification && S->IsLegacyResolutionOverlayVisible());
+				auto* Rows = CastChecked<UPanelWidget>(S->GetResolutionPanel()->GetWidgetFromName(TEXT("RecoverySummaryRows")));
+				Test->TestTrue(TEXT("Natural Recovery lists the selected players"), Rows->GetChildrenCount() > 0);
+				for (const UWidget* W = Rows; W; W = W->GetParent())
+					Test->TestTrue(TEXT("Actual Recovery player rows have no hidden parent"), W->IsVisible());
+			}
+			if (FPlatformTime::Seconds()-Changed < 3.5) return false;
+			Test->TestEqual(TEXT("One continuation only after former timer expires"),S->GetPresentation().Header.AttackSequence,TerminalSequence+1);
+			Test->AddInfo(FString::Printf(TEXT("NEXT_ROUND_PIE mode=%s sequence=%lld -> %lld natural_time=1 duplicate=0"),
+				CountdownMode==1?TEXT("auto"):TEXT("manual"),TerminalSequence,S->GetPresentation().Header.AttackSequence));
 		}
 		Test->TestFalse(TEXT("Existing Advance clears prior shot"),S->GetPresentation().LongShotResolution.bVisible);
 		CheckTacticalButton(*S);
@@ -279,6 +337,7 @@ private:
 	{FFMCodexLocalDevRollOverrideRequest R;R.Target=Target;R.Value=Value;return Test->TestTrue(TEXT("Host-owned DEV provider override"),C.SetLocalDevRollOverride(R).bSuccess);}
 	void Capture(const TCHAR* File)
 	{
+		if (CountdownMode != 0) return;
 		auto Window=GEditor->PlayWorld->GetGameViewport()->GetWindow();
 		if (!Test->TestTrue(TEXT("Real PIE viewport exists"),Window.IsValid())) return;
 		TArray<FColor> Pixels; FIntVector Size;
@@ -287,12 +346,25 @@ private:
 		TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
 		Test->TestTrue(TEXT("PIE evidence saved"),FFileHelper::SaveArrayToFile(PNG,*(Dir/File)));
 	}
-	FAutomationTestBase* Test;double Started=FPlatformTime::Seconds(),Changed=0;int32 Step=0;FName Carrier;
+	FAutomationTestBase* Test;double Started=0,Changed=0;int32 Step=0;FName Carrier;
 	bool bDead=false,bMiss=false;
+	int32 CountdownMode=0; int64 TerminalSequence=0;
+	double ResultSeen=-1.,CountdownSeen=0.; bool bSawFive=false,bSawFour=false,bSawThree=false,bSawTwo=false,bSawOne=false;
+	bool bRecoveryChecked=false;
 	bool bAttackMotion=false,bDefenseMotion=false,bAttackLanded=false,bDefenseLanded=false;
 	bool bMissTransitionCaptured=false;
 	FVector2D AttackCardSize,AttackFigureSize;
 };
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexNextRoundPIETest,"FMCodex.PIE.NextRoundCountdown",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexNextRoundPIETest::RunTest(const FString&)
+{
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartDirectShotPIE()));
+	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FDirectShotPIE(this,false,false,1)));
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FDirectShotPIE(this,false,false,2)));
+	ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand()); return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexDirectShotPIETest,"FMCodex.PIE.DirectShotTheater.LongShot",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

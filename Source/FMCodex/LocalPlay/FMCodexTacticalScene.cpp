@@ -41,7 +41,9 @@ FFacts ProjectCross(const FFMCodexUMGInlineFormulaSurfaceViewModel& View,
  F.bActive=bAllowed && (F.bMethodChoice || (View.bVisible && (F.bRoutePending
   || View.ContestId==TEXT("Cross.High") || View.ContestId==TEXT("Cross.Low"))));
  if(!F.bActive)return F;
- F.bManualWaiting=!F.bMethodChoice && !F.bRoutePending && !View.bDiceRevealVisible && !View.bNarrativeAvailable;
+ // Keep the unresolved rehearsal running through both formula rolls and their
+ // reveal holds. Only the displayed outcome takes ownership of the scene.
+ F.bManualWaiting=!F.bMethodChoice && !F.bRoutePending && (View.bDiceRevealVisible || !View.bNarrativeAvailable);
  F.AttackSequence=Header.AttackSequence;
  // During route reveal retain the player's intent; the displayed Formula
  // switches to the actual route only after the existing route reveal finishes.
@@ -149,8 +151,8 @@ void FState::Sync(const FFacts& Next)
  const bool bWasPreview=Phase==EPhase::Preview;
  const bool bNew=Phase==EPhase::Hidden || Facts.AttackSequence!=Next.AttackSequence || IsCross(Facts.Method)!=IsCross(Next.Method);
  if(bNew) {Celebration.Reset();CrossEntrance={};CrossIdleTime=0;CrossIdleSettle=1;}
- // Resume a fresh preparation loop after either real die; duplicate safe Views
- // preserve its clock. On reveal retain the pose and ease into the held pass.
+ // Enter preparation once; manual waits, dice reveals and duplicate safe Views
+ // preserve the same clock. The disclosed outcome settles into the final pass.
  if(Next.bManualWaiting && !Facts.bManualWaiting)CrossIdleTime=0;
  Facts=Next;
  if(Facts.bMethodChoice || Facts.bRoutePending)

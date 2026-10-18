@@ -404,16 +404,10 @@ USizeBox* RollOperand(UWidgetTree& Tree, const FString& Prefix)
 {
 	// A stable 68x76 allocation hosts ?, Theater Roll v2, then the disclosed digit.
 	auto* Unknown=Tree.ConstructWidget<UOverlay>(UOverlay::StaticClass(),Named(Prefix,TEXT("UnknownSlot")));
-	// Cross's pending die is decoration behind the original placeholder/reel.
+	// Cross's pending value frame sits behind the original placeholder/reel.
 	// It owns no value or clock; other consumers collapse it.
 	auto* Well=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),Named(Prefix,TEXT("DieWell")));
 	Well->SetPadding(FMargin(0)); Well->SetBrush(FSlateRoundedBoxBrush(Ink,9.f,Alpha(Quiet,.8f),1.f)); Well->SetBrushColor(FLinearColor::White);
-	auto* Dots=Tree.ConstructWidget<UOverlay>(); Well->AddChild(Dots);
-	for(int32 I=0;I<4;++I)
-	{
-		auto* Dot=Tree.ConstructWidget<UBorder>(); Dot->SetPadding(FMargin(0)); Dot->SetBrush(FSlateRoundedBoxBrush(Color(32,53,70),4.f)); Dot->SetBrushColor(FLinearColor::White);
-		auto* Slot=Dots->AddChildToOverlay(Bounds(Tree,Dot,8,8)); Slot->SetHorizontalAlignment(I%2?HAlign_Right:HAlign_Left); Slot->SetVerticalAlignment(I<2?VAlign_Top:VAlign_Bottom); Slot->SetPadding(FMargin(8));
-	}
 	auto* WellSlot=Unknown->AddChildToOverlay(Well); WellSlot->SetHorizontalAlignment(HAlign_Fill); WellSlot->SetVerticalAlignment(VAlign_Fill); WellSlot->SetPadding(FMargin(2,9,2,3)); Show(*Well,false);
 	auto* DieCaption=Text(Tree,Named(Prefix,TEXT("DieCaption")),15,Quiet); DieCaption->SetText(LOCTEXT("DiceLabel","骰点"));
 	auto* DieCaptionSlot=Unknown->AddChildToOverlay(DieCaption); DieCaptionSlot->SetHorizontalAlignment(HAlign_Center); DieCaptionSlot->SetVerticalAlignment(VAlign_Top); DieCaptionSlot->SetPadding(FMargin(0,-34,0,0)); Show(*DieCaption,false);
@@ -1304,6 +1298,9 @@ void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewMo
 	ActionStyle.SetNormal(FSlateRoundedBoxBrush(Cross?Color(43,225,200):Mint,9.f,Alpha(White,Cross?.18f:.55f),1.f)); ActionButton->SetStyle(ActionStyle);
 	for (const auto Name:{TEXT("TheaterHigh"),TEXT("TheaterLow")})
 		CastChecked<USizeBox>(Tree.FindWidget(Name)->GetParent())->SetWidthOverride(Cross?145.f:240.f);
+	// Restore the shared stack before applying Cross's status-only layout.
+	Show(*Tree.FindWidget(TEXT("TheaterActionBounds")),true);
+	CastChecked<UVerticalBoxSlot>(Tree.FindWidget(TEXT("TheaterStatus"))->Slot)->SetPadding(FMargin(0,4,0,0));
 	if (!Cross) return;
 	Find<UTextBlock>(Tree,TEXT("TheaterHighLabel"))->SetText(LOCTEXT("CrossHighShort","高球"));
 	Find<UTextBlock>(Tree,TEXT("TheaterLowLabel"))->SetText(LOCTEXT("CrossLowShort","低球"));
@@ -1352,6 +1349,14 @@ void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewMo
 		:Screen.bMirrorActionWaitPrompt?Screen.ActionWaitActorText.ToString()+TEXT("\n")+Screen.ActionWaitActionText.ToString()
 		:FFMCodexPlayerUIPresentationText::MatchScreenLabel(Screen.Interaction.ExpectedActorLabel).ToString());
 	Show(*Status,true);
+	bool HasActionContent=false;
+	for (const auto Name:{TEXT("TheaterPrimaryBounds"),TEXT("TheaterSelectionReturnBounds"),
+		TEXT("TheaterChoices"),TEXT("TheaterRoll"),TEXT("TheaterTacticalEvent")})
+		HasActionContent |= Tree.FindWidget(Name)->IsVisible();
+	// The row already centers this group. Remove the empty fixed-height action
+	// lane so a status without a button/reel is centered on its own.
+	Show(*Tree.FindWidget(TEXT("TheaterActionBounds")),HasActionContent);
+	CastChecked<UVerticalBoxSlot>(Status->Slot)->SetPadding(HasActionContent?FMargin(0,4,0,0):FMargin(0));
 	if (P.PrimaryAction.Action.Category==C::RollCrossAttack)
 		Find<UTextBlock>(Tree,TEXT("TheaterContinueLabel"))->SetText(LOCTEXT("CrossExecute","实施战术"));
 }

@@ -174,6 +174,7 @@ public:
 	void DevSetPieceAction(FName Action, FName Option);
 	friend struct FFMCodexHandoffTimerTestAccess;
 	friend struct FFMCodexRollCosmeticTestAccess;
+	friend struct FFMCodexNextRoundTestAccess;
 	void AdvanceInlineFormulaRevealForTesting(float DeltaSeconds);
 	void PauseInlineFormulaRevealTimerForTesting();
 	void BeginPendingCrossRollRevealForTesting();
@@ -221,6 +222,11 @@ protected:
 private:
 	FMCodexResolutionTheaterPrototype::FMotion TheaterMotion;
 	FMCodexTacticalScene::FState TacticalScene;
+	FFMCodexNextRoundCountdown NextRoundCountdown;
+	void AdvanceNextRoundCountdown(float DeltaSeconds);
+	void ApplyNextRoundCountdown();
+	bool IsNextRoundReady() const;
+	UButton* GetNextRoundButton() const;
 	FMCodexResolutionTheaterPrototype::FTakerInspection TheaterTakerInspection;
 	void RefreshResolutionTheater(const FFMCodexUMGInlineFormulaSurfaceViewModel& Displayed,
 		const FFMCodexUMGMatchHeaderViewModel& DisplayedHeader);
