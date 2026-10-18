@@ -16,6 +16,8 @@ public class FMCodex : ModuleRules
 		if (Target.bBuildEditor)
 		{
 			PrivateDependencyModuleNames.Add("UnrealEd");
+			// Foundation checks use the same target/config generator as the UE Dashboard.
+			PrivateDependencyModuleNames.Add("Localization");
 			// Non-PIE, offscreen widget rendering in development visual audits.
 			PrivateDependencyModuleNames.Add("RenderCore");
 		}
