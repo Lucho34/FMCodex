@@ -1,4 +1,5 @@
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR && !UE_BUILD_SHIPPING
+#include "FMCodexFormulaTooltipTestUtils.h"
 #include "../NetworkPlay/FMCodexNetworkNearFreeKickTestFixture.h"
 #include "FMCodexResolutionTheaterPrototype.h"
 #include "FMCodexCardRackWidget.h"
@@ -103,9 +104,9 @@ bool FCornerResolution::RunTest(const FString& P)
   TestFalse(TEXT("No old Low terminology in displayed route hint"),Formula.RollHelperLabel.Contains(TEXT("低平球")));
   TestEqual(TEXT("One real attacker"),Formula.AttackRow.Participants.Num(),1);TestEqual(TEXT("Helper and keeper"),Formula.DefenseRow.Participants.Num(),2);
   const auto* Tip=CastChecked<UBorder>(S->GetWidgetFromName(TEXT("TheaterDefenseBaseHover")));
-  TestTrue(TEXT("Fixed defense modifier explained"),CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(Tip->GetToolTip())->GetContent())->GetContent())->GetText().ToString().Contains(TEXT("防守加成 2")));
+  TestTrue(TEXT("Fixed defense modifier explained"),FMCodexFormulaTooltipTestUtils::Text(Tip->GetToolTip()).Contains(TEXT("防守加成 2")));
   if(!Tie)TestTrue(TEXT("Actual count modifier explained"),Text(S,TEXT("TheaterReasonSecondary")).Contains(TEXT("+3")));
-  TestTrue(TEXT("Route-specific defense attributes"),CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(Tip->GetToolTip())->GetContent())->GetContent())->GetText().ToString().Contains(Low?TEXT("门将反应"):TEXT("门将制空")));
+  TestTrue(TEXT("Route-specific defense attributes"),FMCodexFormulaTooltipTestUtils::Text(Tip->GetToolTip()).Contains(Low?TEXT("门将反应"):TEXT("门将制空")));
   int32 AttackD6=Win?6:1,DefenseD6=Win?1:6;
   if(Tie||Normal)
   {

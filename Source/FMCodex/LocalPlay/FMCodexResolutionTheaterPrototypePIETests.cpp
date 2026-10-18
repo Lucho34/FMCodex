@@ -1,4 +1,5 @@
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR && !UE_BUILD_SHIPPING
+#include "FMCodexFormulaTooltipTestUtils.h"
 #include "FMCodexInlineResolutionFormulaSurfaceWidget.h"
 #include "FMCodexMatchHeaderWidget.h"
 #include "FMCodexRollReelWidget.h"
@@ -438,7 +439,7 @@ public:
     if (FPlatformTime::Seconds()-Changed<8) return false;
     Test->AddError(TEXT("Native base tooltip did not open from real hover")); return true;
    }
-   const auto Explanation=CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(Hover->GetToolTip())->GetContent())->GetContent())->GetText().ToString();
+   const auto Explanation=FMCodexFormulaTooltipTestUtils::Text(Hover->GetToolTip());
    Test->TestTrue(TEXT("Real hover shows safe defense modifier"),Explanation.Contains(TEXT("防守加成 +2")));
    Test->TestTrue(TEXT("Actual native hover brightens the inspect cue"),
     CastChecked<UBorder>(S->GetWidgetFromName(TEXT("TheaterDefenseBaseUnderline")))->GetBrushColor().A>.9f);
@@ -1156,8 +1157,8 @@ public:
    if(!Chip)
    {
     auto* H=CastChecked<UBorder>(S->GetWidgetFromName(TEXT("TheaterDefenseBaseHover")));
-    auto* T=CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(H->GetToolTip())->GetContent())->GetContent());
-    Test->TestTrue(TEXT("Real defense tooltip explains -3"),T->GetText().ToString().Contains(TEXT("点球防守调整 -3")));
+    const auto T=FMCodexFormulaTooltipTestUtils::Text(H->GetToolTip());
+    Test->TestTrue(TEXT("Real defense tooltip explains -3"),T.Contains(TEXT("点球防守调整 -3")));
     if(!TooltipSeen){MoveTo(H);FSlateApplication::Get().UpdateToolTip(true);TooltipSeen=true;Changed=Game;return false;}
     Capture(TEXT("04_NormalFormulaTooltip"));MoveTo(S->GetWidgetFromName(TEXT("TheaterTitle")));
    }

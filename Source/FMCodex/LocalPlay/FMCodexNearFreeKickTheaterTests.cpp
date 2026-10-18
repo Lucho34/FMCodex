@@ -1,4 +1,5 @@
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR && !UE_BUILD_SHIPPING
+#include "FMCodexFormulaTooltipTestUtils.h"
 #include "../NetworkPlay/FMCodexNetworkNearFreeKickTestFixture.h"
 #include "FMCodexResolutionTheaterPrototype.h"
 #include "FMCodexCardRackWidget.h"
@@ -10,6 +11,7 @@
 #include "Components/TextBlock.h"
 #include "Components/RichTextBlock.h"
 #include "HAL/IConsoleManager.h"
+#include "Widgets/SWidget.h"
 #include "../CoreRules/MatchPlayShortFreeKickResolution.h"
 #include "Serialization/ObjectAndNameAsStringProxyArchive.h"
 #include "Serialization/MemoryReader.h"
@@ -31,7 +33,7 @@ FString Text(UFMCodexLocalMatchScreenWidget* S,const TCHAR* Name)
 FString Tip(UFMCodexLocalMatchScreenWidget* S,const TCHAR* Name)
 {
 	auto* Hover=CastChecked<UBorder>(S->GetWidgetFromName(Name));
-	return CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(Hover->GetToolTip())->GetContent())->GetContent())->GetText().ToString();
+	return FMCodexFormulaTooltipTestUtils::Text(Hover->GetToolTip());
 }
 void Click(UFMCodexLocalMatchScreenWidget* S,const TCHAR* Name)
 {
@@ -51,6 +53,27 @@ bool FNearTheaterLifecycle::RunTest(const FString& P)
 	FUIFixture F(P.StartsWith(TEXT("B"))); Access::SetPiecePresentation(*F.Mode,false);
 	auto* Actor=F.Attacker(); auto* Other=F.Defender();
 	auto* S=Actor->GetPlayerMatchScreen(); auto* W=Other->GetPlayerMatchScreen();
+	// Route the same Slate -> NativeTick path as a live screen. Reel advancement
+	// alone does not drive the theater entrance/exit or its ancestor visibility.
+	const auto Geometry=FGeometry::MakeRoot(FVector2D(1600,900),FSlateLayoutTransform());
+	double SlateTime=0;
+	auto TickUntil=[&](auto Complete,const TCHAR* Assertion)
+	{
+		// Bounded failure deadline, not a delay: stop on the observed transition.
+		for(int32 Frame=0;Frame<120 && !Complete();++Frame)
+		{
+			SlateTime+=1.0/60.0;
+			for(const auto& Slate:{F.SlateA,F.SlateB})Slate->Tick(Geometry,SlateTime,1.f/60.f);
+		}
+		return TestTrue(Assertion,Complete());
+	};
+	auto FullyVisible=[](const UWidget* Widget)
+	{
+		if(!Widget)return false;
+		for(const UWidget* Current=Widget;Current;Current=Current->GetParent())
+			if(!Current->IsVisible() || Current->GetRenderOpacity()<=0.f)return false;
+		return true;
+	};
 	F.Entropy->Word=8; S->RequestRollTacticalPoints(); F.Settle();
 	TestFalse(TEXT("Unchanged SetPiece Type has no Theater"),Shown(S,TEXT("ResolutionTheater")));
 	F.Entropy->Word=4; S->DevSetPieceAction(TEXT("SetPieceType"),NAME_None);
@@ -63,6 +86,13 @@ bool FNearTheaterLifecycle::RunTest(const FString& P)
 	}
 	F.Settle();
 	for (auto* Screen:{S,W}) TestTrue(TEXT("Both viewers enter after Type hold"),Shown(Screen,TEXT("ResolutionTheater")));
+	if(!TickUntil([&]()
+	{
+		for(auto* Screen:{S,W})
+			if(!FullyVisible(Screen->GetWidgetFromName(TEXT("TheaterBottom")))
+				|| Screen->GetWidgetFromName(TEXT("TheaterBottom"))->GetRenderOpacity()<.999f)return false;
+		return true;
+	},TEXT("Real theater entrance exposes the complete action lane")))return false;
 	TestEqual(TEXT("Near header"),Text(S,TEXT("TheaterTitle")),FString(TEXT("近距离任意球")));
 	const auto* Rack=CastChecked<UFMCodexCardRackWidget>(S->GetWidgetFromName(TEXT("TheaterTakers")));
 	TestEqual(TEXT("Every authority-eligible card is inside Theater"),Rack->GetPresentation().Cells.Num(),S->GetPresentation().SetPiece.TakerOptions.Num());
@@ -161,8 +191,45 @@ bool FNearTheaterLifecycle::RunTest(const FString& P)
 	}
 	if (PairMethod) TestEqual(TEXT("Pair sum comes from authority"),Text(S,TEXT("TheaterPairTotal")),FString(TEXT("9")));
 	else TestTrue(TEXT("Direct uses canonical special-rule reason"),S->GetPresentation().InlineFormula.ResolutionReasonLabel.Contains(TEXT("快速压制")));
+	const auto BeforeContinue=Access::Session(*F.Mode).GetStateSnapshot();
+	const int64 Sequence=Actor->GetOwnerView().AttackSequence;
+	const int32 Revision=Actor->GetOwnerView().ViewRevision;
+	const int32 ContinueSends=F.Backend(Actor).Sends;
+	const int32 WaitingSends=F.Backend(Other).Sends;
+	TestEqual(TEXT("Authority still owns the disclosed terminal before the click"),BeforeContinue.CurrentAttack.LifecycleState,EMatchPlayCurrentAttackLifecycleState::TerminalPendingAdvance);
+	TestFalse(TEXT("No pending ACK/View or reveal blocks the terminal action"),F.Client(Actor).IsPending() || S->IsInlineFormulaRevealInputBlocked());
+	TestTrue(TEXT("Actor's real Continue and all ancestors are visible"),FullyVisible(S->GetWidgetFromName(TEXT("TheaterContinue"))));
+	TestTrue(TEXT("Continue is enabled"),S->GetWidgetFromName(TEXT("TheaterContinue"))->GetIsEnabled());
+	TestFalse(TEXT("Waiting side cannot continue"),W->GetPresentation().Interaction.PrimaryAction.bAvailable);
+	// Early manual continuation must work without waiting for the reading period
+	// or countdown. Do not bypass the real button callback or send a direct intent.
 	Click(S,TEXT("TheaterContinue"));
-	for (auto* Screen:{S,W}) TestFalse(TEXT("Next clears Theater and returns board"),Shown(Screen,TEXT("ResolutionTheater")));
+	if(!TestEqual(TEXT("Continue dispatches exactly once"),F.Backend(Actor).Sends,ContinueSends+1))return false;
+	TestEqual(TEXT("Continue uses the established AdvanceAfterTerminal intent"),F.Backend(Actor).Last.IntentKind,Kind::AdvanceAfterTerminal);
+	TestEqual(TEXT("Authority accepts continuation"),F.Backend(Actor).LastCode,Code::Accepted);
+	TestFalse(TEXT("New View and ACK clear pending"),F.Client(Actor).IsPending());
+	TestEqual(TEXT("Waiting viewer submits nothing"),F.Backend(Other).Sends,WaitingSends);
+	const auto AfterContinue=Access::Session(*F.Mode).GetStateSnapshot();
+	TestFalse(TEXT("Authority clears the completed attack"),AfterContinue.bHasCurrentAttack);
+	for(auto* PC:{Actor,Other})
+	{
+		TestEqual(TEXT("Both safe views advance exactly one opportunity"),PC->GetOwnerView().AttackSequence,Sequence+1);
+		TestTrue(TEXT("Both viewers receive a newer board projection"),PC->GetOwnerView().ViewRevision>Revision);
+		TestEqual(TEXT("Next opportunity awaits its normal tactical-point roll"),PC->GetOwnerView().EntryWait,EFMCodexNetworkEntryWait::InitialD12);
+		TestFalse(TEXT("Old set-piece surface no longer owns presentation"),PC->GetPlayerMatchScreen()->GetPresentation().SetPiece.bVisible);
+	}
+	if(!TickUntil([&](){return !Shown(S,TEXT("ResolutionTheater")) && !Shown(W,TEXT("ResolutionTheater"));},
+		TEXT("Next clears Theater and returns board after its real exit transition")))return false;
+	for(auto* Screen:{S,W})
+	{
+		for(const TCHAR* Name:{TEXT("DedicatedFootballPitchWidget"),TEXT("BroadcastMatchHeaderRegion"),TEXT("LocalPlayerCardRackRegion"),TEXT("OpponentCardRackRegion"),TEXT("ContextActionDockRegion")})
+			TestTrue(FString(TEXT("Board region and ancestors restored: "))+Name,FullyVisible(Screen->GetWidgetFromName(Name)));
+	}
+	TestEqual(TEXT("Exit animation does not submit again"),F.Backend(Actor).Sends,ContinueSends+1);
+	AddInfo(FString::Printf(TEXT("Near continuation: Sequence=%lld->%lld Revision=%d->%d Sends=%d->%d ACK=Accepted Pending=0 AuthorityActive=%d TheaterA=%d TheaterB=%d"),
+		Sequence,Actor->GetOwnerView().AttackSequence,Revision,Actor->GetOwnerView().ViewRevision,ContinueSends,F.Backend(Actor).Sends,
+		AfterContinue.bHasCurrentAttack,Shown(S,TEXT("ResolutionTheater")),Shown(W,TEXT("ResolutionTheater"))));
+
 	return true;
 }
 

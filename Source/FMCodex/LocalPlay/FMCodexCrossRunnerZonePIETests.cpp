@@ -1,4 +1,5 @@
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR && !UE_BUILD_SHIPPING
+#include "FMCodexFormulaTooltipTestUtils.h"
 #include "FMCodexLocalMatchPlayerController.h"
 #include "FMCodexLocalMatchScreenWidget.h"
 #include "FMCodexPrototypeTeamContent.h"
@@ -114,9 +115,9 @@ public:
 				&& Fact.EffectiveValue == Fact.BaseValue + 1 && Term->DisplayLabel.Contains(TEXT("传中专家 B")))) return true;
 			const auto* Hover = Cast<UBorder>(S->GetWidgetFromName(TEXT("TheaterAttackBaseHover")));
 			if (!Test->TestNotNull(TEXT("Production formula explanation surface"), Hover)) return true;
-			const auto* Tip = CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(Hover->GetToolTip())->GetContent())->GetContent());
+			const auto Tip = FMCodexFormulaTooltipTestUtils::Text(Hover->GetToolTip());
 			if (!Test->TestTrue(TEXT("Production hover visibly preserves base, bonus and attribution"),
-				Tip->GetText().ToString().Contains(Term->DisplayLabel))) return true;
+				Tip.Contains(TEXT("传中专家 B")) && Tip.Contains(FString::Printf(TEXT("原始传球：%d"),Fact.BaseValue)) && Tip.Contains(FString::Printf(TEXT("传球 +1 → %d"),Fact.EffectiveValue)))) return true;
 			bObservedRankedTrait = true;
 			Test->AddInfo(FString::Printf(TEXT("RANKED_TRAIT_PIE Carrier=%s Base=%d Bonus=%d Effective=%d Label=%s"),
 				*Carrier.ToString(), Fact.BaseValue, Fact.Bonus, Fact.EffectiveValue, *Term->DisplayLabel));

@@ -1,4 +1,5 @@
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR && !UE_BUILD_SHIPPING
+#include "FMCodexFormulaTooltipTestUtils.h"
 #include "../NetworkPlay/FMCodexNetworkPenaltyTestFixture.h"
 #include "FMCodexResolutionTheaterPrototype.h"
 #include "FMCodexCardRackWidget.h"
@@ -26,7 +27,7 @@ FString Text(UFMCodexLocalMatchScreenWidget* S,const TCHAR* Name)
 FString Tip(UFMCodexLocalMatchScreenWidget* S,const TCHAR* Name)
 {
  auto* Hover=CastChecked<UBorder>(S->GetWidgetFromName(Name));
- return CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(Hover->GetToolTip())->GetContent())->GetContent())->GetText().ToString();
+ return FMCodexFormulaTooltipTestUtils::Text(Hover->GetToolTip());
 }
 void Click(UFMCodexLocalMatchScreenWidget* S,const TCHAR* Name)
 {CastChecked<UButton>(S->GetWidgetFromName(Name))->OnClicked.Broadcast();}

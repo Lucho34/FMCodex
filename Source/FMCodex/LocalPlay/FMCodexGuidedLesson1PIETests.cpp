@@ -1,4 +1,5 @@
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR && !UE_BUILD_SHIPPING
+#include "FMCodexFormulaTooltipTestUtils.h"
 #include "FMCodexGuidedLesson1.h"
 #include "FMCodexGuidedLesson1Focus.h"
 #include "FMCodexPitchSlotWidget.h"
@@ -422,11 +423,11 @@ public:
 		{
 			bFormulaTooltip[Attempt] |= FormulaTooltipVisible(S);
 			T->TestTrue(TEXT("Real mouse opened native production tooltip"),bFormulaTooltip[Attempt]);
-			CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("射门 4"));
+			CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("原始射门：4"));
 			if (L->IsComparison())
 			{
 				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("远射专家 B"));
-				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("射门 4 +1"));
+				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("射门 +1 → 5"));
 				T->TestEqual(TEXT("Second formula explanation consumes actual operands"),L->Instruction().ToString(),FString(TEXT("厄德高的射门属性为 4，远射专家 B额外提供 +1，因此进攻基础值为 5。")));
 				Capture(TEXT("04_ComparisonFormula.png"));
 			}
@@ -461,7 +462,7 @@ public:
 			CheckResult(C,10.f,9.5f);
 			if(!bSummaryInspected)
 			{
-				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("射门 4 +1"));
+				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("射门 +1 → 5"));
 				CheckTooltip(S,TEXT("TheaterAttackBaseHover"),TEXT("远射专家 B"));
 				auto* Base=S->GetWidgetFromName(TEXT("TheaterAttackBaseHover"));
 				if(Base) FSlateApplication::Get().SetCursorPos(Base->GetCachedGeometry().GetAbsolutePosition()
@@ -545,10 +546,8 @@ private:
 	void CheckTooltip(UFMCodexLocalMatchScreenWidget* S,const TCHAR* Name,const TCHAR* Expected)
 	{
 		auto* Base=Cast<UBorder>(S->GetWidgetFromName(Name));
-		auto* Tip=Base?Cast<UBorder>(Base->GetToolTip()):nullptr;
-		auto* Bounds=Tip?Cast<USizeBox>(Tip->GetContent()):nullptr;
-		auto* Text=Bounds?Cast<UTextBlock>(Bounds->GetContent()):nullptr;
-		T->TestTrue(FString(TEXT("Production Formula source: "))+Expected,Text && Text->GetText().ToString().Contains(Expected));
+		const auto Text=FMCodexFormulaTooltipTestUtils::Text(Base?Base->GetToolTip():nullptr);
+		T->TestTrue(FString(TEXT("Production Formula source: "))+Expected,Text.Contains(Expected));
 	}
 	void Click(UFMCodexLocalMatchScreenWidget* S,const TCHAR* Name)
 	{

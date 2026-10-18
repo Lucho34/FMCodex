@@ -1,4 +1,5 @@
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR && !UE_BUILD_SHIPPING
+#include "FMCodexFormulaTooltipTestUtils.h"
 #include "FMCodexResolutionTheaterPrototype.h"
 #include "FMCodexRollReelWidget.h"
 #include "FMCodexPitchWidget.h"
@@ -268,8 +269,8 @@ bool FResolutionTheaterViewTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Unresolved equals and RHS stay visible"),Visible(S,*(Prefix+TEXT("Equal"))) && Visible(S,*(Prefix+TEXT("FinalNumber"))));
 		TestNull(TEXT("Permanent formula breakdown removed"),S->GetWidgetFromName(FName(*(Prefix+TEXT("Equation")))));
 		auto* Hover=CastChecked<UBorder>(S->GetWidgetFromName(FName(*(Prefix+TEXT("BaseHover")))));
-		const FString Explanation=CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(Hover->GetToolTip())->GetContent())->GetContent())->GetText().ToString();
-		TestTrue(TEXT("Tooltip describes weighted authoritative attributes"),Explanation.Contains(TEXT("×")) && Explanation.Contains(TEXT("当前基础值")));
+		const FString Explanation=FMCodexFormulaTooltipTestUtils::Text(Hover->GetToolTip());
+		TestTrue(TEXT("Tooltip describes weighted authoritative attributes"),Explanation.Contains(TEXT("×")) && Explanation.Contains(TEXT("最终基础值")));
 		TestFalse(TEXT("Tooltip contains no unresolved die"),Explanation.Contains(TEXT("掷点")));
 		// Stage 8.20's current low-cross terms are Passing/Speed and Defense/Speed.
 		if (!High) TestTrue(TEXT("Low tooltip uses the actual route attributes"),Explanation.Contains(Prefix.EndsWith(TEXT("Attack"))?TEXT("传球"):TEXT("防守")) && Explanation.Contains(TEXT("速度")));
