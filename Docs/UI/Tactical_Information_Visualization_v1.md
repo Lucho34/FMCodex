@@ -50,6 +50,8 @@ The rich catalog still retains Tactical Player applicability, multipliers, fixed
 
 ## Density and Row-Stability Baseline
 
+Stage 8.30H 单分支悬停细化（USER PIE 待验收）：高球、低球、内切直接射门和射向死角统一使用 `560 × 320` 外框、`528 × 224` 内框，沿用深蓝底和细边线。外层仅保留一次标题，不再重复内层标题。直接射门保留三行角色属性，并在门将后增加“特殊：进攻掷点 1–2：射门偏出”，不展示顶部公式摘要。死角将已有双骰方式、11–12 进球条件与“只看掷点，不看属性”集中在内框。高／低球悬停不再显示意图小字。属性表统一顶对齐，移除首行上方遗留分隔线；直接射门的特殊规则使用与属性相同的字号、字重和文字色。该用户指定的单分支范围提示覆盖上文“不显示 outcome ranges”的旧密度限制；通用多分支、部署参考和战术指南保持原布局与内容，规则和指令无变化。
+
 - Width: `780`, centered in the existing tactical interaction region. This is a footprint reduction from the accepted row-stability repair, not a change to the information model.
 - Height: content-driven, capped at `430`; ordinary tactics use no scrollbar.
 - Outer padding is `10 × 8`; the title/hint/grid vertical gaps are tightened without changing typography.

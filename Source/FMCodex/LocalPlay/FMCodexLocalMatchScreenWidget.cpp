@@ -521,7 +521,7 @@ void UFMCodexLocalMatchScreenWidget::NativeTick(const FGeometry& MyGeometry, flo
 	}
 	if (!WidgetTree || !MatchHeader) return;
 	FMCodexTacticalScene::FitCrossViewport(*WidgetTree,
-		TacticalScene.Facts.bActive && FMCodexTacticalScene::IsCross(TacticalScene.Facts.Method),MyGeometry.GetLocalSize());
+		TacticalScene.Facts.bActive && TacticalScene.IsBroadcast(),MyGeometry.GetLocalSize());
 	FMCodexTacticalScene::UpdatePreview(*WidgetTree,TacticalScene);
 	if (TacticalScene.Tick(InDeltaTime)) RefreshVisuals();
 	const bool bEnabled = FMCodexResolutionTheaterPrototype::IsEnabled();
@@ -554,11 +554,12 @@ void UFMCodexLocalMatchScreenWidget::NativeTick(const FGeometry& MyGeometry, flo
 void UFMCodexLocalMatchScreenWidget::RequestCrossTactic(FName SkillId, EFMCodexUMGBranchIntent Intent)
 {
 	using C = EFMCodexUMGInteractionCategory;
+	const bool Cut = Intent == EFMCodexUMGBranchIntent::DirectShot || Intent == EFMCodexUMGBranchIntent::DeadCorner;
 	if (!MatchBackend || IsScreenRequestPending() || Presentation.bActionWaitPromptReadOnly
 		|| Presentation.Interaction.Category != C::SelectSkill
-		|| (Intent != EFMCodexUMGBranchIntent::CrossHigh && Intent != EFMCodexUMGBranchIntent::CrossLow)) return;
-	const bool bOffered = Presentation.Interaction.SelectionChoices.ContainsByPredicate([SkillId](const auto& Choice)
-		{ return Choice.OptionId == SkillId && Choice.SkillType == ESkillRuleType::Cross && Choice.bEnabled; });
+		|| (!Cut && Intent != EFMCodexUMGBranchIntent::CrossHigh && Intent != EFMCodexUMGBranchIntent::CrossLow)) return;
+	const bool bOffered = Presentation.Interaction.SelectionChoices.ContainsByPredicate([SkillId,Cut](const auto& Choice)
+		{ return Choice.OptionId == SkillId && Choice.SkillType == (Cut ? ESkillRuleType::CutInsideShot : ESkillRuleType::Cross) && Choice.bEnabled; });
 	if (!bOffered) return;
 	auto& Flow = MatchBackend->CrossPresentationFlow;
 	Flow.Observe(Presentation.Header.AttackSequence);
@@ -577,7 +578,9 @@ void UFMCodexLocalMatchScreenWidget::AdvanceCrossFlow(float DeltaSeconds)
 	auto& Flow = MatchBackend->CrossPresentationFlow;
 	Flow.Observe(Presentation.Header.AttackSequence);
 	const auto& Interaction = Presentation.Interaction;
-	const bool bSetup = Presentation.InlineFormula.ContestId == TEXT("Cross.Setup");
+	const bool bCutSetup = Presentation.LongShotResolution.SkillType == ESkillRuleType::CutInsideShot
+		&& Presentation.LongShotResolution.Stage == EFMCodexUMGLongShotStage::BranchChoice;
+	const bool bSetup = bCutSetup || Presentation.InlineFormula.ContestId == TEXT("Cross.Setup");
 	const bool bRoute = Interaction.Category == C::RollCrossRoute;
 
 	if (!bSetup && Interaction.Category != C::SelectSkill) Flow.Draft = EFMCodexUMGBranchIntent::None;
@@ -589,7 +592,9 @@ void UFMCodexLocalMatchScreenWidget::AdvanceCrossFlow(float DeltaSeconds)
 	{
 		// Mark before dispatch: Local refreshes synchronously inside this call.
 		Flow.bBranchSubmitted = true;
-		SubmitScreenRequest(EFMCodexMatchScreenIntent::Branch, NAME_None, NAME_None, Flow.Draft);
+		if (SubmitScreenRequest(EFMCodexMatchScreenIntent::Branch, NAME_None, NAME_None, Flow.Draft)
+			== EFMCodexMatchScreenSubmission::Rejected)
+			Flow.Draft = EFMCodexUMGBranchIntent::None;
 		RefreshVisuals();
 		return;
 	}
@@ -611,7 +616,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 	TheaterPresentation.ThroughBallResolution=BuildDisplayedThroughBallResolution();
 	const bool bActive = WantsTheater(TheaterPresentation, Displayed);
 	const bool bWarmCross=Presentation.Interaction.Category==EFMCodexUMGInteractionCategory::SelectSkill
-  && Presentation.Interaction.SelectionChoices.ContainsByPredicate([](const auto& C){return C.SkillType==ESkillRuleType::Cross;});
+  && Presentation.Interaction.SelectionChoices.ContainsByPredicate([](const auto& C){return C.SkillType==ESkillRuleType::Cross || C.SkillType==ESkillRuleType::CutInsideShot;});
 	if ((bActive || bWarmCross) && !WidgetTree->FindWidget(TEXT("ResolutionTheater")))
 	{
 		UButton* Primary = nullptr; UButton* High = nullptr; UButton* Low = nullptr;
@@ -641,9 +646,9 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 		TheaterPresentation.OpponentRack=BuildDisplayedHandRack(Presentation.OpponentRack);
 		const bool bConfirmation=MatchController?MatchController->GetInteractionView().bCornerLockConfirmationPending:bNetworkCornerConfirmation;
 		Refresh(*WidgetTree, TheaterPresentation, Displayed, DisplayedHeader, IsScreenRequestPending(), TheaterTakerInspection, bConfirmation);
-		// Keep the disclosed score/formula intact. Only the Cross headline waits
+		// Keep the disclosed score/formula intact. Only the broadcast headline waits
 		// for its celebration; Tick refreshes this plate when the effect ends.
-		if (FMCodexTacticalScene::IsCross(TacticalScene.Facts.Method) && TacticalScene.Celebration.IsActive())
+		if (TacticalScene.IsBroadcast() && TacticalScene.Celebration.IsActive())
 			WidgetTree->FindWidget(TEXT("CrossResultPlate"))->SetVisibility(ESlateVisibility::Collapsed);
 		if (MatchBackend)
 		{
@@ -657,6 +662,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 		{ if (Weak.IsValid()) Weak->SkipTacticalScene(); });
 		if (FMCodexTacticalScene::IsCross(TacticalScene.Facts.Method) && TacticalScene.IsAnimating())
 			CastChecked<UTextBlock>(WidgetTree->FindWidget(TEXT("TheaterStatus")))->SetText(NSLOCTEXT("CrossFlow","InMotion","传中进行中"));
+		if (TacticalScene.Facts.bCutInside && TacticalScene.IsAnimating())
+			CastChecked<UTextBlock>(WidgetTree->FindWidget(TEXT("TheaterStatus")))->SetText(NSLOCTEXT("CutInsideFlow","InMotion","内切进行中"));
 
 		SetPieceResolutionSurface->SetVisibility(ESlateVisibility::Collapsed);
 		if (IsOrdinaryShotConsumer(TheaterPresentation.LongShotResolution))
@@ -1429,6 +1436,7 @@ void UFMCodexLocalMatchScreenWidget::ShowTacticalDetail(FName SkillId, EFMCodexU
 	}
 	const FFMCodexUMGTacticalDetailViewModel Detail =
 		Choice->SkillType==ESkillRuleType::Cross ? FFMCodexTacticalDetailPresentationBuilder::BuildCrossChoice(Intent)
+		: Choice->SkillType==ESkillRuleType::CutInsideShot ? FFMCodexTacticalDetailPresentationBuilder::BuildCutInsideChoice(Intent)
 		: FFMCodexTacticalDetailPresentationBuilder::Build(Choice->SkillType);
 	if (!Detail.bValid)
 	{
@@ -5458,10 +5466,10 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	if (!SpatialFacts.bActive)
 		SpatialFacts = FMCodexTacticalScene::ProjectCross(DisplayedInlineFormula, Presentation.Header,
 			bSpatialAllowed && FMCodexResolutionTheaterPrototype::WantsTheater(Presentation, DisplayedInlineFormula));
-	// Cross covers the board. Keep its last widgets instead of reconstructing
-	// forty hidden cards on every view/ACK/reveal refresh. The next non-Cross
+	// Broadcast theater covers the board. Keep its widgets instead of rebuilding
+	// forty hidden cards on every view/ACK/reveal refresh. The next uncovered
 	// refresh repopulates them from the current safe presentation before reveal.
-	const bool bCrossCoversBoard = SpatialFacts.bActive && FMCodexTacticalScene::IsCross(SpatialFacts.Method);
+	const bool bCrossCoversBoard = SpatialFacts.bActive && (SpatialFacts.bCutInside || FMCodexTacticalScene::IsCross(SpatialFacts.Method));
 	if (!bCrossCoversBoard)
 	{
 		auto DisplayedPitch = Presentation.PitchRegions;
@@ -5667,7 +5675,12 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		bCentralOwnsDockControls || bCentralOwnsActionPrompt || Presentation.bActionWaitPromptReadOnly,
 		Presentation.ActionWaitActorText,
 		bCentralOwnsActionPrompt ? FText::GetEmpty() : Presentation.ActionWaitActionText);
-	InteractionPanel->RefreshFromPresentation(Presentation.Interaction);
+	auto DockInteraction = Presentation.Interaction;
+	if (MatchBackend && MatchBackend->CrossPresentationFlow.Draft != EFMCodexUMGBranchIntent::None
+		&& Presentation.LongShotResolution.SkillType == ESkillRuleType::CutInsideShot
+		&& Presentation.LongShotResolution.Stage == EFMCodexUMGLongShotStage::BranchChoice)
+		DockInteraction.BranchChoices.Reset(); // One click already chose the method; ACK/View still owns dispatch.
+	InteractionPanel->RefreshFromPresentation(DockInteraction);
 	bool bEnableContextualGuide = true;
 #if !UE_BUILD_SHIPPING
 	bEnableContextualGuide = !MatchController || !MatchController->GetGuidedLesson1();

@@ -321,6 +321,23 @@ FFMCodexUMGTacticalDetailViewModel FFMCodexTacticalDetailPresentationBuilder::Bu
  return Detail;
 }
 
+FFMCodexUMGTacticalDetailViewModel FFMCodexTacticalDetailPresentationBuilder::BuildCutInsideChoice(EFMCodexUMGBranchIntent Intent)
+{
+	const bool Direct = Intent == EFMCodexUMGBranchIntent::DirectShot;
+	if (!Direct && Intent != EFMCodexUMGBranchIntent::DeadCorner) return Build(ESkillRuleType::CutInsideShot);
+	auto Detail = FMCodexTacticalDetailPresentation::BuildDetail(ESkillRuleType::CutInsideShot,
+		Direct ? TEXT("CutInside.Direct") : TEXT("CutInside.DeadCorner"));
+	Detail.DisplayName = FText::Format(NSLOCTEXT("CutInsideDetail", "MethodTitle", "内切（{0}）"),
+		FText::FromString(Detail.DisplayName)).ToString();
+	// The single-method hover puts this compact rule inside its information
+	// frame. Attribute equations remain in the existing live Formula surface.
+	Detail.CardHint = Direct
+		? FText::Format(NSLOCTEXT("FMCodexShotChoice","MissHint","进攻掷点 {0}"),
+			FFMCodexPlayerUIPresentationText::LongShotDirectOutcomeHint()).ToString()
+		: BuildShotBranchExplanation(ESkillRuleType::CutInsideShot, false).ToString();
+	return Detail;
+}
+
 FFMCodexUMGOutcomeRollHintViewModel
 FFMCodexTacticalDetailPresentationBuilder::BuildOutcomeRollHint(
 	const ESkillRuleType SkillType, const FName BranchId)

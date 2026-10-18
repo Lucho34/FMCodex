@@ -6,10 +6,13 @@
 #include "FMCodexCardRackWidget.h"
 #include "FMCodexPlayerCardWidget.h"
 #include "FMCodexInteractionPanelWidget.h"
+#include "FMCodexInteractionOptionWidget.h"
+#include "FMCodexTacticalDetailPanelWidget.h"
 #include "FMCodexResolutionPanelWidget.h"
 #include "Components/PanelWidget.h"
 #include "FMCodexOutcomePresentation.h"
 #include "Components/Button.h"
+#include "Components/Border.h"
 #include "Components/TextBlock.h"
 #include "Components/RichTextBlock.h"
 #include "Editor.h"
@@ -52,8 +55,8 @@ public:
 class FDirectShotPIE final : public IAutomationLatentCommand
 {
 public:
-	explicit FDirectShotPIE(FAutomationTestBase* InTest, bool bInDead=false, bool bInMiss=false, int32 InCountdownMode=0)
-		: Test(InTest), bDead(bInDead), bMiss(bInMiss), CountdownMode(InCountdownMode) {}
+	explicit FDirectShotPIE(FAutomationTestBase* InTest, bool bInDead=false, bool bInMiss=false, int32 InCountdownMode=0, bool bInCut=false, bool bInCornerLayout=false)
+		: Test(InTest), bDead(bInDead), bMiss(bInMiss), bCut(bInCut), bCornerLayout(bInCornerLayout), CountdownMode(InCountdownMode) {}
 	bool Update() override
 	{
 		if (Started == 0.) Started = FPlatformTime::Seconds();
@@ -65,7 +68,7 @@ public:
 		auto Next=[&](){++Step;Changed=FPlatformTime::Seconds();};
 		auto Shown=[S](const TCHAR* Name){auto* W=S->GetWidgetFromName(Name);return W && W->GetVisibility()!=ESlateVisibility::Collapsed && W->GetVisibility()!=ESlateVisibility::Hidden;};
 		auto Text=[S](const TCHAR* Name){return CastChecked<UTextBlock>(S->GetWidgetFromName(Name))->GetText().ToString();};
-		if (bMiss && Step==6)
+		if (bMiss && !bCut && Step==6)
 		{
 			const auto Card=S->GetWidgetFromName(TEXT("TheaterAttackPanelBounds"))->GetCachedGeometry().GetLocalSize();
 			const auto Figure=S->GetWidgetFromName(TEXT("TheaterAttackSilhouetteBounds"))->GetCachedGeometry().GetLocalSize();
@@ -79,6 +82,11 @@ public:
 		}
 		if (S->IsInlineFormulaRevealInputBlocked())
 		{
+			if(bCut && (Step==6 || Step==7))
+			{
+				Test->TestTrue(TEXT("CutInside waiting loop continues through Roll v2"),S->GetTacticalScene().IsCutInsideIdle());
+				Test->TestEqual(TEXT("No future spatial outcome during dice reveal"),S->GetTacticalScene().Facts.Outcome,FMCodexTacticalScene::EOutcome::None);
+			}
 			if (bDead && Step==6)
 			{
 				auto* A=CastChecked<UFMCodexRollReelWidget>(S->GetWidgetFromName(TEXT("TheaterPairAReel")));
@@ -112,7 +120,7 @@ public:
 							Test->TestTrue(TEXT("Undisclosed immediate miss preserves normal attack composition"),Shown(TEXT("TheaterDefensePanelBounds")) && Shown(TEXT("TheaterAttackBaseHover")));
 							Test->TestFalse(TEXT("There is no duplicate standalone roll"),Shown(TEXT("TheaterRoll")));
 							Test->TestFalse(TEXT("Natural motion cannot pre-leak landed status"),Text(TEXT("TheaterDetail")).Contains(TEXT("已落定")));
-							if (!bAttackMotion) Capture(TEXT("ImmediateMiss_AttackRolling.png"));
+							if (!bAttackMotion && !bCut) Capture(TEXT("ImmediateMiss_AttackRolling.png"));
 						}
 						bAttackMotion=true;
 					}
@@ -126,7 +134,7 @@ public:
 				if (Reel->GetPresentation().bAuthoritativeValue)
 				{
 					Test->TestEqual(TEXT("Real provider result lands naturally"),Reel->GetPresentation().CenterValue,Step==6?(bMiss?2:4):3);
-					if (bMiss) Test->TestEqual(TEXT("Every naturally landed frame has current status"),Text(TEXT("TheaterDetail")),FString(TEXT("进攻方掷点已落定")));
+					if (bMiss) Test->TestEqual(TEXT("Every naturally landed frame has current status"),Text(bCut?TEXT("TheaterStatus"):TEXT("TheaterDetail")),FString(bCut?TEXT("掷点已落定"):TEXT("进攻方掷点已落定")));
 					if (Step==6) bAttackLanded=true; else bDefenseLanded=true;
 				}
 			}
@@ -151,7 +159,8 @@ public:
 		if (Step==2)
 		{
 			const bool IsA=C->GetInteractionView().CurrentAttackingPlayer==EInitialTurnOrderPlayer::PlayerA;
-			Carrier=IsA?TEXT("Prototype.Arsenal.MartinOdegaard"):TEXT("Prototype.ManchesterCity.PhilFoden");
+			Carrier=bCut?(IsA?TEXT("Prototype.Arsenal.BukayoSaka"):TEXT("Prototype.ManchesterCity.JeremyDoku"))
+				:(IsA?TEXT("Prototype.Arsenal.MartinOdegaard"):TEXT("Prototype.ManchesterCity.PhilFoden"));
 			const FString Own=IsA?TEXT("NearA"):TEXT("NearB"),Forward=IsA?TEXT("NearB"):TEXT("NearA");
 			for (int32 Side=0;Side<2;++Side)
 			{
@@ -185,13 +194,54 @@ public:
 				if (V.bCanResolveNoLegalChoice) S->RequestResolveNoLegalSelection(); else S->RequestDeclineSelection();break;
 			case DirectPIECategory::SelectSkill:
 			{
-				const auto* Choice=S->GetPresentation().Interaction.SelectionChoices.FindByPredicate([](const auto& O){return O.SkillType==ESkillRuleType::LongShot && O.bEnabled;});
-				if (!Test->TestNotNull(TEXT("Reached genuine ordinary LongShot Tactical Choice"),Choice)) return true;
+				const auto* Choice=S->GetPresentation().Interaction.SelectionChoices.FindByPredicate([&](const auto& O){return O.SkillType==(bCut?ESkillRuleType::CutInsideShot:ESkillRuleType::LongShot) && O.bEnabled;});
+				if (!Test->TestNotNull(TEXT("Reached genuine ordinary shot Tactical Choice"),Choice)) return true;
+				if (bCut) {Step=31;Changed=FPlatformTime::Seconds();return false;}
 				S->RequestSubmitSkill(Choice->OptionId);if (!Accepted(*C)) return true;Next();return false;
 			}
 			default:Test->AddError(TEXT("Unexpected ordinary selection state"));return true;
 			}
 			if (!Accepted(*C)) return true;Changed=FPlatformTime::Seconds();return false;
+		}
+		if (bCut && Step>=31 && Step<=33)
+		{
+			auto FindOption=[S](bool Direct)->UFMCodexInteractionOptionWidget*
+			{
+				const auto& Options=S->GetInteractionPanel()->GetRenderedOptionWidgets();
+				const auto* Found=Options.FindByPredicate([Direct](const auto& O){return O->GetLabel()==(Direct?TEXT("内切（直接射门）"):TEXT("内切（射向死角）"));});
+				return Found?*Found:nullptr;
+			};
+			auto* Direct=FindOption(true);auto* Corner=FindOption(false);
+			if (!Test->TestNotNull(TEXT("Real direct tactical option"),Direct) || !Test->TestNotNull(TEXT("Real corner tactical option"),Corner)) return true;
+			auto* DirectButton=CastChecked<UButton>(Direct->GetWidgetFromName(TEXT("InteractionOptionButton")));
+			auto* CornerButton=CastChecked<UButton>(Corner->GetWidgetFromName(TEXT("InteractionOptionButton")));
+			if (Step==31)
+			{
+				Test->TestFalse(TEXT("Method decision precedes theater"),Shown(TEXT("ResolutionTheater")));
+				for (auto* Option:{Direct,Corner})
+				{
+					auto* Label=Option->GetWidgetFromName(TEXT("InteractionOptionLabel"));
+					const auto& BG=Option->GetWidgetFromName(TEXT("InteractionOptionButton"))->GetCachedGeometry();
+					const auto& LG=Label->GetCachedGeometry();const auto& SG=S->GetCachedGeometry();
+					const auto Min=BG.AbsoluteToLocal(LG.LocalToAbsolute(FVector2D::ZeroVector));
+					const auto Max=BG.AbsoluteToLocal(LG.LocalToAbsolute(LG.GetLocalSize()));
+					Test->TestTrue(TEXT("Full long label fits without clipping"),LG.GetLocalSize().X+1>=Label->GetDesiredSize().X
+						&& Min.X>=0 && Min.Y>=0 && Max.X<=BG.GetLocalSize().X+1 && Max.Y<=BG.GetLocalSize().Y+1);
+					Test->TestTrue(TEXT("Both tactical buttons fit current viewport"),SG.AbsoluteToLocal(BG.LocalToAbsolute(FVector2D::ZeroVector)).X>=0
+						&& SG.AbsoluteToLocal(BG.LocalToAbsolute(BG.GetLocalSize())).X<=SG.GetLocalSize().X+1);
+				}
+				DirectButton->OnHovered.Broadcast();Next();return false;
+			}
+			if (Step==32)
+			{
+				Test->TestEqual(TEXT("Real Direct hover is branch-specific"),S->GetTacticalDetailPanel()->GetPresentation().DisplayName,FString(TEXT("内切（直接射门）")));
+				Capture(TEXT("CutInside_DirectHover.png"));
+				DirectButton->OnUnhovered.Broadcast();CornerButton->OnHovered.Broadcast();Next();return false;
+			}
+			Test->TestEqual(TEXT("Real Corner hover is branch-specific"),S->GetTacticalDetailPanel()->GetPresentation().DisplayName,FString(TEXT("内切（射向死角）")));
+			Capture(TEXT("CutInside_CornerHover.png"));
+			(bCornerLayout?CornerButton:DirectButton)->OnClicked.Broadcast();if (!Accepted(*C)) return true;
+			Step=5;Changed=FPlatformTime::Seconds();return false;
 		}
 		if (Step==4)
 		{
@@ -209,6 +259,7 @@ public:
 		}
 		if ((bDead || bMiss) && Step==6)
 		{
+			if(bCut && !Shown(TEXT("CutInsideMissBounds")))return false; // Let the existing spatial beat finish naturally.
 			Test->TestTrue(TEXT("Real natural motion reached its terminal"),bAttackMotion && (bDead?bDefenseMotion && bDefenseLanded:bAttackLanded));
 			Test->TestTrue(TEXT("Existing terminal owns Outcome and CTA"),C->GetInteractionView().bTerminalPendingAdvance && Shown(TEXT("TheaterOutcome")) && Shown(TEXT("TheaterPrimaryBounds")));
 			const auto& Shot=S->GetPresentation().LongShotResolution;
@@ -225,6 +276,14 @@ public:
 					&& Text(TEXT("TheaterReasonSecondary"))==TEXT("总和未达到 11–12，未进球"));
 			}
 			Capture(bDead?TEXT("DeadCorner_Resolved.png"):TEXT("ImmediateMiss_Resolved.png"));
+			if(bCut)
+			{
+				Test->TestFalse(TEXT("Compact miss replaces the empty duel"),Shown(TEXT("TheaterDuel")));
+				Test->TestEqual(TEXT("Compact miss retains the actual die"),Text(TEXT("CutInsideMissDie")),FString(TEXT("2")));
+				Test->TestFalse(TEXT("Stable result has no reveal-in-progress copy"),Text(TEXT("TheaterStatus")).Contains(TEXT("正在揭示")));
+				Test->TestTrue(TEXT("Miss banner remains visible"),Shown(TEXT("CrossResultPlate")));
+				return true;
+			}
 			Test->AddInfo(bDead?TEXT("SHOT_COMPLETION_PIE DeadCorner pair=5,5 miss_reason=1 rolling_hint=1 natural_hold=1 terminal=1"):TEXT("SHOT_COMPLETION_PIE ImmediateMiss attack=2 stale_status=0 defense_rolls=0 natural_hold=1 terminal=1"));
 			CastChecked<UButton>(S->GetWidgetFromName(TEXT("TheaterContinue")))->OnClicked.Broadcast();
 			if (!Accepted(*C)) return true;Step=8;Changed=FPlatformTime::Seconds();return false;
@@ -232,6 +291,72 @@ public:
 		if (Step==5 || Step==6)
 		{
 			if (FPlatformTime::Seconds()-Changed<1.) return false;
+			if(bCut && Step==5)
+			{
+				Test->TestFalse(TEXT("Early selection removes duplicate theater chooser"),Shown(TEXT("TheaterNearMethods")));
+				Test->TestEqual(TEXT("Selected method awaits its manual roll"),S->GetPresentation().Interaction.Category,bCornerLayout?EFMCodexUMGInteractionCategory::RollCutInsideShotDeadCorner:EFMCodexUMGInteractionCategory::RollCutInsideShotDirectAttack);
+				const auto& Scene=S->GetTacticalScene();
+				if(!Scene.IsCutInsideIdle())return false;
+				const auto Position=FMCodexTacticalScene::CutInsideParticipantAnchor(Scene,EMatchPlayResolutionParticipantRole::Carrier);
+				if(IdleSeen<0.){IdleSeen=GEditor->PlayWorld->GetTimeSeconds();IdleCarrier=Position;return false;}
+				if(GEditor->PlayWorld->GetTimeSeconds()-IdleSeen<1.2)return false;
+				Test->TestTrue(TEXT("Natural painted readiness starts CutInside motion"),Scene.CrossEntrance.Progress()>=1.f);
+				Test->TestTrue(TEXT("Actual waiting frame visibly moves Carrier"),(Position-IdleCarrier).Size()>5.f);
+				Test->TestTrue(TEXT("Ball stays beside Carrier through natural wait"),(FMCodexTacticalScene::CutInsideBall(Scene)-Position).Equals(FVector2D(48,24),.01f));
+				Test->TestTrue(TEXT("Both methods wait near the upper sideline"),Position.Y<240.f && Position.X>700.f);
+				if(bCornerLayout)
+				{
+					const auto& Card=S->GetWidgetFromName(TEXT("TheaterAttackPanel"))->GetCachedGeometry();
+					const auto& Row=S->GetWidgetFromName(TEXT("CrossBroadcastRow"))->GetCachedGeometry();
+					for(const auto Name:{TEXT("TheaterAttackSide"),TEXT("CutInsidePairRule"),TEXT("TheaterPair"),TEXT("CutInsidePairGoalRule")})
+					{
+						const auto& Child=S->GetWidgetFromName(Name)->GetCachedGeometry();
+						const auto Min=Card.AbsoluteToLocal(Child.LocalToAbsolute(FVector2D::ZeroVector));
+						const auto Max=Card.AbsoluteToLocal(Child.LocalToAbsolute(Child.GetLocalSize()));
+						Test->TestTrue(FString::Printf(TEXT("%s stays inside the challenge frame"),Name),Min.X>=0 && Min.Y>=0 && Max.X<=Card.GetLocalSize().X+1 && Max.Y<=Card.GetLocalSize().Y+1);
+					}
+					const auto& Title=S->GetWidgetFromName(TEXT("TheaterAttackSide"))->GetCachedGeometry();
+					const auto& Rule=S->GetWidgetFromName(TEXT("CutInsidePairRule"))->GetCachedGeometry();
+					Test->TestTrue(TEXT("Dice explanation is beside the title"),Rule.GetAbsolutePosition().X>=Title.LocalToAbsolute(Title.GetLocalSize()).X && FMath::Abs(Rule.GetAbsolutePosition().Y-Title.GetAbsolutePosition().Y)<20);
+					const auto ButtonLeft=Card.AbsoluteToLocal(S->GetWidgetFromName(TEXT("TheaterPrimaryBounds"))->GetCachedGeometry().GetAbsolutePosition()).X;
+					const auto& Band=S->GetWidgetFromName(TEXT("CrossBroadcastBand"))->GetCachedGeometry();
+					const auto GroupCenter=Band.AbsoluteToLocal(Row.LocalToAbsolute(Row.GetLocalSize()*.5f));
+					Test->TestTrue(TEXT("Complete three-module group is horizontally centered"),FMath::Abs(GroupCenter.X-Band.GetLocalSize().X*.5f)<1.f);
+					Test->TestTrue(TEXT("Button keeps breathing room beside the card"),ButtonLeft-Card.GetLocalSize().X>=20 && ButtonLeft-Card.GetLocalSize().X<40);
+					Capture(TEXT("CutInside_CornerLayout.png"));
+					return true;
+				}
+				Test->TestEqual(TEXT("Broadcast replaces the old tall panel"),S->GetWidgetFromName(TEXT("CrossBroadcastBounds"))->GetVisibility(),ESlateVisibility::SelfHitTestInvisible);
+				Capture(TEXT("CutInside_Wait.png"));
+				if(!bCutTipChecked && !bMiss)
+				{
+					auto* Hover=CastChecked<UBorder>(S->GetWidgetFromName(TEXT("TheaterDefenseBaseHover")));
+					auto& App=FSlateApplication::Get();
+					if(CutTipStarted==0)
+					{
+						const FVector2D Before=App.GetCursorPos();const auto Pos=Hover->GetCachedGeometry().GetAbsolutePosition()+Hover->GetCachedGeometry().GetAbsoluteSize()*.5;
+						App.SetCursorPos(Pos);App.ProcessMouseMoveEvent(FPointerEvent(0,Pos,Before,TSet<FKey>(),EKeys::Invalid,0,FModifierKeysState()),false);
+						CutTipStarted=FPlatformTime::Seconds();return false;
+					}
+					const auto Tip=Hover->GetToolTip()->GetCachedWidget();const auto Window=Tip.IsValid()?App.FindWidgetWindow(Tip.ToSharedRef()):TSharedPtr<SWindow>();
+					if(!Window.IsValid() || !Window->IsVisible())
+					{
+						App.UpdateToolTip(true);if(FPlatformTime::Seconds()-CutTipStarted<5.)return false;
+						Test->AddError(TEXT("CutInside native calculation tooltip did not open"));return true;
+					}
+					// Slate may host the tooltip inside the game window. Measure its
+					// widget geometry, not the containing 1920x1080 viewport.
+					const auto Size=Hover->GetToolTip()->GetCachedGeometry().GetLocalSize();
+					Test->TestTrue(TEXT("Calculation tooltip stays compact"),Size.X>0 && Size.Y>0 && Size.X<600 && Size.Y<600);
+					TArray<FColor> Pixels;FIntVector ImageSize;
+					if(App.TakeScreenshot(Window->GetContent(),Pixels,ImageSize))
+					{
+						TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(ImageSize.X,ImageSize.Y,Pixels,PNG);
+						FFileHelper::SaveArrayToFile(PNG,*(FPaths::ProjectSavedDir()/TEXT("Stage8_30H/PIE/CutInside_FormulaTooltip.png")));
+					}
+					App.SetCursorPos(FVector2D(10,10));App.UpdateToolTip(true);bCutTipChecked=true;
+				}
+			}
 			Test->TestTrue(TEXT("Actual DirectShot consumer owns Theater"),Shown(TEXT("ResolutionTheater")));
 			if (bDead)
 			{
@@ -241,8 +366,10 @@ public:
 			else
 			{
 			if (Step==6) Test->TestTrue(TEXT("Attack completed natural motion and hold before defense"),bAttackMotion && bAttackLanded);
-			if (!Override(*C,Step==5?EFMCodexLocalDevRollTarget::LongShotDirectAttack:EFMCodexLocalDevRollTarget::LongShotDirectDefense,Step==5?(bMiss?2:4):3)) return true;
-			if (bMiss)
+			const auto Target=bCut?(Step==5?EFMCodexLocalDevRollTarget::CutInsideShotDirectAttack:EFMCodexLocalDevRollTarget::CutInsideShotDirectDefense)
+				:(Step==5?EFMCodexLocalDevRollTarget::LongShotDirectAttack:EFMCodexLocalDevRollTarget::LongShotDirectDefense);
+			if (!Override(*C,Target,Step==5?(bMiss?2:4):3)) return true;
+			if (bMiss && !bCut)
 			{
 				AttackCardSize=S->GetWidgetFromName(TEXT("TheaterAttackPanelBounds"))->GetCachedGeometry().GetLocalSize();
 				AttackFigureSize=S->GetWidgetFromName(TEXT("TheaterAttackSilhouetteBounds"))->GetCachedGeometry().GetLocalSize();
@@ -257,13 +384,34 @@ public:
 		{
 			if (CountdownMode != 0)
 			{
+				if(bCut && ResultSeen < 0. && S->GetTacticalScene().Phase!=FMCodexTacticalScene::EPhase::ResultHold)
+				{
+					if(!bLoggedResultBoundary)
+					{
+						bLoggedResultBoundary=true;
+						Test->AddInfo(FString::Printf(TEXT("CUT_RESULT_BOUNDARY phase=%d active=%d cut=%d contest=%s outcome=%d"),
+							int32(S->GetTacticalScene().Phase),S->GetTacticalScene().Facts.bActive,S->GetTacticalScene().Facts.bCutInside,
+							*S->GetPresentation().LongShotResolution.Formula.ContestId.ToString(),int32(S->GetTacticalScene().Facts.Outcome)));
+					}
+					return false;
+				}
 				if (S->GetTacticalScene().IsAnimating() || S->GetTacticalScene().Celebration.IsActive())
 				{
 					Test->TestFalse(TEXT("Required scene/celebration never consumes countdown"),Text(TEXT("TheaterContinueLabel")).Contains(TEXT("（")));
 					return false;
 				}
 				const double Now = GEditor->PlayWorld->GetTimeSeconds();
-				if (ResultSeen < 0.) { ResultSeen = Now; TerminalSequence = S->GetPresentation().Header.AttackSequence; }
+				if (ResultSeen < 0.)
+				{
+					ResultSeen = Now; TerminalSequence = S->GetPresentation().Header.AttackSequence;
+					if(bCut)
+					{
+						Test->TestTrue(TEXT("Both existing manual dice revealed naturally"),bAttackMotion && bDefenseMotion && bAttackLanded && bDefenseLanded);
+						Test->TestTrue(TEXT("Completed CutInside shows accepted broadcast result plate"),Shown(TEXT("CrossResultPlate")));
+						Capture(TEXT("CutInside_Result.png"));
+						Test->AddInfo(TEXT("CUT_INSIDE_PIE natural_entry=1 idle_motion=1 manual_attack=4 manual_defense=3 result_handoff=1"));
+					}
+				}
 				const FString Label = Text(TEXT("TheaterContinueLabel"));
 				if (Label == TEXT("下一回合（5）") && !bSawFive)
 				{
@@ -337,20 +485,23 @@ private:
 	{FFMCodexLocalDevRollOverrideRequest R;R.Target=Target;R.Value=Value;return Test->TestTrue(TEXT("Host-owned DEV provider override"),C.SetLocalDevRollOverride(R).bSuccess);}
 	void Capture(const TCHAR* File)
 	{
-		if (CountdownMode != 0) return;
+		if (CountdownMode != 0 && !bCut) return;
+		if (bCut && !FString(File).StartsWith(TEXT("CutInside_"))) return;
 		auto Window=GEditor->PlayWorld->GetGameViewport()->GetWindow();
 		if (!Test->TestTrue(TEXT("Real PIE viewport exists"),Window.IsValid())) return;
 		TArray<FColor> Pixels; FIntVector Size;
 		if (!Test->TestTrue(TEXT("Real PIE frame captured"),FSlateApplication::Get().TakeScreenshot(Window->GetContent(),Pixels,Size))) return;
-		const FString Dir=FPaths::ProjectSavedDir()/(bDead || bMiss?TEXT("Stage8_18E/PIE"):TEXT("Stage8_18B/PIE"));IFileManager::Get().MakeDirectory(*Dir,true);
+		const FString Dir=FPaths::ProjectSavedDir()/(bCut?TEXT("Stage8_30H/PIE"):bDead || bMiss?TEXT("Stage8_18E/PIE"):TEXT("Stage8_18B/PIE"));IFileManager::Get().MakeDirectory(*Dir,true);
 		TArray64<uint8> PNG;FImageUtils::PNGCompressImageArray(Size.X,Size.Y,Pixels,PNG);
 		Test->TestTrue(TEXT("PIE evidence saved"),FFileHelper::SaveArrayToFile(PNG,*(Dir/File)));
 	}
+	bool bCutTipChecked=false;double CutTipStarted=0;
 	FAutomationTestBase* Test;double Started=0,Changed=0;int32 Step=0;FName Carrier;
-	bool bDead=false,bMiss=false;
+	bool bDead=false,bMiss=false,bCut=false,bCornerLayout=false;
+	double IdleSeen=-1.;FVector2D IdleCarrier=FVector2D::ZeroVector;
 	int32 CountdownMode=0; int64 TerminalSequence=0;
 	double ResultSeen=-1.,CountdownSeen=0.; bool bSawFive=false,bSawFour=false,bSawThree=false,bSawTwo=false,bSawOne=false;
-	bool bRecoveryChecked=false;
+	bool bRecoveryChecked=false,bLoggedResultBoundary=false;
 	bool bAttackMotion=false,bDefenseMotion=false,bAttackLanded=false,bDefenseLanded=false;
 	bool bMissTransitionCaptured=false;
 	FVector2D AttackCardSize,AttackFigureSize;
@@ -365,6 +516,35 @@ bool FFMCodexNextRoundPIETest::RunTest(const FString&)
 	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FDirectShotPIE(this,false,false,1)));
 	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FDirectShotPIE(this,false,false,2)));
 	ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand()); return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexCutInsideBroadcastPIETest,"FMCodex.PIE.CutInsideBroadcast",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexCutInsideBroadcastPIETest::RunTest(const FString&)
+{
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartDirectShotPIE()));
+	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FDirectShotPIE(this,false,false,1,true)));
+	ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexCutInsideCornerLayoutPIETest,"FMCodex.PIE.CutInsideCornerLayout",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexCutInsideCornerLayoutPIETest::RunTest(const FString&)
+{
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartDirectShotPIE()));
+	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FDirectShotPIE(this,false,false,0,true,true)));
+	ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexCutInsideVisualRefinementPIETest,"FMCodex.PIE.CutInsideVisualRefinement",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FFMCodexCutInsideVisualRefinementPIETest::RunTest(const FString&)
+{
+	// One Local PIE session: inspect the paired layout, then play a direct miss.
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FStartDirectShotPIE()));
+	ADD_LATENT_AUTOMATION_COMMAND(FWaitLatentCommand(2.f));
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FDirectShotPIE(this,false,false,0,true,true)));
+	FAutomationTestFramework::Get().EnqueueLatentCommand(MakeShareable(new FDirectShotPIE(this,false,true,0,true)));
+	ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand());return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexDirectShotPIETest,"FMCodex.PIE.DirectShotTheater.LongShot",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

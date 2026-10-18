@@ -28,7 +28,7 @@ struct FMCODEX_API FFMCodexMatchScreenRequest
 
 enum class EFMCodexMatchScreenSubmission : uint8 { Rejected, Completed, Queued };
 
-/** Cross presentation gestures survive screen reconstruction on the same backend.
+/** Cross/CutInside early method gestures survive reconstruction on the same backend.
  * No gameplay state or RNG: the safe view still authorizes every request. */
 struct FFMCodexCrossPresentationFlow
 {

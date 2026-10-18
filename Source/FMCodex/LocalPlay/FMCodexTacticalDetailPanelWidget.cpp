@@ -28,6 +28,10 @@ namespace FMCodexTacticalDetailPanelWidget
 	constexpr float RouteGap = 6.0f;
 	constexpr float RouteWidth = 245.0f;
 	constexpr float RouteRoleWidth = 82.0f;
+	constexpr float CompactWidth = 560.0f;
+	constexpr float CompactHeight = 320.0f;
+	constexpr float CompactBranchHeight = 224.0f;
+	constexpr float CompactRoleWidth = 80.0f;
 
 	UTextBlock* MakeText(
 		UWidgetTree& Tree,
@@ -200,6 +204,16 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 
 	TitleText->SetText(FText::FromString(Presentation.DisplayName));
 	HintText->SetText(FText::FromString(Presentation.CardHint));
+	// Explicit Cross/CutInside options share one stable footprint. Generic
+	// multi-branch deployment/reference panels retain their existing layout.
+	const bool bCompact = Presentation.Branches.Num() == 1
+		&& (Presentation.SkillType == ESkillRuleType::Cross || Presentation.SkillType == ESkillRuleType::CutInsideShot);
+	auto* Bounds = CastChecked<USizeBox>(GetWidgetFromName(TEXT("TacticalDetailBounds")));
+	Bounds->SetWidthOverride(bCompact ? CompactWidth : PanelWidth);
+	if (bCompact) Bounds->SetHeightOverride(CompactHeight);
+	else Bounds->ClearHeightOverride();
+	HintText->SetVisibility(bCompact || Presentation.CardHint.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	BranchBody->SetWrapSize((bCompact ? CompactWidth : PanelWidth) - PanelHorizontalPadding * 2.f);
 
 	BranchBody->ClearChildren();
 	RouteBody->ClearChildren();
@@ -381,7 +395,12 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 		const bool bWideFinalBranch = Presentation.Branches.Num() == 3
 			&& Index == 2;
 		BranchBounds->SetWidthOverride(
-			bWideFinalBranch ? WideBranchWidth : BranchWidth);
+			bCompact ? CompactWidth - PanelHorizontalPadding * 2.f : bWideFinalBranch ? WideBranchWidth : BranchWidth);
+		if (bCompact)
+		{
+			BranchBounds->SetHeightOverride(CompactBranchHeight);
+			BranchFrame->SetVerticalAlignment(Branch.bRollOnly ? VAlign_Center : VAlign_Top);
+		}
 		UVerticalBox* BranchContent = WidgetTree->ConstructWidget<UVerticalBox>(
 			UVerticalBox::StaticClass(), FName(*FString::Printf(
 				TEXT("TacticalDetailBranchContent%d"), Index)));
@@ -390,6 +409,7 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 			EFMCodexPlayerUITextRole::SectionHeading);
 		Heading->SetFont(FMCodexMatchShellStyle::Font(19, true));
 		Heading->SetText(FText::FromString(Branch.Label));
+		Heading->SetVisibility(bCompact ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 		BranchContent->AddChildToVerticalBox(Heading);
 		if (Branch.bRollOnly)
 		{
@@ -417,7 +437,7 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 			USizeBox* RoleBounds = WidgetTree->ConstructWidget<USizeBox>(
 				USizeBox::StaticClass(), FName(*FString::Printf(
 					TEXT("TacticalDetailRoleBounds%d_%d"), Index, RowIndex)));
-			RoleBounds->SetWidthOverride(RoleWidth);
+			RoleBounds->SetWidthOverride(bCompact ? CompactRoleWidth : RoleWidth);
 			RoleBounds->AddChild(Role);
 			if (UHorizontalBoxSlot* RoleSlot =
 				Row->AddChildToHorizontalBox(RoleBounds))
@@ -445,8 +465,40 @@ void UFMCodexTacticalDetailPanelWidget::RefreshVisuals()
 			auto* Rule = WidgetTree->ConstructWidget<UBorder>();
 			Rule->SetBrushColor(FMCodexMatchShellStyle::Border().CopyWithNewOpacity(.35f));
 			RuleBounds->AddChild(Rule);
-			AddSpaced(*BranchContent, RuleBounds, 3.f);
+			if (!bCompact || RowIndex > 0) AddSpaced(*BranchContent, RuleBounds, 3.f);
 			AddSpaced(*BranchContent, Row, 3.f);
+		}
+		if (bCompact && Presentation.SkillType == ESkillRuleType::CutInsideShot && !Presentation.CardHint.IsEmpty())
+		{
+			auto* Hint = MakeText(*WidgetTree, TEXT("TacticalDetailBranchHint"), EFMCodexPlayerUITextRole::Secondary);
+			Hint->SetText(FText::FromString(Presentation.CardHint));
+			Hint->SetColorAndOpacity(FMCodexMatchShellStyle::Secondary());
+			if (Presentation.SkillType == ESkillRuleType::CutInsideShot && !Branch.bRollOnly)
+			{
+				// This is a static special-rule row, never a participant/attribute fact.
+				auto* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("TacticalDetailSpecialRow"));
+				auto* Label = MakeText(*WidgetTree, TEXT("TacticalDetailSpecialLabel"), EFMCodexPlayerUITextRole::Secondary);
+				Label->SetText(NSLOCTEXT("FMCodexTacticalDetail", "Special", "特殊"));
+				Label->SetFont(FMCodexMatchShellStyle::Font(14));
+				Label->SetColorAndOpacity(FMCodexMatchShellStyle::Secondary());
+				auto* LabelBounds = WidgetTree->ConstructWidget<USizeBox>();
+				LabelBounds->SetWidthOverride(CompactRoleWidth);LabelBounds->AddChild(Label);
+				Row->AddChildToHorizontalBox(LabelBounds)->SetVerticalAlignment(VAlign_Center);
+				Hint->SetFont(FMCodexMatchShellStyle::Font(16, true));
+				Hint->SetColorAndOpacity(FMCodexMatchShellStyle::Text());
+				Hint->SetAutoWrapText(false);
+				auto* HintSlot = Row->AddChildToHorizontalBox(Hint);
+				HintSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));HintSlot->SetVerticalAlignment(VAlign_Center);
+				auto* RuleBounds = WidgetTree->ConstructWidget<USizeBox>();RuleBounds->SetHeightOverride(1.f);
+				auto* Rule = WidgetTree->ConstructWidget<UBorder>();
+				Rule->SetBrushColor(FMCodexMatchShellStyle::Border().CopyWithNewOpacity(.35f));RuleBounds->AddChild(Rule);
+				AddSpaced(*BranchContent, RuleBounds, 3.f);AddSpaced(*BranchContent, Row, 3.f);
+			}
+			else
+			{
+				Hint->SetFont(FMCodexMatchShellStyle::Font(Branch.bRollOnly ? 16 : 13));
+				AddSpaced(*BranchContent, Hint, Branch.bRollOnly ? 12.f : 6.f);
+			}
 		}
 		BranchFrame->AddChild(BranchContent);
 		BranchBounds->AddChild(BranchFrame);

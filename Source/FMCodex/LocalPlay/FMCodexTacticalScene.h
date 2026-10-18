@@ -21,6 +21,7 @@ inline constexpr float LongShotPressureArrival=.44f;
 inline constexpr float CrossSetupSeconds=.5f, CrossIntentSeconds=.8f;
 inline constexpr float CrossOutcomeActionSeconds=1.44f, CrossOutcomeHoldSeconds=.30f;
 inline constexpr float CrossOutcomeSeconds=CrossOutcomeActionSeconds+CrossOutcomeHoldSeconds;
+inline constexpr float CutInsideOutcomeActionSeconds=2.f, CutInsideReleaseFraction=.60f;
 inline constexpr float CrossDeliveryFraction=.68f;
 inline constexpr float CrossPendingDelivery=.56f;
 inline constexpr float CrossArrivalFraction=.90f;
@@ -48,6 +49,7 @@ struct FFacts
  bool bMethodChoice=false;
  bool bRoutePending=false;
  bool bManualWaiting=false;
+ bool bCutInside=false;
  EMethod Method=EMethod::Direct;
  EMatchPlayResolutionParticipantRole Highlight=EMatchPlayResolutionParticipantRole::None;
  TArray<FParticipant> Participants;
@@ -87,6 +89,10 @@ struct FState
  float PulseTime=0.f;
  float CrossIdleTime=0.f;
  float CrossIdleSettle=1.f;
+ float CutInsideIdleTime=0.f;
+ float CutInsideMotion=0.f;
+ bool IsCutInsideIdle() const;
+ bool IsBroadcast() const {return Facts.bCutInside || IsCross(Facts.Method);}
  bool IsCrossIdle() const;
  float CrossIdleBreath() const;
  float CrossIdleDashOffset() const;
@@ -122,6 +128,10 @@ FVector2D CrossBallStart(const FState& State);
 FVector2D CrossIntentBall(const FState& State);
 /** Goal or aggregate defense only: never attributes a touch to a participant. */
 FVector2D CrossOutcomeBall(const FState& State, float Flight);
+FVector2D CutInsideParticipantAnchor(const FState& State, EMatchPlayResolutionParticipantRole Role);
+FVector2D CutInsideBall(const FState& State, float VisualAction=-1.f);
+/** Intended aim only; never a disclosed outcome. Shares Cross broadcast coordinates. */
+FVector2D CutInsideAimTarget(EMethod Method);
 /** Pressure is an illustration of an actual Formula role, never a block fact. */
 bool HasLongShotDefensivePressure(const FState& State);
 FVector2D LongShotParticipantAnchor(const FState& State, EMatchPlayResolutionParticipantRole Role);

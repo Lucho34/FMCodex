@@ -307,7 +307,7 @@ void UFMCodexInteractionOptionWidget::HandleTacticalHovered()
 {
 	if (BindingMode == EBindingMode::TacticalCard && !CardId.IsNone())
 	{
-		if (BranchIntent==EFMCodexUMGBranchIntent::CrossHigh || BranchIntent==EFMCodexUMGBranchIntent::CrossLow)
+		if (BranchIntent != EFMCodexUMGBranchIntent::None)
 			OnCrossDetailRequested.Broadcast(CardId,BranchIntent);
 		else OnTacticalDetailRequested.Broadcast(CardId);
 	}

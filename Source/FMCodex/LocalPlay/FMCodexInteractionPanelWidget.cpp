@@ -736,16 +736,23 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 	{
 		const FFMCodexUMGSelectionChoiceViewModel& Choice =
 			Presentation.SelectionChoices[ChoiceIndex];
-		if (Presentation.Category == EFMCodexUMGInteractionCategory::SelectSkill && Choice.SkillType == ESkillRuleType::Cross)
+		if (Presentation.Category == EFMCodexUMGInteractionCategory::SelectSkill
+			&& (Choice.SkillType == ESkillRuleType::Cross || Choice.SkillType == ESkillRuleType::CutInsideShot))
 		{
 			// These are elective intentions, not predicted route results. Skill eligibility
 			// comes exclusively from this projected option; Branch is authorized later.
-			for (const auto Intent : {EFMCodexUMGBranchIntent::CrossHigh, EFMCodexUMGBranchIntent::CrossLow})
+			const bool Cut = Choice.SkillType == ESkillRuleType::CutInsideShot;
+			for (const auto Intent : {Cut ? EFMCodexUMGBranchIntent::DirectShot : EFMCodexUMGBranchIntent::CrossHigh,
+				Cut ? EFMCodexUMGBranchIntent::DeadCorner : EFMCodexUMGBranchIntent::CrossLow})
 			{
 				auto* Cross = MakeOptionWidget(FName(*FString::Printf(TEXT("CrossChoice%d_%d"), ChoiceIndex, int32(Intent))));
-				Cross->ConfigureCrossChoice(Intent == EFMCodexUMGBranchIntent::CrossHigh
-					? NSLOCTEXT("CrossFlow", "HighChoice", "传中（高球）").ToString()
-					: NSLOCTEXT("CrossFlow", "LowChoice", "传中（低球）").ToString(), Choice.OptionId, Intent);
+				const FText Label = Cut ? (Intent == EFMCodexUMGBranchIntent::DirectShot
+					? NSLOCTEXT("CutInsideFlow", "DirectChoice", "内切（直接射门）")
+					: NSLOCTEXT("CutInsideFlow", "CornerChoice", "内切（射向死角）"))
+					: (Intent == EFMCodexUMGBranchIntent::CrossHigh
+					? NSLOCTEXT("CrossFlow", "HighChoice", "传中（高球）")
+					: NSLOCTEXT("CrossFlow", "LowChoice", "传中（低球）"));
+				Cross->ConfigureCrossChoice(Label.ToString(), Choice.OptionId, Intent);
 				Cross->OnBranchRequested.AddDynamic(this, &UFMCodexInteractionPanelWidget::HandleBranchOption);
 				Cross->OnCrossDetailRequested.AddDynamic(this, &UFMCodexInteractionPanelWidget::HandleCrossDetailRequested);
 				Cross->OnTacticalDetailDismissed.AddDynamic(this, &UFMCodexInteractionPanelWidget::HandleTacticalDetailDismissed);
@@ -975,8 +982,10 @@ void UFMCodexInteractionPanelWidget::HandleBranchOption(
 {
 	if (Presentation.Category == EFMCodexUMGInteractionCategory::SelectSkill)
 	{
-		const auto* Cross = Presentation.SelectionChoices.FindByPredicate([](const auto& Choice)
-			{ return Choice.SkillType == ESkillRuleType::Cross && Choice.bEnabled; });
+		const auto Skill = Intent == EFMCodexUMGBranchIntent::DirectShot || Intent == EFMCodexUMGBranchIntent::DeadCorner
+			? ESkillRuleType::CutInsideShot : ESkillRuleType::Cross;
+		const auto* Cross = Presentation.SelectionChoices.FindByPredicate([Skill](const auto& Choice)
+			{ return Choice.SkillType == Skill && Choice.bEnabled; });
 		if (Cross && !bInteractionBlocked) OnCrossRequested.Broadcast(Cross->OptionId, Intent);
 		return;
 	}

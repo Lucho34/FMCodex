@@ -2000,7 +2000,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			bElectiveDirectOutcomeResolved
 			&& ElectiveDirectDecision->Outcome
 				== EMatchPlayResolutionDecisionOutcome::ImmediateMiss;
-		if (ContestId == FName(TEXT("LongShot.DirectShot")) && bElectiveDirectOutcomeResolved)
+		if ((ContestId == FName(TEXT("LongShot.DirectShot")) || ContestId == FName(TEXT("CutInsideShot.DirectShot"))) && bElectiveDirectOutcomeResolved)
 			Result.SpatialOutcome = ElectiveDirectDecision->Outcome;
 		Result.bShowFormulaRows = !bBehindOutOfPlay
 			&& !bElectiveDirectImmediateMiss;
@@ -2068,7 +2068,8 @@ namespace FMCodexLocalMatchUMGPresentation
 				|| bResolvedThroughBallFeet || bResolvedThroughBallDirect
 				|| (bResolvedThroughBallBehind && !bBehindOutOfPlay))
 			{
-				Result.ResolutionReasonLabel = FormulaReason(Contest->ResolvedResult, Result.AttackRow, Result.DefenseRow, bResolvedCross);
+				Result.ResolutionReasonLabel = FormulaReason(Contest->ResolvedResult, Result.AttackRow, Result.DefenseRow,
+					bResolvedCross || ContestId == FName(TEXT("CutInsideShot.DirectShot")));
 			}
 			else if (bElectiveDirectImmediateMiss)
 			{
@@ -2578,7 +2579,7 @@ namespace FMCodexLocalMatchUMGPresentation
 				? FFMCodexPlayerUIPresentationText::CutInsideTitle().ToString()
 				: FFMCodexPlayerUIPresentationText::LongShotTitle().ToString();
 		Result.InteractionCategory = Interaction.Category;
-		if (bLongShot)
+		if (bLongShot || bCutInside)
 		{
 			using R = EMatchPlayResolutionParticipantRole;
 			Result.SpatialAttackingSide = InteractionView.CurrentAttackingPlayer;
@@ -2601,7 +2602,11 @@ namespace FMCodexLocalMatchUMGPresentation
 			const auto& Roster = Defender == EInitialTurnOrderPlayer::PlayerA
 				? InteractionView.PlayerACardRoster : InteractionView.PlayerBCardRoster;
 			const auto* Keeper = Roster.FindByPredicate([](const auto& Card) { return Card.bGoalkeeper; });
-			if (Keeper) Result.SpatialGoalkeeper = Identity(Keeper->CardId, R::Goalkeeper, Defender);
+			// As in Cross, the viewer-safe roster supplies identity-only goalkeeper
+			// context. Formula participation still comes exclusively from its facts.
+			const auto* ScoringKeeper = FindParticipant(Facts, R::Goalkeeper);
+			if (bCutInside && ScoringKeeper) Result.SpatialGoalkeeper = Identity(ScoringKeeper->CardId, R::Goalkeeper, Defender);
+			else if (Keeper) Result.SpatialGoalkeeper = Identity(Keeper->CardId, R::Goalkeeper, Defender);
 		}
 		if (bLongShot || bCutInside)
 		{
@@ -2618,6 +2623,10 @@ namespace FMCodexLocalMatchUMGPresentation
 		}
 		if (bChoosingBranch)
 		{
+			// CutInside's existing method choice now belongs to the tactical dock.
+			// Keep the safe stage/choices for queued intent dispatch and recovery;
+			// enter the theater only after the authoritative method is selected.
+			if (bCutInside) Result.bVisible = false;
 			Result.Stage = EFMCodexUMGLongShotStage::BranchChoice;
 			Result.StageLabel = bCross
 				? FFMCodexPlayerUIPresentationText
@@ -2772,7 +2781,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			if (Decision != nullptr && Decision->bResolved
 				&& InteractionView.bTerminalPendingAdvance)
 			{
-				if (bLongShot) Result.Formula.SpatialOutcome = Decision->Outcome;
+				if (bLongShot || bCutInside) Result.Formula.SpatialOutcome = Decision->Outcome;
 				FFMCodexTacticalNarrativePresentationInput Input;
 				Input.Branch = bCutInside
 					? EFMCodexTacticalNarrativeBranch::CutInsideDeadCorner

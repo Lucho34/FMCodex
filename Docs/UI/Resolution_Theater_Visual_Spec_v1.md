@@ -20,7 +20,7 @@ Stage 8.30F 首版（**USER PIE 待验收**）：Match Board 完成角色选择 
 
 **CURRENT MIGRATION BOUNDARY**：High / Low Cross 与已披露类型后的 Near / Long Free Kick、Penalty、Corner 已迁移。Stage 8.16 的 Set Piece Type D6 改用既有 CompactBox / Roll v2（USER PIE PASS），仍在 Theater 接管前完成揭示和 hold；其他战术未因此迁移。Recovery、拒绝恢复和 Full-Time 仍由原有流程管理；正常退出恢复棋盘几何、可见性与输入。
 
-Cross 环境背景为 `ArtSource/UI/TacticalScene/T_CrossBroadcast_Stadium.png` 对应的专用纹理，来自用户指定参考图，去除左下摄影设备及所有 UI／球员／球路；不替换 Match Shell 或其他战术资源。源图与导入脚本一并保存。其他消费者恢复原父级、标题、人物列表和面板外观。进入前在比赛界面异步预载静态场景素材，并在公开 Cross 技能选项出现时准备持久 Theater/Slate 控件，避免首次点击承担整棵控件树与背景加载。传中接管期间不重复构建被遮住的手牌／棋盘，也不重复执行无拖拽状态的棋盘清理；安全 View 仍完整更新，退出传中时在棋盘显示前按最新投影恢复。Theater 固定命名控件直接按所属 WidgetTree 查找，并为外部／嵌套控件保留原遍历后备，避免每个数值刷新都扫描整棵比赛界面。Cross 独立使用完整底栏与标题的少量淡入／4–6px 归位、球路线条展开；不沿用逐侧隐藏的旧入场。路线判定阶段在两个公式区位置并列显示高球、低球的 canonical 范围，写为“掷出 1–4 → 所选意图路线”“掷出 5–6 → 另一条路线”（实际高／低标签随意图交换），删除“球场就位后自动判定路线”，底部只读路线卡使用深蓝凹入底、细嵌套结构线和统一 HighCross／LowCross 图标，原 CompactBox 在右侧；未披露时两者中性，RouteResultLabel 已披露后才按安全实际 ContestId 高亮，不从骰值推算路线。相同 ResultHold 内顶部中央以 Shared Result Family 深蓝横幅显示实际「高球传中／低球传中」及安全 RouteResultLabel；未披露不显示，结束后折叠，不叠加停留或确认步骤。普通手动等待阶段按用户补充，在持久 Slate 场景内以 3 秒循环重播传中准备：Runner／Helper 往返接应、Marker 跟随近处 Carrier，足球沿公开路线前进至原 56% 未完成位置，淡出后从持球者身侧重播；不提前接应触球、进球或指定防守结果。虚线路径、接应圈与角色底座保持轻强调。真实掷骰接管时用 0.25 秒平滑收至原等待姿态，下一手动等待重新循环；结果继续原披露路径，隐藏／销毁／新 attack 清除时钟。不每帧重建 UMG、加载资源或提交命令。8.30G 自动下一回合倒计时继续延期。
+Cross 环境背景为 `ArtSource/UI/TacticalScene/T_CrossBroadcast_Stadium.png` 对应的专用纹理，来自用户指定参考图，去除左下摄影设备及所有 UI／球员／球路；不替换 Match Shell 或其他战术资源。源图与导入脚本一并保存。其他消费者恢复原父级、标题、人物列表和面板外观。进入前在比赛界面异步预载静态场景素材，并在公开 Cross 技能选项出现时准备持久 Theater/Slate 控件，避免首次点击承担整棵控件树与背景加载。传中接管期间不重复构建被遮住的手牌／棋盘，也不重复执行无拖拽状态的棋盘清理；安全 View 仍完整更新，退出传中时在棋盘显示前按最新投影恢复。Theater 固定命名控件直接按所属 WidgetTree 查找，并为外部／嵌套控件保留原遍历后备，避免每个数值刷新都扫描整棵比赛界面。Cross 独立使用完整底栏与标题的少量淡入／4–6px 归位、球路线条展开；不沿用逐侧隐藏的旧入场。路线判定阶段在两个公式区位置并列显示高球、低球的 canonical 范围，写为“掷出 1–4 → 所选意图路线”“掷出 5–6 → 另一条路线”（实际高／低标签随意图交换），删除“球场就位后自动判定路线”，底部只读路线卡使用深蓝凹入底、细嵌套结构线和统一 HighCross／LowCross 图标，原 CompactBox 在右侧；未披露时两者中性，RouteResultLabel 已披露后才按安全实际 ContestId 高亮，不从骰值推算路线。相同 ResultHold 内顶部中央以 Shared Result Family 深蓝横幅显示实际「高球传中／低球传中」及安全 RouteResultLabel；未披露不显示，结束后折叠，不叠加停留或确认步骤。普通手动等待阶段按用户补充，在持久 Slate 场景内以 3 秒循环重播传中准备：Runner／Helper 往返接应、Marker 跟随近处 Carrier，足球沿公开路线前进至原 56% 未完成位置，淡出后从持球者身侧重播；不提前接应触球、进球或指定防守结果。虚线路径、接应圈与角色底座保持轻强调。真实掷骰接管时用 0.25 秒平滑收至原等待姿态，下一手动等待重新循环；结果继续原披露路径，隐藏／销毁／新 attack 清除时钟。低球 Runner／Helper 不再绘制装饰性的三条跑动拖尾，保留路线与接应方向提示。不每帧重建 UMG、加载资源或提交命令。8.30G 自动下一回合倒计时继续延期。
 
 2026-10-18 结果精修（USER PIE 待验收）：High／Low Cross 自然完成 Outcome 后，在既有 ResultHold 揭示边界复用 `FMCodexGoalCelebration` 的 Cross 专用 2.00 秒「进球！」飘带效果（远射仍为原 1.50 秒）。只有已披露 Goal 播放，重复 View／已结算重建不补播；非进球不播放，跳过／离开沿用原合同。效果覆盖球场，比分与操作区仍可见，不添加计分或继续步骤。庆祝期间仅暂隐顶部结论横幅，效果结束或跳过后自动显示，不延迟已有比分和公式披露。原组件此前仅接入远射，并非传中特效被删除。Cross 普通总值胜负说明保留双方最终值比较，去掉「本次公式按照总值大小比较」；快速压制、体力与门将平局说明不变，其他战术文案不变。
 
@@ -67,6 +67,22 @@ CompactBox 置于现有路线 action lane，CTA 与只读数字格分离。信�
 当前参数与实现边界见 [Roll v2](../Dev/Resolution_Theater_Roll_v2.md) 及 [CompactBox / HeroRoll notes](../Dev/Resolution_Theater_CompactBox_v1.md)。
 
 ## LongShot / CutInside 接入（Stage 8.18B–E，USER PIE PASS）
+
+Stage 8.30H 内切广播表现（**USER PIE 待验收**）覆盖下述旧版内切构图，远射保留原样。内切复用 Cross 的 1600 设计宽度、随 viewport 调整高度的全宽球场、固定 200 高底栏、球队色 1px 完整边框、中性深蓝公式内底、右侧 260 宽操作区与中央结果横幅。公式仍为权威投影的 `基础值 + 掷点 = 当前值／最终值`；死角双骰沿用原 `TheaterPair`，不生成防守公式。
+
+8.30H 细化（USER PIE 待验收）：内切基础值原生悬停按「原始属性 → 已适用 Trait／有效属性 → 加权贡献 → 固定／其他已知贡献 → 最终基础值」分行排列，右侧对齐贡献值。输入、Bonus、EffectiveValue、Multiplier、Contribution、KnownNonRollSubtotal 都来自现有安全 Formula DTO；不重算、不解析叙事或推断 Trait 生效。`Defense.FixedBonus` 标为「防守加成」。特殊多操作数保留完整已有表达式，长提示在紧凑原生 tooltip 内滚动；其他剧场保留旧提示。旧 Formula Fact Audit 历史表中内切防守单属性描述不覆盖当前实现；当前为防守／速度各半与已投影修正。
+
+内切场景门将直接复用 `CrossParticipantAnchor(Goalkeeper)` 及同一 aspect 映射、肖像／名牌比例；Carrier 从屏幕上侧、靠近边线的区域向禁区内切入，Marker 位于其内侧，避免禁区弧外的远射站位，球始终附着于持球者脚侧。直接射门意图箭头指向 `CrossGoalAnchor`，死角指向右侧门柱内沿的上角；只是瞄准意图，结果飞行仍受既有披露 gate。移除仅内切误继承的旧远射 Marker 头顶压力折线，保留真实盯人关系线与底座。
+
+内切死角在原 200 高信息带内使用 520 宽中性内底卡；160 宽战术标题区、挑战卡和操作按钮连续排列，由父容器按整组期望宽度水平居中，卡与按钮间隔 24，球队细边框不变。卡片标题标明所属玩家和「射向死角」，右侧同一行说明「掷 2 枚六面骰，点数相加」，原双骰控件下展示 canonical Outcome 范围「总和 11–12：进球」，全部文字留在边框内。不创建防守公式或额外掷点；数字和总和沿用已门控的 paired-roll 投影，不提前判胜。
+
+内切两种方法仅在骰子实际运动时显示「正在揭示掷点」，已落定的 ResultHold 显示「掷点已落定」；双骰第二枚开始运动时恢复揭示提示。直接射门 ImmediateMiss 的既有结果 gate 放行后，用紧凑的「实际点数 + 玩家身份／偏出 + 进攻结束／不比较」摘要替代空大的单数字对抗卡，保留上方 canonical 结果横幅和原继续按钮；不通过点数自行判定终局。
+
+方法选择提前到普通 SelectSkill 战术条：`内切（直接射门）`／`内切（射向死角）`复用 Cross 变体按钮及悬停详情。各自只展示 canonical `CutInside.Direct`／`CutInside.DeadCorner` 章节；悬停无命令、无 RNG。点击复用既有暂存选择桥，先提交 Skill，等待合法 phase 与 ACK/View 后仅提交一次原 Branch（`DirectShot`／`DeadCorner`）。未选定方法时保留普通球场；选定后才进入对应广播剧场，不再次询问。拒绝清空暂存选择并恢复原有 dock 方法入口；新进攻／退出清理暂存状态。最终 DirectShot 攻防各自手动掷点，DeadCorner 仍由进攻方手动启动既有双骰；不改 RPC、披露、玩法或概率。
+
+独立 `bCutInside` 表现模式只消费安全的 Carrier、Marker，并参照 Cross 从已公开的防守 roster 提供门将场景身份（已有 Goalkeeper 事实优先）；场景身份不代表 Formula 参与，不补造公式贡献，不新增 Runner／Helper。镜头始终朝当前进攻球门，球队颜色跟随所有者。持球者从边路沿弧线切入，盯人者在内侧形成压力；场景两个稳定且资源就绪的绘制帧后开始入场。双方手动最终骰等待时，持球者与球在未完成射门的位置轻微往复；Roll v2 滚动及落定等待期间继续同一未完成射门循环，直到结果正式可见才接管射门演出。循环不提交命令、不提前射门，退出或新进攻清空。
+
+结果揭示后，内切独立使用 2.00 秒动作：前 1.20 秒完成带球切入，后 0.80 秒出球，再保留 0.30 秒可读落点；传中仍为原 1.44 秒动作。Goal、ImmediateMiss、DirectShot 的防守成功、DeadCorner 未进球使用不同落点。只有已有 typed outcome 决定轨迹，门将参与公式不等于一次扑救。庆祝仍复用既有组件和普通射门时长，横幅在庆祝结束后显示，再交给 8.30G 的 2.5 秒结果阅读和 **5 秒**倒计时。此处不接入 Cross 路线骰、不改双方手动最终骰、共享 Roll v2 或下一回合权威流程。
 
 LongShot / CutInside 的 BranchChoice、DirectShot 与 DeadCorner 按 consumer + state 接入同一生产 Theater；不以共享宿主类型全局换肤。两种战术的 DirectShot 复用 `Base + ? = Current` / `Base + Roll = Final`、Base 下划线与原生 tooltip、TheaterInline 和 Roll v2。Base、小计、Final、属性/系数/修正、参与者及胜因均来自已有安全投影；LongShot 远射、CutInside 射门/盘带组合，以及各自可选 GK 贡献保持权威差异。RHS 仍为主要数字焦点；仅已落定 Roll 使用 #EED7A6，Roll 无下划线。
 

@@ -27,6 +27,8 @@
 #include "Components/RichTextBlock.h"
 #include "Components/ScaleBox.h"
 #include "Components/ScaleBoxSlot.h"
+#include "Components/ScrollBox.h"
+#include "../CoreRules/TacticalRuleDescription.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
@@ -454,6 +456,12 @@ void BuildSide(UWidgetTree& Tree, UHorizontalBox& Middle, const FString& Prefix,
 	auto* Head=Tree.ConstructWidget<UHorizontalBox>();
 	auto* IconSlot=Head->AddChildToHorizontalBox(Mark(Tree,Named(Prefix,TEXT("SideIcon")),Prefix==TEXT("TheaterAttack")?EMark::Ball:EMark::Shield,30)); IconSlot->SetPadding(FMargin(0,0,14,0)); IconSlot->SetVerticalAlignment(VAlign_Center);
 	Head->AddChildToHorizontalBox(Text(Tree,Named(Prefix,TEXT("Side")),32))->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	if(bAttack)
+	{
+		auto* PairRule=Text(Tree,TEXT("CutInsidePairRule"),14,Quiet);
+		auto* RuleSlot=Head->AddChildToHorizontalBox(PairRule);
+		RuleSlot->SetPadding(FMargin(14,0,0,0));RuleSlot->SetVerticalAlignment(VAlign_Center);Show(*PairRule,false);
+	}
 	auto* Badge=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),Named(Prefix,TEXT("Badge")));
 	Badge->SetPadding(FMargin(13,3)); Badge->SetBrush(FSlateRoundedBoxBrush(FLinearColor::White,4.f));
 	auto* Active=Text(Tree,Named(Prefix,TEXT("Active")),17,Ink); Badge->AddChild(Active);
@@ -482,7 +490,7 @@ void BuildSide(UWidgetTree& Tree, UHorizontalBox& Middle, const FString& Prefix,
 	LineSlot->SetHorizontalAlignment(HAlign_Center); LineSlot->SetVerticalAlignment(VAlign_Top);
 	LineSlot->SetPadding(FMargin(0,EquationBaseline+5,0,0));
 	// A native Slate tooltip, owned by this hover target, never a gameplay surface.
-	auto* Tip=Tree.ConstructWidget<UBorder>(); Tip->SetPadding(FMargin(18,14));
+	auto* Tip=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),Named(Prefix,TEXT("BaseLegacyTip"))); Tip->SetPadding(FMargin(18,14));
 	Tip->SetBrush(FSlateRoundedBoxBrush(Color(8,26,40),7.f,Alpha(Quiet,.65f),1.f)); Tip->SetBrushColor(FLinearColor::White);
 	auto* TipText=Text(Tree,Named(Prefix,TEXT("BaseExplanation")),17); TipText->SetAutoWrapText(true); Tip->AddChild(Bounds(Tree,TipText,410.f));
 	BaseHover->SetToolTip(Tip);
@@ -520,6 +528,8 @@ void BuildSide(UWidgetTree& Tree, UHorizontalBox& Middle, const FString& Prefix,
 		auto* Total=Text(Tree,TEXT("TheaterPairTotal"),54,Gold);
 		Pair->AddChildToHorizontalBox(EquationCell(Tree,*Total,116))->SetVerticalAlignment(VAlign_Bottom);
 		Body->AddChildToVerticalBox(Pair)->SetPadding(FMargin(0,14,0,0));
+		auto* GoalRule=Text(Tree,TEXT("CutInsidePairGoalRule"),15,Quiet);
+		Body->AddChildToVerticalBox(GoalRule)->SetPadding(FMargin(0,2,0,0));Show(*GoalRule,false);
 	}
 
 	auto* PanelBounds=Bounds(Tree,Panel,600.f); PanelBounds->Rename(*Named(Prefix,TEXT("PanelBounds")).ToString(),&Tree);
@@ -562,8 +572,86 @@ void RefreshTakerHelper(UWidgetTree& Tree, FTakerInspection& Inspection)
  Find<UTextBlock>(Tree,TEXT("TheaterReasonSecondary"))->SetText(Secondary);
  Show(*Tree.FindWidget(TEXT("TheaterReasonSecondary")),true);
 }
+// CutInside-only organization of already-projected operands and contributions.
+// No trait lookup for applicability, multiplication, summation or outcome inference.
+void RefreshCutInsideBaseTip(UWidgetTree& Tree,const FString& Prefix,const FFMCodexUMGInlineFormulaRowViewModel& Row)
+{
+ struct FLine { FString Label,Value; bool bEmphasis=false; };
+ TArray<FLine> Lines;
+ TArray<FString> Names;
+ for(const auto& P:Row.Participants)Names.AddUnique(P.PlayerName);
+ Lines.Add({FText::Format(LOCTEXT("CutBaseHeader","{0} · 基础值计算"),FText::FromString(Row.SideLabel)).ToString(),{},true});
+ Lines.Add({FText::Format(LOCTEXT("CutBaseContext","内切直接射门 · {0}"),FText::FromString(FString::Join(Names,TEXT("、")))).ToString()});
+ for(const auto& Term:Row.Terms)
+ {
+  if(!Term.bResolved || Term.Kind==EFMCodexUMGInlineFormulaTermKind::RawRoll)continue;
+  if(Term.Kind==EFMCodexUMGInlineFormulaTermKind::FixedModifier)
+  {
+   Lines.Add({Term.ModifierSourceLabel.IsEmpty()?Term.DisplayLabel:Term.ModifierSourceLabel,
+    FString(Term.Contribution>=0?TEXT("+"):TEXT(""))+FText::AsNumber(Term.Contribution).ToString(),true});
+   continue;
+  }
+  Lines.Add({Term.ContributorDisplayName+TEXT(" · ")+Term.AttributeLabel,{},true});
+  FString Input=FText::AsNumber(Term.SourceValue).ToString();
+  if(Term.AttributeOperands.Num()==1 && Term.AttributeOperands[0].bValid)
+  {
+   const auto& Op=Term.AttributeOperands[0];
+   Input=FText::AsNumber(Op.BaseValue).ToString();
+   Lines.Add({FText::Format(LOCTEXT("CutBaseOriginal","原始{0}：{1}"),FText::FromString(Term.AttributeLabel),FText::AsNumber(Op.BaseValue)).ToString()});
+   if(Op.Bonus!=0)
+   {
+    const FString Rank=Op.Rank==EPlayerTraitRank::S?TEXT("S"):Op.Rank==EPlayerTraitRank::A?TEXT("A"):Op.Rank==EPlayerTraitRank::B?TEXT("B"):TEXT("");
+    const FString Signed=FString(Op.Bonus>=0?TEXT("+"):TEXT(""))+FText::AsNumber(Op.Bonus).ToString();
+    Lines.Add({FText::Format(LOCTEXT("CutBaseTrait","{0} {1}：{2} {3} → {4}"),FPlayerTraitFormula::DisplayName(Op.TraitId),
+     FText::FromString(Rank),FText::FromString(Term.AttributeLabel),FText::FromString(Signed),FText::AsNumber(Op.EffectiveValue)).ToString()});
+    Input=TEXT("(")+Input+TEXT(" ")+Signed+TEXT(")");
+   }
+  }
+  // Unusual multi-operand facts retain their complete canonical description.
+  const FString Calculation=Term.AttributeOperands.Num()>1?Term.DisplayLabel
+   :FText::Format(LOCTEXT("CutBaseWeighted","{0}贡献：{1} × {2}"),FText::FromString(Term.AttributeLabel),
+    FText::FromString(Input),FText::AsNumber(Term.Multiplier)).ToString();
+  Lines.Add({Calculation,TEXT("= ")+FText::AsNumber(Term.Contribution).ToString()});
+ }
+ Lines.Add({LOCTEXT("CutBaseFinal","最终基础值").ToString(),Row.bKnownNonRollSubtotalResolved?FText::AsNumber(Row.KnownNonRollSubtotal).ToString():TEXT("?"),true});
+ FString Signature;
+ for(const auto& L:Lines)Signature+=L.Label+TEXT("\t")+L.Value+TEXT("\n");
+ auto* Tip=Cast<UBorder>(FindObjectFast<UWidget>(&Tree,Named(Prefix,TEXT("CutBaseTip"))));
+ auto* Cache=Cast<UTextBlock>(FindObjectFast<UWidget>(&Tree,Named(Prefix,TEXT("CutBaseSummary"))));
+ if(!Tip)
+ {
+  Tip=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),Named(Prefix,TEXT("CutBaseTip")));
+  Tip->SetPadding(FMargin(18,14));Tip->SetBrush(FSlateRoundedBoxBrush(Color(8,26,40),7.f,Alpha(Quiet,.65f),1.f));Tip->SetBrushColor(FLinearColor::White);
+  auto* Body=Tree.ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(),Named(Prefix,TEXT("CutBaseRows")));
+  auto* Scroll=Tree.ConstructWidget<UScrollBox>();Scroll->AddChild(Body);
+  auto* Root=Tree.ConstructWidget<UVerticalBox>();Tip->AddChild(Root);
+  auto* Size=Bounds(Tree,Scroll,450.f);Size->SetMaxDesiredHeight(520.f);Root->AddChildToVerticalBox(Size);
+  Cache=Text(Tree,Named(Prefix,TEXT("CutBaseSummary")),14);Root->AddChildToVerticalBox(Cache);Show(*Cache,false); // Retained cache avoids rebuilding during reel ticks.
+ }
+ auto* Hover=Find<UBorder>(Tree,Named(Prefix,TEXT("BaseHover")));
+ if(Hover->GetToolTip()!=Tip)Hover->SetToolTip(Tip);
+ if(Cache->GetText().ToString()==Signature)return;
+ Cache->SetText(FText::FromString(Signature));
+ auto* Body=Find<UVerticalBox>(Tree,Named(Prefix,TEXT("CutBaseRows")));Body->ClearChildren();
+ for(int32 I=0;I<Lines.Num();++I)
+ {
+  const auto& L=Lines[I];const bool Final=I==Lines.Num()-1;
+  if(Final)Body->AddChildToVerticalBox(Rule(Tree,0,Alpha(Quiet,.4f)))->SetPadding(FMargin(0,8,0,5));
+  auto* Cells=Tree.ConstructWidget<UHorizontalBox>();
+  auto* Label=Text(Tree,NAME_None,Final?17:I==0?18:14,L.bEmphasis?White:Quiet);
+  Label->SetFont(FMCodexMatchShellStyle::Font(Final?17:I==0?18:14,L.bEmphasis));Label->SetAutoWrapText(true);Label->SetText(FText::FromString(L.Label));
+  Cells->AddChildToHorizontalBox(Label)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+  if(!L.Value.IsEmpty())
+  {
+   auto* Value=Text(Tree,NAME_None,Final?22:16,Final?Aqua:White);Value->SetFont(FMCodexMatchShellStyle::Font(Final?22:16,true));
+   Value->SetJustification(ETextJustify::Right);Value->SetText(FText::FromString(L.Value));
+   auto* ValueSlot=Cells->AddChildToHorizontalBox(Bounds(Tree,Value,78.f));ValueSlot->SetPadding(FMargin(10,0,0,0));ValueSlot->SetVerticalAlignment(VAlign_Center);
+  }
+  Body->AddChildToVerticalBox(Cells)->SetPadding(FMargin(0,I>1 && L.bEmphasis?8:2,0,0));
+ }
+}
 void RefreshSide(UWidgetTree& Tree, const FString& Prefix, const FFMCodexUMGInlineFormulaRowViewModel& Row,
-	bool bFormula, bool bActive, bool bReveal, bool bWinner, bool bRollOnly = false)
+	bool bFormula, bool bActive, bool bReveal, bool bWinner, bool bRollOnly = false, bool bCutBaseDetails = false)
 {
 	SetText(Tree,Named(Prefix,TEXT("Side")),Row.SideLabel);
 	auto* PlayerBounds=Find<USizeBox>(Tree,Named(Prefix,TEXT("SilhouetteBounds")));
@@ -632,6 +720,11 @@ void RefreshSide(UWidgetTree& Tree, const FString& Prefix, const FFMCodexUMGInli
 	const float FitScale=FMath::Min(1.f,FMath::Min(154.f/FMath::Max(1.f,float(TextSize.X)),86.f/FMath::Max(1.f,float(TextSize.Y))));
 	const float Baseline=(TextSize.Y+Measure->GetBaseline(FinalFont))*FitScale;
 	Find<UScaleBox>(Tree,Named(Prefix,TEXT("FinalFit")))->SetRenderTranslation(FVector2D(0,EquationBaseline-Baseline));
+	if(bCutBaseDetails)
+	{
+		RefreshCutInsideBaseTip(Tree,Prefix,Row);
+		return;
+	}
 	// Explain only the provided non-roll facts. No local arithmetic or hidden dice.
 	FString Explanation=LOCTEXT("BaseTitle","基础值").ToString();
 	for (const auto& Term:Row.Terms)
@@ -650,7 +743,16 @@ void RefreshSide(UWidgetTree& Tree, const FString& Prefix, const FFMCodexUMGInli
 	if (Row.bKnownNonRollSubtotalResolved)
 		Explanation+=TEXT("\n")+FText::Format(LOCTEXT("BaseSum","当前基础值：{0}"),FText::AsNumber(Row.KnownNonRollSubtotal)).ToString();
 	auto* Hover=Find<UBorder>(Tree,Named(Prefix,TEXT("BaseHover")));
-	CastChecked<UTextBlock>(CastChecked<USizeBox>(CastChecked<UBorder>(Hover->GetToolTip())->GetContent())->GetContent())->SetText(FText::FromString(Explanation));
+	// A detached legacy tooltip may have been collected while CutInside owned hover.
+	auto* Legacy=Cast<UBorder>(FindObjectFast<UWidget>(&Tree,Named(Prefix,TEXT("BaseLegacyTip"))));
+	if(!Legacy)
+	{
+		Legacy=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),Named(Prefix,TEXT("BaseLegacyTip")));Legacy->SetPadding(FMargin(18,14));
+		Legacy->SetBrush(FSlateRoundedBoxBrush(Color(8,26,40),7.f,Alpha(Quiet,.65f),1.f));Legacy->SetBrushColor(FLinearColor::White);
+		auto* Copy=Text(Tree,Named(Prefix,TEXT("BaseExplanation")),17);Copy->SetAutoWrapText(true);Legacy->AddChild(Bounds(Tree,Copy,410.f));
+	}
+	CastChecked<UTextBlock>(CastChecked<USizeBox>(Legacy->GetContent())->GetContent())->SetText(FText::FromString(Explanation));
+	if(Hover->GetToolTip()!=Legacy)Hover->SetToolTip(Legacy);
 
 }
 
@@ -1011,7 +1113,9 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 		ChoiceBody->AddChildToVerticalBox(ExplanationBounds)->SetPadding(FMargin(0,10,0,0));
 		Methods->AddChildToHorizontalBox(ChoiceBody)->SetPadding(FMargin(20,18));
 	}
-	Composition->AddChildToVerticalBox(Methods)->SetHorizontalAlignment(HAlign_Center);
+	auto* MethodsHome=Tree.ConstructWidget<USizeBox>(USizeBox::StaticClass(),TEXT("TheaterMethodsHome"));
+	MethodsHome->AddChild(Methods);
+	Composition->AddChildToVerticalBox(MethodsHome)->SetHorizontalAlignment(HAlign_Center);
 
 
 	auto* Bottom=Tree.ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(),TEXT("TheaterBottom"));
@@ -1116,6 +1220,24 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
  CrossContext->AddChildToVerticalBox(CrossReason)->SetPadding(FMargin(0,10,0,0));
  auto* Identity=Bounds(Tree,CrossContext,236); Identity->Rename(TEXT("CrossBroadcastIdentity"),&Tree);
  BroadcastRow->AddChildToHorizontalBox(Identity)->SetVerticalAlignment(VAlign_Center);
+ // A disclosed, skipped contest has a result summary, not an empty formula card.
+ auto* MissPlate=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),TEXT("CutInsideMissPlate"));
+ MissPlate->SetPadding(FMargin(20,16));
+ auto* MissRow=Tree.ConstructWidget<UHorizontalBox>(); MissPlate->AddChild(MissRow);
+ auto* MissDie=Text(Tree,TEXT("CutInsideMissDie"),40,FMCodexRollPresentationStyle::AuthoritativeLandedValue());
+ MissDie->SetJustification(ETextJustify::Center);
+ MissRow->AddChildToHorizontalBox(Bounds(Tree,MissDie,72))->SetVerticalAlignment(VAlign_Center);
+ auto* MissCopy=Tree.ConstructWidget<UVerticalBox>();
+ auto* MissCopySlot=MissRow->AddChildToHorizontalBox(MissCopy); MissCopySlot->SetPadding(FMargin(20,0,0,0));
+ MissCopySlot->SetVerticalAlignment(VAlign_Center);
+ auto* MissTitle=Text(Tree,TEXT("CutInsideMissTitle"),22,White);
+ MissTitle->SetJustification(ETextJustify::Center);
+ MissTitle->SetFont(FMCodexMatchShellStyle::Font(22,true)); MissCopy->AddChildToVerticalBox(MissTitle);
+ auto* MissDetail=Text(Tree,TEXT("CutInsideMissDetail"),16,Quiet);
+ MissDetail->SetText(LOCTEXT("CutMissSummary","本次进攻结束 · 不进行攻防比较"));
+ MissCopy->AddChildToVerticalBox(MissDetail)->SetPadding(FMargin(0,8,0,0));
+ auto* MissBounds=Bounds(Tree,MissPlate,520); MissBounds->Rename(TEXT("CutInsideMissBounds"),&Tree);
+ BroadcastRow->AddChildToHorizontalBox(MissBounds)->SetVerticalAlignment(VAlign_Center); Show(*MissBounds,false);
  auto* RouteContext=Tree.ConstructWidget<UHorizontalBox>();
  for(bool HighRoute:{true,false})
  {
@@ -1206,13 +1328,33 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	const FFMCodexUMGInlineFormulaSurfaceViewModel& P, const FFMCodexUMGMatchHeaderViewModel& H, bool bPending)
 {
-	const bool Cross=P.ContestId==TEXT("Cross.Setup") || P.ContestId==TEXT("Cross.Route") || IsFormulaContest(P.ContestId);
+	const bool Cut=IsOrdinaryShotConsumer(Screen.LongShotResolution) && Screen.LongShotResolution.SkillType==ESkillRuleType::CutInsideShot;
+	const bool CutChoice=Cut && Screen.LongShotResolution.Stage==EFMCodexUMGLongShotStage::BranchChoice;
+	const bool CutDead=Cut && Screen.LongShotResolution.Stage==EFMCodexUMGLongShotStage::DeadCorner;
+	for(const auto Name:{TEXT("CrossBroadcastType"),TEXT("CrossBroadcastPhase")})
+		Find<UTextBlock>(Tree,Name)->SetJustification(CutDead?ETextJustify::Center:ETextJustify::Left);
+	const bool CutMiss=Cut && !CutDead && P.bNarrativeAvailable && !P.bDiceRevealVisible
+		&& P.SpatialOutcome==EMatchPlayResolutionDecisionOutcome::ImmediateMiss;
+	Show(*Tree.FindWidget(TEXT("CutInsideMissBounds")),CutMiss);
+	// Center the desired width of the complete identity/card/action group.
+	Find<UBorder>(Tree,TEXT("CrossBroadcastBand"))->SetHorizontalAlignment(CutDead || CutMiss?HAlign_Center:HAlign_Fill);
+	for(const auto Name:{TEXT("CutInsidePairRule"),TEXT("CutInsidePairGoalRule")})Show(*Tree.FindWidget(Name),CutDead);
+	Find<USizeBox>(Tree,TEXT("CrossBroadcastIdentity"))->SetWidthOverride(CutDead || CutMiss?160.f:236.f);
+	CastChecked<UHorizontalBoxSlot>(Tree.FindWidget(TEXT("TheaterAttackSide"))->Slot)->SetSize(FSlateChildSize(CutDead?ESlateSizeRule::Automatic:ESlateSizeRule::Fill));
+	if(CutDead)Show(*Tree.FindWidget(TEXT("TheaterAttackBadge")),false);
+	CastChecked<UVerticalBoxSlot>(Tree.FindWidget(TEXT("TheaterPair"))->Slot)->SetPadding(FMargin(0,CutDead?0:14,0,0));
+	// Share only the accepted broadcast skin and geometry; the supplied action,
+	// formula and dice remain owned by their existing tactical consumer.
+	const bool Cross=Cut || P.ContestId==TEXT("Cross.Setup") || P.ContestId==TEXT("Cross.Route") || IsFormulaContest(P.ContestId);
 	Show(*Tree.FindWidget(TEXT("CrossRouteNotice")),false);
 	auto* Row=Find<UHorizontalBox>(Tree,TEXT("CrossBroadcastRow"));
 	auto* Duel=Find<UHorizontalBox>(Tree,TEXT("TheaterDuel"));
 	auto* Bottom=Find<USizeBox>(Tree,TEXT("TheaterBottomBounds"));
 	auto* DuelHome=Find<USizeBox>(Tree,TEXT("TheaterDuelHome"));
 	auto* BottomHome=Find<USizeBox>(Tree,TEXT("TheaterBottomHome"));
+	auto* Methods=Find<UHorizontalBox>(Tree,TEXT("TheaterNearMethods"));
+	auto* MethodsHome=Find<USizeBox>(Tree,TEXT("TheaterMethodsHome"));
+	if(!CutChoice && Methods->GetParent()==Row){Methods->RemoveFromParent();MethodsHome->AddChild(Methods);}
 	if (Cross && Duel->GetParent()!=Row)
 	{
 		Duel->RemoveFromParent(); Bottom->RemoveFromParent();
@@ -1226,6 +1368,18 @@ void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewMo
 		// Fixed homes preserve the live Slate order on return to another tactic.
 		DuelHome->AddChild(Duel); BottomHome->AddChild(Bottom);
 	}
+	if(CutChoice && Methods->GetParent()!=Row)
+	{
+		Methods->RemoveFromParent();Bottom->RemoveFromParent();
+		Row->AddChildToHorizontalBox(Methods)->SetVerticalAlignment(VAlign_Center);
+		auto* Slot=Row->AddChildToHorizontalBox(Bottom);Slot->SetVerticalAlignment(VAlign_Center);Slot->SetPadding(FMargin(24,0,0,0));
+	}
+ if(Cross)
+ {
+  auto* DuelSlot=CastChecked<UHorizontalBoxSlot>(Duel->Slot);
+  DuelSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
+  DuelSlot->SetHorizontalAlignment(HAlign_Fill);
+ }
  const bool Route=Cross && (P.ContestId==TEXT("Cross.Route") || P.ContestId==TEXT("Cross.Setup"));
  Show(*Tree.FindWidget(TEXT("CrossRouteContextBounds")),Route);
  Show(*Tree.FindWidget(TEXT("TheaterAttackPanelBounds")),!Route);
@@ -1296,6 +1450,14 @@ void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewMo
 	auto* ActionButton=Find<UButton>(Tree,TEXT("TheaterContinue"));
 	auto ActionStyle=ActionButton->GetStyle();
 	ActionStyle.SetNormal(FSlateRoundedBoxBrush(Cross?Color(43,225,200):Mint,9.f,Alpha(White,Cross?.18f:.55f),1.f)); ActionButton->SetStyle(ActionStyle);
+	for(const auto Name:{TEXT("TheaterNearDirect"),TEXT("TheaterNearCombination")})
+	{
+		auto* Button=Find<UButton>(Tree,Name);
+		auto Style=Button->GetStyle();
+		Style.SetNormal(FSlateRoundedBoxBrush(Cut?Color(43,225,200):Mint,9.f,Alpha(White,Cut?.18f:.55f),1.f));
+		Button->SetStyle(Style);
+		CastChecked<UHorizontalBoxSlot>(Button->GetParent()->GetParent()->Slot)->SetPadding(Cut?FMargin(10,0):FMargin(20,18));
+	}
 	for (const auto Name:{TEXT("TheaterHigh"),TEXT("TheaterLow")})
 		CastChecked<USizeBox>(Tree.FindWidget(Name)->GetParent())->SetWidthOverride(Cross?145.f:240.f);
 	// Restore the shared stack before applying Cross's status-only layout.
@@ -1344,11 +1506,49 @@ void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewMo
 	auto* Status=Find<UTextBlock>(Tree,TEXT("TheaterStatus")); Status->SetAutoWrapText(true);
 	SetText(Tree,TEXT("TheaterStatus"),bPending?LOCTEXT("PendingRequest","操作已提交，等待确认").ToString()
 		:Route && !P.RouteResultLabel.IsEmpty()?LOCTEXT("CrossRouteConfirmed","路线已确认").ToString()
-  :P.bDiceRevealVisible?LOCTEXT("CrossRevealing","正在揭示掷点").ToString()
+  :P.bDiceRevealVisible?(Cut && P.RollReel.bStaticResult && P.RollReel.bAuthoritativeValue
+   ?LOCTEXT("CutRollLanded","掷点已落定"):LOCTEXT("CrossRevealing","正在揭示掷点")).ToString()
 		:Screen.Interaction.Category==C::RollCrossRoute && !Screen.bActionWaitPromptReadOnly?LOCTEXT("CrossAutoReady","等待掷点").ToString()
 		:Screen.bMirrorActionWaitPrompt?Screen.ActionWaitActorText.ToString()+TEXT("\n")+Screen.ActionWaitActionText.ToString()
 		:FFMCodexPlayerUIPresentationText::MatchScreenLabel(Screen.Interaction.ExpectedActorLabel).ToString());
 	Show(*Status,true);
+	if(Cut)
+	{
+		if(CutDead)
+		{
+			const auto* Description=FTacticalRuleDescriptionCatalog::FindBySkillType(ESkillRuleType::CutInsideShot);
+			const auto* Branch=Description?Description->Branches.FindByPredicate([](const auto& B){return B.BranchId==TEXT("CutInside.DeadCorner");}):nullptr;
+			Find<UTextBlock>(Tree,TEXT("CutInsidePairRule"))->SetText(Branch?FText::Format(LOCTEXT("CutPairDiceCount","掷 {0} 枚六面骰，点数相加"),FText::AsNumber(Branch->OutcomeRollCount)):FText::GetEmpty());
+			TArray<FString> RuleLines;FFMCodexTacticalDetailPresentationBuilder::BuildShotBranchExplanation(ESkillRuleType::CutInsideShot,false).ToString().ParseIntoArrayLines(RuleLines);
+			SetText(Tree,TEXT("CutInsidePairGoalRule"),RuleLines.Num()>1?RuleLines.Last():FString());
+			Find<UTextBlock>(Tree,TEXT("CutInsidePairGoalRule"))->SetColorAndOpacity(P.bNarrativeAvailable && !P.bDiceRevealVisible && P.SpatialOutcome==EMatchPlayResolutionDecisionOutcome::Goal?Aqua:Quiet);
+			const auto Player=FFMCodexPlayerUIPresentationText::MatchScreenLabel(P.AttackRow.Side==H.LeftPlayerSide?H.LeftPlayerLabel:H.RightPlayerLabel);
+			Find<UTextBlock>(Tree,TEXT("TheaterAttackSide"))->SetText(FText::Format(LOCTEXT("CutPairTitle","{0} · 射向死角"),Player));
+		}
+		Show(*Duel,!CutChoice && !CutMiss);
+		if(CutMiss)
+		{
+			// Only copy displayed facts after the existing narrative/spatial gate.
+			const auto Player=FFMCodexPlayerUIPresentationText::MatchScreenLabel(P.AttackRow.Side==H.LeftPlayerSide?H.LeftPlayerLabel:H.RightPlayerLabel);
+			Find<UTextBlock>(Tree,TEXT("CutInsideMissTitle"))->SetText(FText::Format(LOCTEXT("CutMissTitle","{0} · 掷点偏出"),Player));
+			Find<UTextBlock>(Tree,TEXT("CutInsideMissDie"))->SetText(Find<UTextBlock>(Tree,TEXT("TheaterAttackRollValue"))->GetText());
+			auto* Plate=Find<UBorder>(Tree,TEXT("CutInsideMissPlate"));
+			Plate->SetBrush(Find<UBorder>(Tree,TEXT("TheaterAttackPanel"))->Background);
+			Plate->SetBrushColor(FLinearColor::White);
+		}
+		Show(*Tree.FindWidget(TEXT("TheaterDefensePanelBounds")),!CutChoice && !CutDead && P.bShowFormulaRows && P.bShowDefenseRow);
+		Show(*Tree.FindWidget(TEXT("TheaterVS"))->GetParent(),!CutChoice && !CutDead && P.bShowFormulaRows && P.bShowDefenseRow);
+		Show(*Tree.FindWidget(TEXT("TheaterAttackBaseCaption")),!CutChoice && !CutDead && P.bShowFormulaRows);
+		Find<USizeBox>(Tree,TEXT("TheaterAttackPanelBounds"))->SetWidthOverride(CutDead?520.f:420.f);
+		Find<UTextBlock>(Tree,TEXT("CrossBroadcastType"))->SetText(LOCTEXT("CutBroadcast","内切"));
+		Find<UTextBlock>(Tree,TEXT("CrossBroadcastPhase"))->SetText(CutChoice?LOCTEXT("CutChoose","选择射门方式")
+			:CutDead?LOCTEXT("ShotDeadCorner","射向死角"):LOCTEXT("NearDirect","直接射门"));
+		Show(*Tree.FindWidget(TEXT("CrossBroadcastPhase")),true);
+		Show(*Tree.FindWidget(TEXT("CrossBroadcastReason")),!CutChoice && !CutDead && !P.bNarrativeAvailable);
+		for(const auto Name:{TEXT("TheaterDirectExplanationBounds"),TEXT("TheaterAlternativeExplanationBounds")})
+			Find<USizeBox>(Tree,Name)->SetHeightOverride(88.f);
+		for(const auto Name:{TEXT("TheaterNearDirectDiagram"),TEXT("TheaterNearCombinationDiagram")})Show(*Tree.FindWidget(Name),false);
+	}
 	bool HasActionContent=false;
 	for (const auto Name:{TEXT("TheaterPrimaryBounds"),TEXT("TheaterSelectionReturnBounds"),
 		TEXT("TheaterChoices"),TEXT("TheaterRoll"),TEXT("TheaterTacticalEvent")})
@@ -1357,7 +1557,7 @@ void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewMo
 	// lane so a status without a button/reel is centered on its own.
 	Show(*Tree.FindWidget(TEXT("TheaterActionBounds")),HasActionContent);
 	CastChecked<UVerticalBoxSlot>(Status->Slot)->SetPadding(HasActionContent?FMargin(0,4,0,0):FMargin(0));
-	if (P.PrimaryAction.Action.Category==C::RollCrossAttack)
+	if (P.PrimaryAction.Action.Category==C::RollCrossAttack || (Cut && P.PrimaryAction.Action.Category==C::RollCutInsideShotDirectAttack))
 		Find<UTextBlock>(Tree,TEXT("TheaterContinueLabel"))->SetText(LOCTEXT("CrossExecute","实施战术"));
 }
 FFMCodexUMGInlineFormulaRowViewModel ThroughBallContext(const FFMCodexUMGMatchScreenViewModel& Screen,
@@ -1674,8 +1874,9 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	const auto& Defense=ParticipantSurface.DefenseRow;
 	// Narrative success is projected from authoritative winner facts. Do not
 	// compare totals: rapid suppression can legitimately defeat the larger total.
-	RefreshSide(Tree,TEXT("TheaterAttack"),Attack,bFormula,P.bAttackRowActive || (bShotRollOnly && P.bDiceRevealVisible),P.bDiceRevealVisible && P.RollReel.bVisible,bFinal && !bShotRollOnly && P.bNarrativeAttackSuccess,bShotRollOnly);
-	RefreshSide(Tree,TEXT("TheaterDefense"),Defense,bFormula,P.bDefenseRowActive,P.bDiceRevealVisible && P.RollReel.bVisible,bFinal && !bShotRollOnly && !P.bNarrativeAttackSuccess);
+	const bool bCutBaseDetails=Shot.SkillType==ESkillRuleType::CutInsideShot && P.ContestId==TEXT("CutInsideShot.DirectShot");
+	RefreshSide(Tree,TEXT("TheaterAttack"),Attack,bFormula,P.bAttackRowActive || (bShotRollOnly && P.bDiceRevealVisible),P.bDiceRevealVisible && P.RollReel.bVisible,bFinal && !bShotRollOnly && P.bNarrativeAttackSuccess,bShotRollOnly,bCutBaseDetails);
+	RefreshSide(Tree,TEXT("TheaterDefense"),Defense,bFormula,P.bDefenseRowActive,P.bDiceRevealVisible && P.RollReel.bVisible,bFinal && !bShotRollOnly && !P.bNarrativeAttackSuccess,false,bCutBaseDetails);
 	Find<UTextBlock>(Tree,TEXT("TheaterTitle"))->SetText(bDirectShot ? FText::FromString(P.ResolutionContextLabel) : bSetPieceTheater ? (bFinal && (bCornerResolution || Screen.SetPiece.NearMethod!=EMatchPlayShortFreeKickMethod::None || Screen.SetPiece.LongMethod!=EMatchPlayLongFreeKickMethod::None || Screen.SetPiece.PenaltyMethod!=EMatchPlayPenaltyMethod::None)?FText::FromString(P.ResolutionContextLabel):FFMCodexPlayerUIPresentationText::SetPieceName(Screen.SetPiece.Type)) : DisclosedContest==TEXT("Cross.High") ? LOCTEXT("HighCross","高球传中")
 		: DisclosedContest==TEXT("Cross.Low") ? LOCTEXT("LowCross","低球传中") : LOCTEXT("Cross","传中"));
 	auto* Title=Find<UTextBlock>(Tree,TEXT("TheaterTitle"));
