@@ -227,7 +227,7 @@ bool FSceneMethodTest::RunTest(const FString&)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSceneCelebrationTest,"FMCodex.LocalPlay.TacticalScene.LongShotGoalCelebration",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
 bool FSceneCelebrationTest::RunTest(const FString&)
 {
- for(auto Method:{EMethod::Direct,EMethod::DeadCorner,EMethod::CrossHigh})
+ for(auto Method:{EMethod::Direct,EMethod::DeadCorner,EMethod::CrossHigh,EMethod::CrossLow})
  for(auto Outcome:{EOutcome::Goal,EOutcome::ImmediateMiss,EOutcome::DefensiveSuccess})
  {
   FFacts F;F.bActive=true;F.AttackSequence=41;F.Method=Method;
@@ -239,8 +239,8 @@ bool FSceneCelebrationTest::RunTest(const FString&)
   FFMCodexUMGInlineFormulaSurfaceViewModel V;V.bNarrativeAvailable=true;V.AttackRow.FinalValue=12;
   auto Hidden=V;S.Gate(Hidden);TestFalse(TEXT("Existing disclosure gate still owns hidden result"),Hidden.bNarrativeAvailable);
   S.Tick(.02f);
-  const bool Expected=Outcome==EOutcome::Goal && !IsCross(Method);
-  TestEqual(TEXT("Only disclosed LongShot Goal celebrates"),S.Celebration.IsActive(),Expected);
+  const bool Expected=Outcome==EOutcome::Goal;
+  TestEqual(TEXT("Only disclosed Goal celebrates, including both Cross routes"),S.Celebration.IsActive(),Expected);
   TestEqual(TEXT("Celebration starts at original ResultHold boundary"),S.Phase,EPhase::ResultHold);
   S.Gate(V);TestTrue(TEXT("Celebration adds no new result/score gate"),V.bNarrativeAvailable);
   TestEqual(TEXT("Celebration cannot change Formula values"),V.AttackRow.FinalValue,12.f);
@@ -248,10 +248,13 @@ bool FSceneCelebrationTest::RunTest(const FString&)
   TestEqual(TEXT("Duplicate facts never restart celebration"),S.Celebration.Elapsed,Elapsed);
   if(Expected)
   {
+   TestEqual(TEXT("Cross celebration lasts two seconds; other consumers retain original duration"),S.Celebration.PlaybackDuration,IsCross(Method)?2.f:1.5f);
    auto Skipped=S;TestTrue(TEXT("Skip consumes celebration only"),Skipped.Skip());
    TestFalse(TEXT("Skip leaves no stuck overlay"),Skipped.Celebration.IsActive());
    TestFalse(TEXT("Repeated skip cannot continue gameplay"),Skipped.Skip());
-   S.Tick(FMCodexGoalCelebration::Duration);
+   S.Tick(S.Celebration.PlaybackDuration-.02f);
+   TestTrue(TEXT("Celebration remains active until its elapsed duration"),S.Celebration.IsActive());
+   TestTrue(TEXT("Celebration completion requests a surface refresh for the result banner"),S.Tick(.02f));
    TestFalse(TEXT("Celebration exits without input"),S.Celebration.IsActive());
    TestFalse(TEXT("Same result cannot replay completed celebration"),S.Celebration.Start(true));
   }

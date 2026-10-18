@@ -14,6 +14,8 @@
 #include "Components/OverlaySlot.h"
 #include "Components/RichTextBlock.h"
 #include "Engine/Texture2D.h"
+#include "Engine/AssetManager.h"
+#include "Engine/StreamableManager.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Fonts/FontMeasure.h"
 #include "Rendering/DrawElements.h"
@@ -39,6 +41,7 @@ FFacts ProjectCross(const FFMCodexUMGInlineFormulaSurfaceViewModel& View,
  F.bActive=bAllowed && (F.bMethodChoice || (View.bVisible && (F.bRoutePending
   || View.ContestId==TEXT("Cross.High") || View.ContestId==TEXT("Cross.Low"))));
  if(!F.bActive)return F;
+ F.bManualWaiting=!F.bMethodChoice && !F.bRoutePending && !View.bDiceRevealVisible && !View.bNarrativeAvailable;
  F.AttackSequence=Header.AttackSequence;
  // During route reveal retain the player's intent; the displayed Formula
  // switches to the actual route only after the existing route reveal finishes.
@@ -115,12 +118,40 @@ FFacts Project(const FFMCodexUMGLongShotResolutionViewModel& Shot,
   }
  return F;
 }
+void FCrossEntrance::Painted(uint64 Frame,FVector2D Size,bool Ready)
+{
+ if(Frame==LastPaintFrame)return;
+ const bool Stable=Ready && Size.X>1 && Size.Y>1 && Size.Equals(PaintedSize,1.f)
+  && LastPaintFrame!=MAX_uint64 && Frame<=LastPaintFrame+2;
+ StablePaints=Stable?FMath::Min(StablePaints+1,2):Ready?1:0;
+ PaintedSize=Size; LastPaintFrame=Frame;
+}
+bool FCrossEntrance::RecentlyPainted(uint64 Frame) const
+{return StablePaints>=2 && LastPaintFrame!=MAX_uint64 && Frame>=LastPaintFrame && Frame<=LastPaintFrame+2;}
+void FCrossEntrance::Tick(float DeltaSeconds,uint64 Frame)
+{
+ if(!RecentlyPainted(Frame) || DeltaSeconds>.15f) {bStarted=false;return;}
+ if(!bStarted) {bStarted=true;return;}
+ Elapsed=FMath::Min(CrossIntroSeconds+CrossIntroHoldSeconds,Elapsed+FMath::Max(0.f,DeltaSeconds));
+}
+TSharedPtr<FStreamableHandle> PreloadCrossAssets()
+{
+ // Cosmetic, state-independent assets only. Start while the match board is in use.
+ return UAssetManager::GetStreamableManager().RequestAsyncLoad(TArray<FSoftObjectPath>{
+  FSoftObjectPath(TEXT("/Game/UI/TacticalScene/T_CrossBroadcast_Stadium.T_CrossBroadcast_Stadium")),
+  FSoftObjectPath(TEXT("/Game/UI/TacticalScene/T_TacticalScene_Turf.T_TacticalScene_Turf")),
+  FSoftObjectPath(TEXT("/Game/UI/TacticalScene/T_TacticalScene_Ball.T_TacticalScene_Ball")),
+  FSoftObjectPath(TEXT("/Game/UI/MatchShell/T_MatchShell_Stadium.T_MatchShell_Stadium"))});
+}
 void FState::Sync(const FFacts& Next)
 {
- if (!Next.bActive) { Facts=Next; Phase=EPhase::Hidden; Elapsed=0; bEnteredFromPreview=false; Celebration.Reset(); return; }
+ if (!Next.bActive) { Facts=Next; Phase=EPhase::Hidden; Elapsed=0; CrossIdleTime=0; CrossIdleSettle=1; bEnteredFromPreview=false; Celebration.Reset(); return; }
  const bool bWasPreview=Phase==EPhase::Preview;
  const bool bNew=Phase==EPhase::Hidden || Facts.AttackSequence!=Next.AttackSequence || IsCross(Facts.Method)!=IsCross(Next.Method);
- if(bNew)Celebration.Reset();
+ if(bNew) {Celebration.Reset();CrossEntrance={};CrossIdleTime=0;CrossIdleSettle=1;}
+ // Resume a fresh preparation loop after either real die; duplicate safe Views
+ // preserve its clock. On reveal retain the pose and ease into the held pass.
+ if(Next.bManualWaiting && !Facts.bManualWaiting)CrossIdleTime=0;
  Facts=Next;
  if(Facts.bMethodChoice || Facts.bRoutePending)
  {
@@ -144,6 +175,36 @@ void FState::Sync(const FFacts& Next)
 }
 bool FState::IsAnimating() const
 { return Phase==EPhase::Setup || Phase==EPhase::Intent || Phase==EPhase::Outcome; }
+bool FState::IsCrossIdle() const
+{return Facts.bActive && IsCross(Facts.Method) && Facts.bManualWaiting && Facts.Outcome==EOutcome::None && Phase==EPhase::FormulaHold;}
+float FState::CrossIdleBreath() const
+{return IsCrossIdle()?.5f-.5f*FMath::Cos(CrossIdleTime*2*PI/CrossIdleCycleSeconds):0.f;}
+float FState::CrossIdleDashOffset() const
+{
+ // Six dash periods per cycle (28 design units/sec), not the previous nearly
+ // imperceptible one period in three seconds. This moves the guide, never a ball.
+ return IsCrossIdle()?84.f*(1.f-CrossIdleTime/CrossIdleCycleSeconds):0.f;
+}
+float FState::CrossWaitingMotion() const
+{
+ const float Rehearsal=.5f+.5f*FMath::Cos(CrossIdleTime*2*PI/CrossIdleCycleSeconds);
+ return FMath::Lerp(Rehearsal,1.f,CrossIdleSettle);
+}
+float FState::CrossWaitingDelivery() const
+{
+ // Replay only the original attempted delivery. Reset the ball while invisible,
+ // never run it backwards or reach the receiving contest before disclosure.
+ const float Delivery=CrossIdleTime<.8f?1.f:FMath::Clamp((CrossIdleTime-1.f)/1.6f
+  *FMath::Lerp(1.f,1.4f,CrossLowBlend),0.f,1.f);
+ return FMath::Lerp(Delivery,1.f,CrossIdleSettle);
+}
+float FState::CrossWaitingBallOpacity() const
+{
+ if(Phase!=EPhase::FormulaHold)return 1.f;
+ const float Opacity=CrossIdleTime<.8f?1.f-FMath::Clamp((CrossIdleTime-.55f)/.25f,0.f,1.f)
+  :FMath::Clamp((CrossIdleTime-.8f)/.25f,0.f,1.f);
+ return FMath::Lerp(Opacity,1.f,CrossIdleSettle);
+}
 float FState::Progress() const
 {
  const float Duration=PhaseSeconds();
@@ -179,11 +240,16 @@ bool FState::Skip()
 bool FState::Tick(float DeltaSeconds)
 {
  const float Delta=FMath::Max(0.f,DeltaSeconds);
+ if(Facts.bActive && IsCross(Facts.Method))CrossEntrance.Tick(Delta,GFrameCounter);
+ const bool WasCelebrating=Celebration.IsActive();
  Celebration.Tick(Delta);
+ const bool CelebrationFinished=WasCelebrating && !Celebration.IsActive();
  PulseTime+=Delta;
+ if(IsCrossIdle()) {CrossIdleTime=FMath::Fmod(CrossIdleTime+Delta,CrossIdleCycleSeconds);CrossIdleSettle=0;}
+ else CrossIdleSettle=FMath::Min(1.f,CrossIdleSettle+Delta/.25f);
  CornerBlend=FMath::FInterpConstantTo(CornerBlend,PreviewMethod==EMethod::DeadCorner?1.f:0.f,Delta,1.f/PreviewTransitionSeconds);
  CrossLowBlend=FMath::FInterpConstantTo(CrossLowBlend,PreviewMethod==EMethod::CrossLow?1.f:0.f,Delta,1.f/.15f);
- if (!IsAnimating()) return false;
+ if (!IsAnimating()) return CelebrationFinished;
  Elapsed+=Delta;
  bool Changed=false;
  // Carry actual elapsed time across adjacent spatial beats; never carry into
@@ -192,11 +258,11 @@ bool FState::Tick(float DeltaSeconds)
  {
   const float Duration=PhaseSeconds();
   const float Remainder=FMath::Max(0.f,Elapsed-Duration);
-  const bool GoalArrived=Phase==EPhase::Outcome && Facts.Outcome==EOutcome::Goal && !IsCross(Facts.Method);
+  const bool GoalArrived=Phase==EPhase::Outcome && Facts.Outcome==EOutcome::Goal;
   Skip(); Changed=true;
   // ResultHold is the existing score/narrative disclosure boundary. A reopened
   // result never enters here; duplicate views cannot replay the celebration.
-  if(GoalArrived) {Celebration.Start(true);Celebration.Tick(Remainder);}
+  if(GoalArrived) {Celebration.Start(true,IsCross(Facts.Method)?FMCodexGoalCelebration::CrossDuration:FMCodexGoalCelebration::Duration);Celebration.Tick(Remainder);}
   if(IsAnimating()) Elapsed=Remainder;
  }
  return Changed;
@@ -227,12 +293,20 @@ FVector2D OutcomeTarget(EOutcome Outcome,EMethod Method)
   return CrossReceiveZone(Method==EMethod::CrossLow?1.f:0.f)+FVector2D(-140,65);
  if(Outcome==EOutcome::ImmediateMiss) return FVector2D(1290,75);
  if(Outcome==EOutcome::DefensiveSuccess) return Method==EMethod::DeadCorner?FVector2D(1350,180):FVector2D(1010,350);
- return Method==EMethod::DeadCorner?CornerAnchor:GoalAnchor;
+ return IsCross(Method)?CrossGoalAnchor:Method==EMethod::DeadCorner?CornerAnchor:GoalAnchor;
 }
-FVector2D CrossReceiveZone(float LowBlend) {return FMath::Lerp(FVector2D(940,240),FVector2D(855,282),LowBlend);}
-FVector2D CrossDeliveryControl(float LowBlend) {return FMath::Lerp(FVector2D(875,-45),FVector2D(920,174),LowBlend);}
+FVector2D CrossReceiveZone(float LowBlend) {return FMath::Lerp(FVector2D(770,365),FVector2D(745,400),LowBlend);}
+FVector2D CrossDeliveryControl(float LowBlend) {return FMath::Lerp(FVector2D(540,-30),FVector2D(900,440),LowBlend);}
 FVector2D CrossBallStart(const FState& State)
 {return CrossParticipantAnchor(State,EMatchPlayResolutionParticipantRole::Carrier)+FVector2D(FMath::Lerp(48.f,-48.f,State.CrossLowBlend),21);}
+FVector2D CrossIntentBall(const FState& State)
+{
+ const auto Start=CrossBallStart(State),Control=CrossDeliveryControl(State.CrossLowBlend),Zone=CrossReceiveZone(State.CrossLowBlend);
+ const float Progress=State.Phase==EPhase::Intent?FMath::Min(1.f,State.Progress()*FMath::Lerp(1.f,1.4f,State.CrossLowBlend))
+  :State.Phase==EPhase::FormulaHold?State.CrossWaitingDelivery():0.f;
+ const float T=CrossPendingDelivery*Progress;
+ return FMath::Lerp(FMath::Lerp(Start,Control,T),FMath::Lerp(Control,Zone,T),T);
+}
 FVector2D CrossOutcomeBall(const FState& State,float Flight)
 {
  const auto Start=CrossBallStart(State);
@@ -242,7 +316,9 @@ FVector2D CrossOutcomeBall(const FState& State,float Flight)
  const float T=FMath::Clamp(Flight,0.f,1.f);
  auto Bezier=[](FVector2D A,FVector2D C,FVector2D B,float U)
  {return FMath::Lerp(FMath::Lerp(A,C,U),FMath::Lerp(C,B,U),U);};
- if(T<CrossDeliveryFraction)return Bezier(Start,CrossDeliveryControl(State.CrossLowBlend),Zone,T/CrossDeliveryFraction);
+ // Continue the attempted delivery already shown before the manual dice.
+ // Only this disclosed outcome phase reaches/passes the receiving zone.
+ if(T<CrossDeliveryFraction)return Bezier(Start,CrossDeliveryControl(State.CrossLowBlend),Zone,FMath::Lerp(CrossPendingDelivery*State.CrossWaitingDelivery(),1.f,T/CrossDeliveryFraction));
  const float Finish=(T-CrossDeliveryFraction)/(1.f-CrossDeliveryFraction);
  // Both outcomes first reach the contest/receiving area. An aggregate Miss
  // loses the clean attacking continuation, without selecting an interceptor.
@@ -256,19 +332,22 @@ FVector2D CrossParticipantAnchor(const FState& State,EMatchPlayResolutionPartici
  // tokens interpolate between High positioning and Low acceleration in 150ms.
  const float Motion=State.Phase==EPhase::Preview?.5f-.5f*FMath::Cos(State.PulseTime*2.f)
   :State.Phase==EPhase::Setup?State.CrossEntryMotion
-  :State.Phase==EPhase::Intent?FMath::Lerp(State.CrossEntryMotion,1.f,State.Progress()):1.f;
+  :State.Phase==EPhase::Intent?FMath::Lerp(State.CrossEntryMotion,1.f,State.Progress())
+  :State.Phase==EPhase::FormulaHold || State.Phase==EPhase::Outcome?State.CrossWaitingMotion():1.f;
  const float Smooth=Motion*Motion*(3-2*Motion);
  const float Low=State.CrossLowBlend;
  if(Role==R::Carrier)return FMath::Lerp(CrossCarrierWideAnchor,CrossCarrierBylineAnchor,Low);
- if(Role==R::Marker)return FMath::Lerp(FVector2D(750-Smooth*15,130-Smooth*8),
-  FVector2D(800+Smooth*20,116-Smooth*17),Low);
- if(Role==R::Goalkeeper)return FVector2D(1100,108);
+ // Mark the crosser, not a fixed goalmouth coordinate. Keep a readable lane
+ // between their portrait/name plates and the ball for either public route.
+ if(Role==R::Marker)return CrossParticipantAnchor(State,R::Carrier)+FMath::Lerp(
+  FVector2D(154-Smooth*16,70-Smooth*6),FVector2D(-126+Smooth*16,-124),Low);
+ if(Role==R::Goalkeeper)return FVector2D(1128,249);
  if(Role==R::Runner)
-  return FMath::Lerp(FMath::Lerp(FVector2D(795,200),FVector2D(850,175),Smooth),
-   FMath::Lerp(FVector2D(640,240),FVector2D(780,242),Motion*Motion),Low);
+  return FMath::Lerp(FMath::Lerp(FVector2D(600,325),FVector2D(668,303),Smooth),
+   FMath::Lerp(FVector2D(560,400),FVector2D(665,372),Motion*Motion),Low);
  if(Role==R::Helper)
-  return FMath::Lerp(FMath::Lerp(FVector2D(1060,292),FVector2D(1020,240),Smooth),
-   FMath::Lerp(FVector2D(1025,299),FVector2D(940,264),FMath::Pow(Motion,1.5f)),Low);
+  return FMath::Lerp(FMath::Lerp(FVector2D(940,375),FVector2D(896,340),Smooth),
+   FMath::Lerp(FVector2D(850,300),FVector2D(800,305),FMath::Pow(Motion,1.5f)),Low);
  return FVector2D::ZeroVector;
 }
 bool HasLongShotDefensivePressure(const FState& State)
@@ -320,8 +399,14 @@ FVector2D LongShotOutcomeBall(const FState& State,float Flight)
   :State.Facts.Outcome==EOutcome::ImmediateMiss?FVector2D(760,58):FVector2D(760,170);
  return Curve(Start,Control,End,T);
 }
-bool IsInsideGoal(FVector2D Point)
+bool IsInsideGoal(FVector2D Point,EMethod Method)
 {
+ if(IsCross(Method))
+ {
+  const float U=(Point.X-1062.f)/219.f;
+  const float Top=146.f+49.f*U;
+  return U>.08f && U<.92f && Point.Y>Top+12.f && Point.Y<Top+120.f;
+ }
  // Visible mouth, with a ball-radius margin from either post and crossbar.
  const float U=(Point.X-1092.f)/178.f;
  const float Top=67.f+96.f*U;
@@ -372,9 +457,17 @@ public:
   BallBrush.SetUVRegion(FBox2f(FVector2f::ZeroVector,FVector2f(SceneArtUV,SceneArtUV)));
   CrowdBrush.SetResourceObject(StadiumTexture.Get());
  }
+ void WarmCross()
+ {
+  if(CrossStadium.IsValid())return;
+  CrossStadium.Reset(LoadObject<UTexture2D>(nullptr,TEXT("/Game/UI/TacticalScene/T_CrossBroadcast_Stadium.T_CrossBroadcast_Stadium")));
+  CrossBackdrop.SetResourceObject(CrossStadium.Get());
+  CrossBackdrop.ImageSize=FVector2D(1967,799); // Authored plate ratio, including during async compilation.
+ }
  void Refresh(FState& InState,const FSlateBrush& InTurf,TFunction<void()> InSkip)
  {
   State=&InState; Skip=MoveTemp(InSkip); Turf=InTurf;
+  if(IsCross(State->Facts.Method))WarmCross();
   if(SceneTurf.IsValid()) {Turf.SetResourceObject(SceneTurf.Get());Turf.TintColor=FLinearColor::White;}
   // At most five cached portraits. No per-frame asset loading or participant widgets.
   for (int32 I=0;I<5;++I)
@@ -391,7 +484,7 @@ public:
   }
   Invalidate(EInvalidateWidgetReason::Paint);
  }
- FVector2D ComputeDesiredSize(float) const override { return FVector2D(1324,State && !IsCross(State->Facts.Method)?380:400); }
+ FVector2D ComputeDesiredSize(float) const override { return FVector2D(1324,State && !IsCross(State->Facts.Method)?380:579.25); }
  bool SupportsKeyboardFocus() const override { return true; }
  FReply OnMouseButtonDown(const FGeometry&,const FPointerEvent& E) override
  {
@@ -411,8 +504,27 @@ public:
   if (!State || !State->Facts.bActive) return Layer;
   const float Scale=Geometry.GetLocalSize().X/1324.f;
   const bool bLongShot=!IsCross(State->Facts.Method);
-  const float Height=bLongShot?380.f:400.f;
-  const FGeometry G=Geometry.MakeChild(FVector2D(1324,Height),FSlateLayoutTransform(Scale));
+  const float Height=bLongShot?380.f:float(Geometry.GetLocalSize().Y/Scale);
+  // Reframe positions, never stretch portraits, labels, ball or stadium pixels.
+  const auto CrossPoint=[&](FVector2D P){return FVector2D(P.X,P.Y*Height/579.25f);};
+  if(!bLongShot)
+  {
+   auto Ready=[](const UTexture2D* T)
+   {
+    // Missing art uses the existing neutral fallback; compiling art waits.
+    if(!T)return true;
+    if(!T->GetResource())return false;
+#if WITH_EDITOR
+    if(T->IsCompiling())return false;
+#endif
+    return true;
+   };
+   bool AssetsReady=Ready(CrossStadium.Get()) && Ready(BallTexture.Get());
+   for(int32 I=0;I<State->Facts.Participants.Num() && I<5;++I)AssetsReady &= Ready(Portraits[I].Get());
+   State->CrossEntrance.Painted(GFrameCounter,Geometry.GetLocalSize(),AssetsReady);
+  }
+  const FGeometry G=Geometry.MakeChild(FVector2D(1324,Height),
+   FSlateLayoutTransform(Scale));
   auto Line=[&](const TArray<FVector2D>& P,FLinearColor C,float W=1.f,int Offset=2)
   { FSlateDrawElement::MakeLines(Out,Layer+Offset,G.ToPaintGeometry(),P,ESlateDrawEffect::None,C,true,W); };
   auto Box=[&](FVector2D P,FVector2D Size,const FSlateBrush& Brush,FLinearColor C)
@@ -437,6 +549,19 @@ public:
    for(int I=1;I+1<V.Num();++I){IX.Add(0);IX.Add(I);IX.Add(I+1);}
    FSlateDrawElement::MakeCustomVerts(Out,Layer+Offset,FSlateApplication::Get().GetRenderer()->GetResourceHandle(Solid),V,IX,nullptr,0,0);
   };
+  const float Progress=State->Progress();
+  const bool bCross=IsCross(State->Facts.Method);
+  const bool bOutcome=State->Phase==EPhase::Outcome || State->Phase==EPhase::ResultHold;
+  // Each family owns its action budget; both settle before the final visual hold.
+  const float ActionProgress=State->OutcomeActionProgress();
+  const float Travel=State->Phase==EPhase::ResultHold?1.f:
+   State->Phase==EPhase::Outcome?(bCross?FMath::Clamp(ActionProgress/CrossArrivalFraction,0.f,1.f):FMath::Clamp((ActionProgress-.075f)/.725f,0.f,1.f)):0.f;
+  const float Flight=bCross?Travel:1.f-FMath::Pow(1.f-Travel,1.2f);
+  const float Contact=State->Phase==EPhase::Outcome?(bCross
+   ?FMath::Clamp((ActionProgress-CrossArrivalFraction)/(1.f-CrossArrivalFraction),0.f,1.f)
+   :FMath::Clamp((ActionProgress-.80f)/.20f,0.f,1.f)):0.f;
+  if(bLongShot || !CrossStadium.IsValid())
+  {
   // A level far touchline opens the penalty area into a compact tactical
   // overview. LongShot keeps this same frame through selection and resolution.
   const FVector2D FarLeft(-200,bLongShot?45:145),FarRight(900,bLongShot?35:50),
@@ -605,17 +730,6 @@ public:
   Poly({BL,BR,BR+Depth,BL+Depth},Color(7,18,22,72),1);
   Poly({TL+Depth,TR+Depth,BR+Depth,BL+Depth},Color(123,156,157,14),1);
   Poly({TL,TR,TR+Depth,TL+Depth},Color(179,194,191,12),1);
-  const float Progress=State->Progress();
-  const bool bCross=IsCross(State->Facts.Method);
-  const bool bOutcome=State->Phase==EPhase::Outcome || State->Phase==EPhase::ResultHold;
-  // Each family owns its action budget; both settle before the final visual hold.
-  const float ActionProgress=State->OutcomeActionProgress();
-  const float Travel=State->Phase==EPhase::ResultHold?1.f:
-   State->Phase==EPhase::Outcome?(bCross?FMath::Clamp(ActionProgress/CrossArrivalFraction,0.f,1.f):FMath::Clamp((ActionProgress-.075f)/.725f,0.f,1.f)):0.f;
-  const float Flight=bCross?Travel:1.f-FMath::Pow(1.f-Travel,1.2f);
-  const float Contact=State->Phase==EPhase::Outcome?(bCross
-   ?FMath::Clamp((ActionProgress-CrossArrivalFraction)/(1.f-CrossArrivalFraction),0.f,1.f)
-   :FMath::Clamp((ActionProgress-.80f)/.20f,0.f,1.f)):0.f;
   const float NetPulse=State->Phase==EPhase::Outcome && State->Facts.Outcome==EOutcome::Goal
    ?FMath::Sin(Contact*PI):0.f;
   const auto NetInk=Color(173,191,192).CopyWithNewOpacity(.24f+NetPulse*.16f);
@@ -647,21 +761,33 @@ public:
   Line({BL+FVector2D(1.6,2),TL+FVector2D(1.6,2),TR+FVector2D(1.6,2),BR+FVector2D(1.6,2)},Color(3,12,18,180),7.f);
   Line({BL,TL,TR,BR},Color(163,184,188),5.f);
   Line({BL-FVector2D(.7,.7),TL-FVector2D(.7,.7),TR-FVector2D(.7,.7),BR-FVector2D(.7,.7)},Color(211,227,225),2.f);
-  const float Intent=State->Phase==EPhase::Preview || State->bEnteredFromPreview?1.f:
+  }
+  else
+  {
+   // Static environment only. All participants, ball and disclosure remain live.
+   const FVector2D Source=CrossBackdrop.ImageSize;
+   const float Cover=FMath::Max(1324.f/float(Source.X),Height/float(Source.Y));
+   const FVector2D Plate=Source*Cover;
+   // Right anchored crop keeps the complete goal; surplus left grass/crowd may crop.
+   FSlateDrawElement::MakeBox(Out,Layer,G.ToPaintGeometry(Plate,FSlateLayoutTransform(FVector2D(1324-Plate.X,(Height-Plate.Y)*.5f))),
+    &CrossBackdrop,ESlateDrawEffect::None,FLinearColor::White);
+  }
+  float Intent=State->Phase==EPhase::Preview || State->bEnteredFromPreview?1.f:
    State->Phase==EPhase::Setup?0.f:State->Phase==EPhase::Intent?Progress:1.f;
-  auto RoleAnchor=[&](R Role){return bCross?CrossParticipantAnchor(*State,Role):LongShotParticipantAnchor(*State,Role);};
+  if(bCross && !bOutcome)Intent*=.2f+.8f*State->CrossEntrance.Progress();
+  auto RoleAnchor=[&](R Role){return bCross?CrossPoint(CrossParticipantAnchor(*State,Role)):LongShotParticipantAnchor(*State,Role);};
   // At the byline keep the ball on the pitch-facing side of the portrait;
   // the LongShot/right-side boot offset would put it beyond the goal line.
-  const FVector2D BallStart=bCross?CrossBallStart(*State):RoleAnchor(R::Carrier)+FVector2D(48,21);
-  const FVector2D PreviewTarget=bCross?CrossReceiveZone(State->CrossLowBlend):FMath::Lerp(GoalAnchor,CornerAnchor,State->CornerBlend);
-  const FVector2D Target=bOutcome?OutcomeTarget(State->Facts.Outcome,State->Facts.Method):PreviewTarget;
-  const FVector2D Control=bCross?CrossDeliveryControl(State->CrossLowBlend)
+  const FVector2D BallStart=bCross?CrossPoint(CrossBallStart(*State)):RoleAnchor(R::Carrier)+FVector2D(48,21);
+  const FVector2D PreviewTarget=bCross?CrossPoint(CrossReceiveZone(State->CrossLowBlend)):FMath::Lerp(GoalAnchor,CornerAnchor,State->CornerBlend);
+  const FVector2D Target=bOutcome?(bCross?CrossPoint(OutcomeTarget(State->Facts.Outcome,State->Facts.Method)):OutcomeTarget(State->Facts.Outcome,State->Facts.Method)):PreviewTarget;
+  const FVector2D Control=bCross?CrossPoint(CrossDeliveryControl(State->CrossLowBlend))
    :LongShotAimControl(*State);
   auto Path=[&](float T,FVector2D End)
   {return FMath::Lerp(FMath::Lerp(BallStart,Control,T),FMath::Lerp(Control,End,T),T);};
   auto Curve=[&](float T)
   {
-   if(bCross && bOutcome)return CrossOutcomeBall(*State,T);
+   if(bCross && bOutcome)return CrossPoint(CrossOutcomeBall(*State,T));
    if(!bCross && bOutcome)return LongShotOutcomeBall(*State,T);
    return Path(T,Target);
   };
@@ -670,14 +796,19 @@ public:
    const float Low=State->CrossLowBlend;
    // High: both roles converge on one landing area. Low: the receiver arrives
    // into a cutback while the helper closes from the goal side, not a depth race.
+   const float Breath=State->CrossIdleBreath();
    TArray<FVector2D> Landing;
-   for(int I=0;I<=48;++I){float A=2*PI*I/48;Landing.Add(PreviewTarget+FVector2D(FMath::Cos(A)*47,FMath::Sin(A)*18));}
-   Line(Landing,Mint().CopyWithNewOpacity((1-Low)*.46f),1.5f);
+   for(int I=0;I<=48;++I){float A=2*PI*I/48;Landing.Add(PreviewTarget+FVector2D(FMath::Cos(A)*(47+7*Breath),FMath::Sin(A)*(18+3*Breath)));}
+   Line(Landing,Mint().CopyWithNewOpacity(FMath::Lerp(.45f,.82f,Breath)),1.8f);
    for(const auto& P:State->Facts.Participants)
    {
     if(P.Role!=R::Runner && P.Role!=R::Helper)continue;
     const auto C=RoleAnchor(P.Role)+FVector2D(0,32);
-    Line({C,FMath::Lerp(C,PreviewTarget,.7f)},P.Accent.CopyWithNewOpacity((1-Low)*.25f),2.f);
+    const auto GuideEnd=FMath::Lerp(C,PreviewTarget,.7f);
+    Line({C,GuideEnd},P.Accent.CopyWithNewOpacity((1-Low)*.68f),2.f);
+    const auto GuideDir=(GuideEnd-C).GetSafeNormal();
+    const FVector2D GuideNormal(-GuideDir.Y,GuideDir.X);
+    Poly({GuideEnd,GuideEnd-GuideDir*12+GuideNormal*5,GuideEnd-GuideDir*8,GuideEnd-GuideDir*12-GuideNormal*5},P.Accent.CopyWithNewOpacity((1-Low)*.8f),3);
     const auto Direction=(PreviewTarget-C).GetSafeNormal();
     const FVector2D Normal(-Direction.Y,Direction.X);
     for(int I=0;I<3;++I)
@@ -687,7 +818,7 @@ public:
   }
   // Keep the intended route stable through the roll. Never replace it with a
   // complete failure trajectory before the ball has actually travelled there.
-  const float IntentOpacity=bOutcome?FMath::Max(0.f,1.f-Progress*4.f):State->Phase==EPhase::FormulaHold?.38f:1.f;
+  const float IntentOpacity=bOutcome?FMath::Max(0.f,1.f-Progress*4.f):State->Phase==EPhase::FormulaHold?(bCross?.95f:.38f):1.f;
   if (Intent>0 && IntentOpacity>0)
   {
    // Arc-length spacing, not equal Bezier parameters: short dashes keep a
@@ -701,15 +832,16 @@ public:
     float Along=0;
     while(Along<Length-KINDA_SMALL_NUMBER)
     {
-     const float InPeriod=FMath::Fmod(Distance+Along,DashPeriod);
+     const float Drift=bCross?State->CrossIdleDashOffset():0.f;
+     const float InPeriod=FMath::Fmod(Distance+Along+Drift,DashPeriod);
      const bool Visible=InPeriod<DashLength;
      const float Take=FMath::Min(Length-Along,FMath::Max(.001f,(Visible?DashLength:DashPeriod)-InPeriod));
      if(Visible)
      {
       StrokeSegment[0]=FMath::Lerp(A,B,Along/Length);StrokeSegment[1]=FMath::Lerp(A,B,(Along+Take)/Length);
       Line(StrokeSegment,Mint().CopyWithNewOpacity(.06f*IntentOpacity),5.f);
-      Line(StrokeSegment,Mint().CopyWithNewOpacity(.78f*IntentOpacity),1.8f);
-      Line(StrokeSegment,Color(201,255,244).CopyWithNewOpacity(.45f*IntentOpacity),.65f);
+      Line(StrokeSegment,Mint().CopyWithNewOpacity((bCross?1.f:.78f)*IntentOpacity),bCross?2.6f:1.8f);
+      Line(StrokeSegment,Color(201,255,244).CopyWithNewOpacity((bCross?.9f:.45f)*IntentOpacity),bCross?1.1f:.65f);
      }
      Along+=Take;
     }
@@ -772,7 +904,7 @@ public:
     && (P.Role==State->Facts.Highlight || (P.Role==R::Goalkeeper && State->Facts.Highlight==R::Marker)
      || (bCross && ((P.Role==R::Runner && State->Facts.Highlight==R::Carrier)
       || (P.Role==R::Helper && State->Facts.Highlight==R::Marker))));
-   const float Pulse=Linked?.18f+.10f*FMath::Sin(State->PulseTime*4.f):0.f;
+   const float Pulse=Linked? (bCross?.14f+.18f*State->CrossIdleBreath():.18f+.10f*FMath::Sin(State->PulseTime*4.f)):0.f;
    const float Context=!bCross && P.Role==R::Marker?1.f-State->CornerBlend*.65f:1.f;
    const float Emphasis=(P.Role==R::Goalkeeper && !P.bFormulaActive?.45f:1.f)*Context;
    TArray<FVector2D> GroundRing;
@@ -804,14 +936,16 @@ public:
    Box(C+FVector2D(-32,69),FVector2D(64,23),RolePlaque,FLinearColor::White.CopyWithNewOpacity(Fade));
    Label(RoleText(P.Role),C+FVector2D(0,80),14,Text().CopyWithNewOpacity(Fade));
   }
-  const FVector2D Ball=Flight>0?Curve(Flight):BallStart;
+  const FVector2D Ball=bCross?CrossPoint(bOutcome?CrossOutcomeBall(*State,Flight):CrossIntentBall(*State))
+   :Flight>0?Curve(Flight):BallStart;
+  const float BallOpacity=bCross?State->CrossWaitingBallOpacity():1.f;
   const float Lift=Flight>0?FMath::Sin(Flight*PI)*(bCross?FMath::Lerp(2.5f,.12f,State->CrossLowBlend):1.f):0.f;
   const FVector2D Shadow=Ball+FVector2D(1,8+Lift*17);
   for(int Ring=3;Ring>0;--Ring)
   {
    TArray<FVector2D> Ellipse;
    for(int I=0;I<32;++I){const float A=2*PI*I/32;Ellipse.Add(Shadow+FVector2D(FMath::Cos(A)*(7+Ring*2),FMath::Sin(A)*(2+Ring)));}
-   Poly(Ellipse,Color(1,8,12,uint8(22*(1-Lift*.4f))),3);
+   Poly(Ellipse,Color(1,8,12,uint8(22*(1-Lift*.4f)*BallOpacity)),3);
   }
   if(BallTexture.IsValid())
   {
@@ -819,10 +953,10 @@ public:
    const FVector2D Size(Diameter,Diameter);
    const auto BallGeometry=G.MakeChild(Size,FSlateLayoutTransform(Ball-Size*.5f),
     FSlateRenderTransform(FQuat2D(Flight*PI*2.6f)),FVector2D(.5,.5));
-   FSlateDrawElement::MakeBox(Out,Layer+6,BallGeometry.ToPaintGeometry(),&BallBrush,ESlateDrawEffect::None,FLinearColor::White);
+   FSlateDrawElement::MakeBox(Out,Layer+6,BallGeometry.ToPaintGeometry(),&BallBrush,ESlateDrawEffect::None,FLinearColor::White.CopyWithNewOpacity(BallOpacity));
   }
   else
-   Circle(Ball,6,Text(),8);
+   Circle(Ball,6,Text().CopyWithNewOpacity(BallOpacity),8);
   if((State->Phase==EPhase::ResultHold || State->IsOutcomeVisualHold()) && State->Facts.Outcome==EOutcome::Goal)
    Circle(Target,16,Mint().CopyWithNewOpacity(.35f),1.5f);
   // Acceleration remains on click/Space; commercial playback has no persistent hint.
@@ -832,9 +966,26 @@ private:
  FState* State=nullptr;
  mutable TArray<FVector2D> StrokeSegment; // Reuse line storage across preview/flight paints.
  TFunction<void()> Skip;
- FSlateBrush Turf,BallBrush,CrowdBrush,Brushes[5]; FName Ids[5];
- TStrongObjectPtr<UTexture2D> Portraits[5],SceneTurf,BallTexture,StadiumTexture;
+ FSlateBrush Turf,BallBrush,CrowdBrush,CrossBackdrop,Brushes[5]; FName Ids[5];
+ TStrongObjectPtr<UTexture2D> Portraits[5],SceneTurf,BallTexture,StadiumTexture,CrossStadium;
 };
+}
+void WarmCrossSurface(UWidgetTree& Tree)
+{
+ auto* Host=Cast<UNativeWidgetHost>(Tree.FindWidget(TEXT("TacticalScene")));
+ if(!Host)return;
+ if(!Host->GetContent().IsValid())Host->SetContent(SNew(SScene));
+ StaticCastSharedPtr<SScene>(Host->GetContent())->WarmCross();
+}
+void AnimateCrossEntrance(UWidgetTree& Tree,const FState& State)
+{
+ if(!State.Facts.bActive || !IsCross(State.Facts.Method))return;
+ const float A=1.f-FMath::Pow(1.f-State.CrossEntrance.Progress(),3.f);
+ auto* Header=Tree.FindWidget(TEXT("CrossBroadcastHeader"));
+ auto* Band=Tree.FindWidget(TEXT("CrossBroadcastRow"));
+ if(!Header || !Band)return;
+ Header->SetRenderOpacity(.65f+.35f*A); Header->SetRenderTranslation(FVector2D(0,4*(1-A)));
+ Band->SetRenderOpacity(.8f+.2f*A); Band->SetRenderTranslation(FVector2D(0,6*(1-A)));
 }
 void RefreshSurface(UWidgetTree& Tree,FState& State,TFunction<void()> Skip)
 {
@@ -844,6 +995,7 @@ void RefreshSurface(UWidgetTree& Tree,FState& State,TFunction<void()> Skip)
  Tree.FindWidget(TEXT("TheaterSpatialLane"))->SetVisibility(Active?ESlateVisibility::SelfHitTestInvisible:ESlateVisibility::Collapsed);
  auto* Bounds=CastChecked<USizeBox>(Tree.FindWidget(TEXT("TacticalSceneBounds")));
  const bool LongShot=Active && !IsCross(State.Facts.Method);
+ const bool Cross=Active && !LongShot;
  // Ground may continue beneath the later-painted controls. Keep the
  // scene's layout/hit area unchanged; the Theater root still clips to its bounds.
  Host->SetClipping(LongShot?EWidgetClipping::Inherit:EWidgetClipping::ClipToBounds);
@@ -856,14 +1008,15 @@ void RefreshSurface(UWidgetTree& Tree,FState& State,TFunction<void()> Skip)
  }
  for(const auto Name:{TEXT("TheaterDirectExplanationBounds"),TEXT("TheaterAlternativeExplanationBounds")})
   CastChecked<USizeBox>(Tree.FindWidget(Name))->SetWidthOverride(MethodChoice?448.f:410.f);
- Bounds->SetHeightOverride(LongShot?380.f:400.f);
- CastChecked<USizeBox>(Tree.FindWidget(TEXT("TheaterSpatialLane")))->SetHeightOverride(LongShot?340.f:360.f);
+ Bounds->SetWidthOverride(Active && !LongShot?1600.f:1324.f);
+ Bounds->SetHeightOverride(LongShot?380.f:700.f);
+ CastChecked<USizeBox>(Tree.FindWidget(TEXT("TheaterSpatialLane")))->SetHeightOverride(LongShot?340.f:700.f);
  auto* SpatialReserve=CastChecked<USizeBox>(Tree.FindWidget(TEXT("TheaterSpatialReserve")));
  // Lift the LongShot roll stack, preserving its fit scale and pitch origin.
  // Outcome playback retains the accepted space for the low failed-shot endpoint.
  const bool RollPhase=State.Phase==EPhase::Setup || State.Phase==EPhase::Intent || State.Phase==EPhase::FormulaHold;
  const float StackLift=LongShot && RollPhase?24.f:0.f;
- SpatialReserve->SetHeightOverride((LongShot?340.f:360.f)-StackLift);
+ SpatialReserve->SetHeightOverride((LongShot?340.f:700.f)-StackLift);
  SpatialReserve->SetVisibility(Active?ESlateVisibility::HitTestInvisible:ESlateVisibility::Collapsed);
  Bounds->SetVisibility(Active?ESlateVisibility::Visible:ESlateVisibility::Collapsed);
  if (Active)
@@ -875,7 +1028,8 @@ void RefreshSurface(UWidgetTree& Tree,FState& State,TFunction<void()> Skip)
   StaticCastSharedPtr<SScene>(Host->GetContent())->Refresh(State,Turf,MoveTemp(Skip));
  }
  auto* Top=CastChecked<USizeBox>(Tree.FindWidget(TEXT("TheaterTopBounds")));
- Top->SetHeightOverride(LongShot?124.f:Active?144.f:178.f);
+ Top->SetHeightOverride(LongShot?124.f:Active?100.f:178.f);
+ Top->SetVisibility(Cross?ESlateVisibility::Collapsed:ESlateVisibility::SelfHitTestInvisible);
  auto* Center=CastChecked<USizeBox>(Tree.FindWidget(TEXT("TheaterCenterBounds")));
  CastChecked<UOverlaySlot>(Tree.FindWidget(TEXT("TheaterCompositionFit"))->Slot)->SetPadding(FMargin(0,0,0,StackLift));
  Center->ClearHeightOverride();
@@ -888,19 +1042,18 @@ void RefreshSurface(UWidgetTree& Tree,FState& State,TFunction<void()> Skip)
   CastChecked<UOverlaySlot>(Fit->Slot)->SetVerticalAlignment(VAlign_Fill);
   auto* Title=CastChecked<UTextBlock>(Tree.FindWidget(TEXT("TheaterTitle")));
   const bool Final=State.Phase==EPhase::ResultHold;
-  const bool Cross=IsCross(State.Facts.Method);
   const FText Method=Cross?(State.PreviewMethod==EMethod::CrossLow?NSLOCTEXT("TacticalScene","Low","低球传中"):NSLOCTEXT("TacticalScene","High","高球传中"))
    :State.Facts.Method==EMethod::DeadCorner?NSLOCTEXT("TacticalScene","Corner","射向死角"):NSLOCTEXT("TacticalScene","Method","直接射门");
   auto TitleFont=Title->GetFont(); TitleFont.Size=Final?20:38; Title->SetFont(TitleFont);
-  Title->SetText(Cross?(Final || (!State.Facts.bMethodChoice && !State.Facts.bRoutePending)?Method:Title->GetText())
+  Title->SetText(Cross?(!State.Facts.bMethodChoice?Method:Title->GetText())
    :Final?FText::Format(NSLOCTEXT("TacticalScene","Identity","远射 · {0}"),Method):NSLOCTEXT("TacticalScene","Title","远射"));
   if(!Cross || !State.Facts.bRoutePending)
    CastChecked<UTextBlock>(Tree.FindWidget(TEXT("TheaterSubtitle")))->SetText(State.Facts.bMethodChoice
     ?(Cross?NSLOCTEXT("TacticalScene","CrossPreview","选择传中方式"):NSLOCTEXT("TacticalScene","Preview","选择远射方式")):Method);
   // Existing TheaterOutcome already contains the disclosure-gated authoritative
   // narrative and semantic rich text. It remains the only result headline.
-  Tree.FindWidget(TEXT("TheaterSubtitle"))->SetVisibility(Final?ESlateVisibility::Collapsed:ESlateVisibility::HitTestInvisible);
-  CastChecked<UBorder>(Tree.FindWidget(TEXT("TheaterBodyPadding")))->SetPadding(FMargin(0,10,0,20));
+  Tree.FindWidget(TEXT("TheaterSubtitle"))->SetVisibility(Final || Cross?ESlateVisibility::Collapsed:ESlateVisibility::HitTestInvisible);
+  CastChecked<UBorder>(Tree.FindWidget(TEXT("TheaterBodyPadding")))->SetPadding(Cross?FMargin(0):FMargin(0,10,0,20));
   if(State.IsAnimating())
   {
    // Formula has completed before Outcome, so its old "waiting for defense"
@@ -938,17 +1091,32 @@ void RefreshSurface(UWidgetTree& Tree,FState& State,TFunction<void()> Skip)
   auto* Body=CastChecked<UVerticalBox>(Tree.FindWidget(FName(*(Prefix+TEXT("SafeContent")))));
   const bool Attack=Prefix==TEXT("TheaterAttack");
   CastChecked<UOverlaySlot>(Body->Slot)->SetPadding(Active
-   ?(Attack?FMargin(102,10,18,10):FMargin(18,10,102,10))
+   ?(Cross?FMargin(20,8):(Attack?FMargin(102,10,18,10):FMargin(18,10,102,10)))
    :(Attack?FMargin(160,16,22,16):FMargin(22,16,160,16)));
   auto* Figure=CastChecked<USizeBox>(Tree.FindWidget(FName(*(Prefix+TEXT("SilhouetteBounds")))));
   Figure->SetWidthOverride(Active?84:138); Figure->SetHeightOverride(Active?108:178);
   auto* Side=CastChecked<UTextBlock>(Tree.FindWidget(FName(*(Prefix+TEXT("Side")))));
-  auto Font=Side->GetFont(); Font.Size=Active?24:32; Side->SetFont(Font);
+  auto Font=Side->GetFont(); Font.Size=Cross?22:Active?24:32; Side->SetFont(Font);
   auto* Value=Tree.FindWidget(FName(*(Prefix+TEXT("Value"))));
-  if (auto* Slot=Cast<UVerticalBoxSlot>(Value->Slot)) Slot->SetPadding(FMargin(0,Active?6:14,0,0));
+  if (auto* Slot=Cast<UVerticalBoxSlot>(Value->Slot)) Slot->SetPadding(FMargin(0,Cross?10:Active?6:14,0,0));
   for(int I=0;I<3;++I)
    if (auto* Name=Cast<UTextBlock>(Tree.FindWidget(FName(*(Prefix+TEXT("Name")+FString::FromInt(I))))))
    {auto NameFont=Name->GetFont();NameFont.Size=Active?19:23;Name->SetFont(NameFont);}
+ }
+ FitCrossViewport(Tree,Cross,Tree.RootWidget->GetCachedGeometry().GetLocalSize());
+}
+void FitCrossViewport(UWidgetTree& Tree,bool Cross,FVector2D Viewport)
+{
+ auto* Design=FindObjectFast<USizeBox>(&Tree,TEXT("TheaterDesignBounds"));
+ if(!Design)return;
+ const float Height=Cross && Viewport.X>1 && Viewport.Y>1?1600.f*Viewport.Y/Viewport.X:900.f;
+ if(!FMath::IsNearlyEqual(Design->GetHeightOverride(),Height,.1f))Design->SetHeightOverride(Height);
+ if(!Cross)return;
+ const float FieldHeight=FMath::Max(200.f,Height-200.f);
+ for(const auto Name:{TEXT("TacticalSceneBounds"),TEXT("TheaterSpatialLane"),TEXT("TheaterSpatialReserve")})
+ {
+  auto* Box=FindObjectFast<USizeBox>(&Tree,Name);
+  if(!FMath::IsNearlyEqual(Box->GetHeightOverride(),FieldHeight,.1f))Box->SetHeightOverride(FieldHeight);
  }
 }
 }

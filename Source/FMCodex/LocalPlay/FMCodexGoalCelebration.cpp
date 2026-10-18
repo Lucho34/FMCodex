@@ -10,15 +10,15 @@
 
 namespace FMCodexGoalCelebration
 {
-bool FState::Start(bool bDisclosedGoal)
+bool FState::Start(bool bDisclosedGoal,float InDuration)
 {
  if(!bDisclosedGoal || bConsumed)return false;
- bConsumed=true;Elapsed=0;return true;
+ bConsumed=true;PlaybackDuration=FMath::Max(Duration,InDuration);Elapsed=0;return true;
 }
 void FState::Tick(float DeltaSeconds)
-{Elapsed=FMath::Min(Duration,Elapsed+FMath::Max(0.f,DeltaSeconds));}
+{Elapsed=FMath::Min(PlaybackDuration,Elapsed+FMath::Max(0.f,DeltaSeconds));}
 bool FState::Skip()
-{if(!IsActive())return false;Elapsed=Duration;return true;}
+{if(!IsActive())return false;Elapsed=PlaybackDuration;return true;}
 
 namespace
 {
@@ -136,7 +136,7 @@ int32 Paint(const FState& State,const FGeometry& G,FSlateWindowElementList& Out,
  if(!State.IsActive())return Layer;
  using namespace FMCodexMatchShellStyle;
  const float T=State.Elapsed;
- const float Enter=FMath::SmoothStep(0.f,.20f,T),Exit=1.f-FMath::SmoothStep(1.10f,Duration,T);
+ const float Enter=FMath::SmoothStep(0.f,.20f,T),Exit=1.f-FMath::SmoothStep(State.PlaybackDuration-.40f,State.PlaybackDuration,T);
  const float Alpha=Enter*Exit;
  const FVector2D C=G.GetLocalSize()*.5f;
  const float Fit=FMath::Min(float(G.GetLocalSize().X)/1324.f,float(G.GetLocalSize().Y)/380.f);

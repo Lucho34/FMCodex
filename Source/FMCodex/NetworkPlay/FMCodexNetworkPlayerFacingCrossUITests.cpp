@@ -269,7 +269,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFMCodexPlayerFacingCrossBoundary,
 bool FFMCodexPlayerFacingCrossBoundary::RunTest(const FString&)
 {
 	using namespace FMCodexPlayerFacingOrdinaryUITests;
-	FUIFixture F;
+	// Cross disclosure uses the production catalog; synthetic dormant skills are
+	// unrelated here and can exceed the production Hand Micro label allocation.
+	FUIFixture F(false,false,false);
 	if (!TestTrue(TEXT("Skill fixture"),F.SkillFixture())) return false;
 	auto* PC=F.Attacker(); const auto& V=PC->GetOwnerView();
 	// Storage roundtrip checks the exact value contract (the real smoke covers UE network replication).
@@ -302,6 +304,10 @@ bool FFMCodexPlayerFacingCrossBoundary::RunTest(const FString&)
 	F.A->GetPlayerMatchScreen()->RequestSubmitSkill(TEXT("Canonical.Skill.Cross.4.6"));
 	F.A->GetPlayerMatchScreen()->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::CrossLow);
 	F.A->GetPlayerMatchScreen()->RequestContinueResolution(); F.Settle();
+	// Route disclosure enters the existing spatial setup/intent beats. Release
+	// those presentation gates before asking for the attack whose value is withheld.
+	F.A->GetPlayerMatchScreen()->SkipTacticalScene();
+	F.A->GetPlayerMatchScreen()->SkipTacticalScene();
 	F.Entropy->Word=5; F.A->GetPlayerMatchScreen()->RequestContinueResolution(); F.Settle();
 	FFMCodexLocalMatchViewerDisclosure Hidden;
 	Hidden.bRevealInitialActionPointRoll=true;Hidden.bRevealRouteRoll=true;

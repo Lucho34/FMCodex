@@ -55,6 +55,7 @@ void UFMCodexInteractionOptionWidget::ConfigureTacticalCard(
 	Label = InLabel;
 	SecondaryLabel = InSecondaryLabel;
 	CardId = InSkillId;
+	BranchIntent = EFMCodexUMGBranchIntent::None;
 	BindingMode = EBindingMode::TacticalCard;
 	RefreshVisuals();
 }
@@ -290,14 +291,25 @@ void UFMCodexInteractionOptionWidget::HandleSimpleClicked()
 
 void UFMCodexInteractionOptionWidget::HandleCardClicked()
 {
-	OnCardRequested.Broadcast(CardId);
+	if (BindingMode == EBindingMode::TacticalCard && BranchIntent != EFMCodexUMGBranchIntent::None)
+		OnBranchRequested.Broadcast(BranchIntent);
+	else OnCardRequested.Broadcast(CardId);
+}
+
+void UFMCodexInteractionOptionWidget::ConfigureCrossChoice(const FString& InLabel,
+	FName InSkillId, EFMCodexUMGBranchIntent Intent)
+{
+	ConfigureTacticalCard(InLabel, FString(), InSkillId);
+	BranchIntent = Intent;
 }
 
 void UFMCodexInteractionOptionWidget::HandleTacticalHovered()
 {
 	if (BindingMode == EBindingMode::TacticalCard && !CardId.IsNone())
 	{
-		OnTacticalDetailRequested.Broadcast(CardId);
+		if (BranchIntent==EFMCodexUMGBranchIntent::CrossHigh || BranchIntent==EFMCodexUMGBranchIntent::CrossLow)
+			OnCrossDetailRequested.Broadcast(CardId,BranchIntent);
+		else OnTacticalDetailRequested.Broadcast(CardId);
 	}
 }
 

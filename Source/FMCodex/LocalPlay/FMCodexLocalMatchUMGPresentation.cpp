@@ -14,7 +14,7 @@ namespace FMCodexLocalMatchUMGPresentation
 {
 	FString FormulaReason(const FFormulaResolutionResult& Resolved,
 		const FFMCodexUMGInlineFormulaRowViewModel& Attack,
-		const FFMCodexUMGInlineFormulaRowViewModel& Defense)
+		const FFMCodexUMGInlineFormulaRowViewModel& Defense, bool bCompactCross = false)
 	{
 		const FText Winner = Resolved.Winner == EFormulaWinner::Attacker
 			? NSLOCTEXT("FMCodexTheater", "AttackSide", "进攻方")
@@ -47,7 +47,9 @@ namespace FMCodexLocalMatchUMGPresentation
 			const bool bAttackWon = Resolved.Winner == EFormulaWinner::Attacker;
 			const FText Other = bAttackWon ? NSLOCTEXT("FMCodexTheater", "DefenseSide", "防守方")
 				: NSLOCTEXT("FMCodexTheater", "AttackSide", "进攻方");
-			Reason = FText::Format(NSLOCTEXT("FMCodexTheater", "HigherValues", "{0}最终值 {1}，高于{2} {3}\n本次公式按照总值大小比较"),
+			Reason = FText::Format(bCompactCross
+				? NSLOCTEXT("FMCodexTheater", "CrossHigherValues", "{0}最终值 {1}，高于{2} {3}")
+				: NSLOCTEXT("FMCodexTheater", "HigherValues", "{0}最终值 {1}，高于{2} {3}\n本次公式按照总值大小比较"),
 				Winner, FText::AsNumber(bAttackWon ? Resolved.AttackerFinalValue : Resolved.DefenderFinalValue),
 				Other, FText::AsNumber(bAttackWon ? Resolved.DefenderFinalValue : Resolved.AttackerFinalValue));
 			break;
@@ -2066,7 +2068,7 @@ namespace FMCodexLocalMatchUMGPresentation
 				|| bResolvedThroughBallFeet || bResolvedThroughBallDirect
 				|| (bResolvedThroughBallBehind && !bBehindOutOfPlay))
 			{
-				Result.ResolutionReasonLabel = FormulaReason(Contest->ResolvedResult, Result.AttackRow, Result.DefenseRow);
+				Result.ResolutionReasonLabel = FormulaReason(Contest->ResolvedResult, Result.AttackRow, Result.DefenseRow, bResolvedCross);
 			}
 			else if (bElectiveDirectImmediateMiss)
 			{

@@ -271,6 +271,18 @@ FText FFMCodexTacticalDetailPresentationBuilder::BuildCrossRouteHint(const EMatc
 		Intent == EMatchPlayElectiveBranchIntent::CrossHigh ? Low : High);
 }
 
+FText FFMCodexTacticalDetailPresentationBuilder::BuildCrossRouteRange(EMatchPlayElectiveBranchIntent Intent, bool bHigh)
+{
+	if(Intent!=EMatchPlayElectiveBranchIntent::CrossHigh && Intent!=EMatchPlayElectiveBranchIntent::CrossLow)return {};
+	const auto* Description=FTacticalRuleDescriptionCatalog::FindBySkillType(ESkillRuleType::Cross);
+	if(!Description)return {};
+	const bool Preferred=bHigh==(Intent==EMatchPlayElectiveBranchIntent::CrossHigh);
+	for(const auto& Outcome:Description->InitialRouteOutcomes)
+		if((Outcome.OutcomeId==TEXT("Cross.PreferredRoute"))==Preferred)
+			return FText::Format(NSLOCTEXT("FMCodexCross","RouteRange","掷出 {0}–{1}"),FText::AsNumber(Outcome.Minimum),FText::AsNumber(Outcome.Maximum));
+	return {};
+}
+
 FText FFMCodexTacticalDetailPresentationBuilder::BuildThroughBallRouteHint()
 {
 	const auto* Description = FTacticalRuleDescriptionCatalog::FindBySkillType(ESkillRuleType::ThroughBall);
@@ -296,6 +308,17 @@ FFMCodexTacticalDetailPresentationBuilder::Build(
 {
 	using namespace FMCodexTacticalDetailPresentation;
 	return BuildDetail(SkillType);
+}
+
+FFMCodexUMGTacticalDetailViewModel FFMCodexTacticalDetailPresentationBuilder::BuildCrossChoice(EFMCodexUMGBranchIntent Intent)
+{
+ const bool High=Intent==EFMCodexUMGBranchIntent::CrossHigh;
+ if (!High && Intent!=EFMCodexUMGBranchIntent::CrossLow) return Build(ESkillRuleType::Cross);
+ auto Detail=FMCodexTacticalDetailPresentation::BuildDetail(ESkillRuleType::Cross,High?TEXT("Cross.High"):TEXT("Cross.Low"));
+ Detail.CardHint=(High?NSLOCTEXT("CrossDetail","HighIntent","高球意图：高空送入接应区域")
+  :NSLOCTEXT("CrossDetail","LowIntent","低球意图：沿地面送入接应区域")).ToString();
+ Detail.CardHint+=NSLOCTEXT("CrossDetail","IntentOnly","；实际路线由路线掷点判定").ToString();
+ return Detail;
 }
 
 FFMCodexUMGOutcomeRollHintViewModel

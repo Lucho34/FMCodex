@@ -736,6 +736,24 @@ void UFMCodexInteractionPanelWidget::RefreshCandidateChoices()
 	{
 		const FFMCodexUMGSelectionChoiceViewModel& Choice =
 			Presentation.SelectionChoices[ChoiceIndex];
+		if (Presentation.Category == EFMCodexUMGInteractionCategory::SelectSkill && Choice.SkillType == ESkillRuleType::Cross)
+		{
+			// These are elective intentions, not predicted route results. Skill eligibility
+			// comes exclusively from this projected option; Branch is authorized later.
+			for (const auto Intent : {EFMCodexUMGBranchIntent::CrossHigh, EFMCodexUMGBranchIntent::CrossLow})
+			{
+				auto* Cross = MakeOptionWidget(FName(*FString::Printf(TEXT("CrossChoice%d_%d"), ChoiceIndex, int32(Intent))));
+				Cross->ConfigureCrossChoice(Intent == EFMCodexUMGBranchIntent::CrossHigh
+					? NSLOCTEXT("CrossFlow", "HighChoice", "传中（高球）").ToString()
+					: NSLOCTEXT("CrossFlow", "LowChoice", "传中（低球）").ToString(), Choice.OptionId, Intent);
+				Cross->OnBranchRequested.AddDynamic(this, &UFMCodexInteractionPanelWidget::HandleBranchOption);
+				Cross->OnCrossDetailRequested.AddDynamic(this, &UFMCodexInteractionPanelWidget::HandleCrossDetailRequested);
+				Cross->OnTacticalDetailDismissed.AddDynamic(this, &UFMCodexInteractionPanelWidget::HandleTacticalDetailDismissed);
+				Cross->SetIsEnabled(Choice.bEnabled);
+				CandidateCardsBody->AddChildToHorizontalBox(Cross)->SetPadding(FMargin(0,0,12,0));
+			}
+			continue;
+		}
 		UVerticalBox* Group = WidgetTree->ConstructWidget<UVerticalBox>(
 			UVerticalBox::StaticClass(), FName(*FString::Printf(
 				TEXT("SelectionChoiceGroup%d"), ChoiceIndex)));
@@ -930,6 +948,12 @@ void UFMCodexInteractionPanelWidget::HandleTacticalDetailRequested(
 	}
 }
 
+void UFMCodexInteractionPanelWidget::HandleCrossDetailRequested(FName SkillId, EFMCodexUMGBranchIntent Intent)
+{
+ if (Presentation.Category==EFMCodexUMGInteractionCategory::SelectSkill)
+  OnCrossDetailRequested.Broadcast(SkillId,Intent);
+}
+
 void UFMCodexInteractionPanelWidget::HandleTacticalDetailDismissed(
 	const FName SkillId)
 {
@@ -949,6 +973,13 @@ void UFMCodexInteractionPanelWidget::HandleHelperOption(const FName CardId)
 void UFMCodexInteractionPanelWidget::HandleBranchOption(
 	const EFMCodexUMGBranchIntent Intent)
 {
+	if (Presentation.Category == EFMCodexUMGInteractionCategory::SelectSkill)
+	{
+		const auto* Cross = Presentation.SelectionChoices.FindByPredicate([](const auto& Choice)
+			{ return Choice.SkillType == ESkillRuleType::Cross && Choice.bEnabled; });
+		if (Cross && !bInteractionBlocked) OnCrossRequested.Broadcast(Cross->OptionId, Intent);
+		return;
+	}
 	RequestBranch(Intent);
 }
 

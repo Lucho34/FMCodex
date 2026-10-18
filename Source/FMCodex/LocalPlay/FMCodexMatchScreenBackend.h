@@ -27,6 +27,21 @@ struct FMCODEX_API FFMCodexMatchScreenRequest
 
 enum class EFMCodexMatchScreenSubmission : uint8 { Rejected, Completed, Queued };
 
+/** Cross presentation gestures survive screen reconstruction on the same backend.
+ * No gameplay state or RNG: the safe view still authorizes every request. */
+struct FFMCodexCrossPresentationFlow
+{
+	int64 AttackSequence = 0;
+	EFMCodexUMGBranchIntent Draft = EFMCodexUMGBranchIntent::None;
+	bool bBranchSubmitted = false;
+	bool bRouteSubmitted = false;
+	bool bRouteRejected = false;
+	void Observe(int64 Sequence)
+	{
+		if (AttackSequence != Sequence) { *this = {}; AttackSequence = Sequence; }
+	}
+};
+
 /** Real Local/Network action seam. Read-side adapters push the same value presentation into the screen. */
 class FMCODEX_API IFMCodexMatchScreenBackend
 {
@@ -34,4 +49,5 @@ public:
 	virtual ~IFMCodexMatchScreenBackend() = default;
 	virtual EFMCodexMatchScreenSubmission SubmitScreenIntent(const FFMCodexMatchScreenRequest& Request) = 0;
 	virtual bool IsScreenIntentPending() const = 0;
+	FFMCodexCrossPresentationFlow CrossPresentationFlow;
 };

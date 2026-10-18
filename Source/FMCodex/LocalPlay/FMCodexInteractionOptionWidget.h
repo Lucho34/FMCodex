@@ -30,6 +30,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FFMCodexInteractionTacticalDetailRequested, FName, SkillId);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FFMCodexCrossDetailRequested, FName, SkillId, EFMCodexUMGBranchIntent, Intent);
+
 UCLASS(Blueprintable)
 class FMCODEX_API UFMCodexInteractionOptionWidget : public UUserWidget
 {
@@ -47,6 +49,7 @@ public:
 		const FString& InLabel,
 		const FString& InSecondaryLabel,
 		FName InSkillId);
+	void ConfigureCrossChoice(const FString& InLabel, FName InSkillId, EFMCodexUMGBranchIntent Intent);
 
 	UFUNCTION(BlueprintCallable, Category = "Local Match|Interaction Presentation")
 	void ConfigureDeployment(
@@ -89,6 +92,8 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Presentation")
 	FFMCodexInteractionTacticalDetailRequested OnTacticalDetailRequested;
+	UPROPERTY()
+	FFMCodexCrossDetailRequested OnCrossDetailRequested;
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Presentation")
 	FFMCodexInteractionTacticalDetailRequested OnTacticalDetailDismissed;

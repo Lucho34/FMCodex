@@ -852,13 +852,13 @@ bool FFMCodexCrossResultNarrativePresentationTest::RunTest(
 	Higher.WinReason = EFormulaWinReason::HigherFinalValue;
 	Higher.AttackerFinalValue = 8.5f; Higher.DefenderFinalValue = 9.5f;
 	const auto HigherPresentation = BuildPresentation(HigherFacts).InlineFormula;
-	TestEqual(TEXT("Canonical comparison includes actual safe totals and the ordinary rule explanation"),
-		HigherPresentation.ResolutionReasonLabel, FString(TEXT("防守方最终值 9.5，高于进攻方 8.5\n本次公式按照总值大小比较")));
+	TestEqual(TEXT("Cross comparison retains safe totals without the redundant rule sentence"),
+		HigherPresentation.ResolutionReasonLabel, FString(TEXT("防守方最终值 9.5，高于进攻方 8.5")));
 	Higher.Winner = EFormulaWinner::Attacker; Higher.bIsGoal = true;
 	Higher.AttackerFinalValue = 10.5f;
-	TestEqual(TEXT("Attack value reason uses safe totals and the same ordinary rule explanation"),
+	TestEqual(TEXT("Attack value reason uses the same concise Cross wording"),
 		BuildPresentation(HigherFacts).InlineFormula.ResolutionReasonLabel,
-		FString(TEXT("进攻方最终值 10.5，高于防守方 9.5\n本次公式按照总值大小比较")));
+		FString(TEXT("进攻方最终值 10.5，高于防守方 9.5")));
 	Higher.WinReason = EFormulaWinReason::FastSuppression;
 	Higher.AttackerFinalValue = 8.5f; Higher.DefenderFinalValue = 12.f;
 	HigherFacts.Rolls[1].RawD6 = 6; HigherFacts.Rolls[2].RawD6 = 2;
@@ -936,6 +936,10 @@ bool FFMCodexCrossResultNarrativePresentationTest::RunTest(
 	}
 
 	FFMCodexLocalMatchInteractionView CountView = MakeInteraction();
+	// This assertion concerns visible hand headers. Cross deliberately defers
+	// hidden hand rebuilding; inspect their deployment consumer instead.
+	CountView.InteractionCategory = EFMCodexLocalMatchInteractionCategory::Deploy;
+	CountView.ElectiveBranchIntent = EMatchPlayElectiveBranchIntent::None;
 	CountView.bHasTacticalPlayerCounts = true;
 	CountView.PlayerATacticalPlayerCount = 4;
 	CountView.PlayerBTacticalPlayerCount = 2;

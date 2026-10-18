@@ -17,7 +17,7 @@ Stage 8.15B temporarily withdraws PassControl from production player assignments
 ## Player Interaction
 
 - An eligible tactic is presented as a compact card with a Chinese tactical name and one short hint.
-- Hover and keyboard focus send only the stable Skill identity to one shared non-modal detail panel.
+- Hover and keyboard focus send the stable Skill identity to one shared non-modal detail panel. Stage 8.30F explicit Cross High/Low options additionally carry their own chosen intent, selecting only the corresponding canonical branch table, title and hint. This is option-local explanation, not a disclosed actual route; the hint explicitly says the route roll determines that route. Generic unbranched Cross help keeps both branches. Leaving selection clears the transient explanation.
 - Moving between cards replaces the panel content. Leaving the card/panel region dismisses it without a long timeout.
 - Clicking a card still sends the existing typed tactical-selection intent once; it does not add an inspect/confirm step.
 - Selecting or declining a tactic, leaving the selection state, refreshing authoritative presentation, or destroying the screen clears transient detail.

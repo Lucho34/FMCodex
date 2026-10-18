@@ -356,8 +356,19 @@ private:
 	UFUNCTION()
 	void HandleSkillRequested(FName SkillId);
 
+public:
+	UFUNCTION()
+	void RequestCrossTactic(FName SkillId, EFMCodexUMGBranchIntent Intent);
+	/** Advances only presentation scheduling; requests still use SubmitScreenRequest. */
+	void AdvanceCrossFlow(float DeltaSeconds);
+private:
+	TSharedPtr<FStreamableHandle> CrossScenePreload;
+
 	UFUNCTION()
 	void HandleTacticalDetailRequested(FName SkillId);
+	UFUNCTION()
+	void HandleCrossDetailRequested(FName SkillId, EFMCodexUMGBranchIntent Intent);
+	void ShowTacticalDetail(FName SkillId, EFMCodexUMGBranchIntent Intent);
 
 	UFUNCTION()
 	void HandleTacticalDetailDismissed(FName SkillId);

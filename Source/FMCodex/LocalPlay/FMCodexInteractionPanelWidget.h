@@ -38,6 +38,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FFMCodexInteractionMarkerRequested, FName, CardId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FFMCodexInteractionSkillRequested, FName, SkillId);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
+	FFMCodexInteractionCrossRequested, FName, SkillId, EFMCodexUMGBranchIntent, Intent);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FFMCodexInteractionRunnerRequested, FName, CardId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
@@ -161,6 +163,8 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Intent")
 	FFMCodexInteractionSkillRequested OnSkillRequested;
+	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Intent")
+	FFMCodexInteractionCrossRequested OnCrossRequested;
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Intent")
 	FFMCodexInteractionRunnerRequested OnRunnerRequested;
@@ -185,6 +189,8 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Presentation")
 	FFMCodexInteractionTacticalDetailIntent OnTacticalDetailRequested;
+	UPROPERTY()
+	FFMCodexInteractionCrossRequested OnCrossDetailRequested;
 
 	UPROPERTY(BlueprintAssignable, Category = "Local Match|Interaction Presentation")
 	FFMCodexInteractionTacticalDetailIntent OnTacticalDetailDismissed;
@@ -240,6 +246,8 @@ private:
 
 	UFUNCTION()
 	void HandleTacticalDetailRequested(FName SkillId);
+	UFUNCTION()
+	void HandleCrossDetailRequested(FName SkillId, EFMCodexUMGBranchIntent Intent);
 
 	UFUNCTION()
 	void HandleTacticalDetailDismissed(FName SkillId);

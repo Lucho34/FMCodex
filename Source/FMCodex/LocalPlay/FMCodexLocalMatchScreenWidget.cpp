@@ -56,6 +56,14 @@
 
 namespace FMCodexLocalMatchScreenWidget
 {
+	bool CrossCoversBoard(const FFMCodexUMGMatchScreenViewModel& View)
+	{
+		const FName Id=View.InlineFormula.ContestId;
+		return (Id==TEXT("Cross.Setup") || Id==TEXT("Cross.Route")
+			|| Id==TEXT("Cross.High") || Id==TEXT("Cross.Low"))
+			&& FMCodexResolutionTheaterPrototype::WantsTheater(View,View.InlineFormula);
+	}
+
 	// Stage 8.6B redistributes cosmetic motion inside the unchanged reveal gates.
 	constexpr float RevealHoldTickInterval = 0.04f;
 	constexpr float FastPhaseDuration = 0.24f;
@@ -81,6 +89,7 @@ namespace FMCodexLocalMatchScreenWidget
 	constexpr float TacticalPointResultHoldDuration =
 		FormulaDisclosureDelay + TacticalPointReadableResultHoldDuration;
 	constexpr float RouteResultHoldDuration = 1.45f;
+	constexpr float CrossRouteReadableResultHoldDuration = 2.50f;
 	// Keep the accepted v2 trajectory; shorten only confirmed intermediate holds.
 	constexpr float IntermediateRollPresentationDuration = 2.25f;
 	constexpr float IntermediateRollResultHoldDuration = IntermediateRollPresentationDuration
@@ -454,6 +463,7 @@ UFMCodexLocalMatchScreenWidget::UFMCodexLocalMatchScreenWidget(
 void UFMCodexLocalMatchScreenWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
+	CrossScenePreload=FMCodexTacticalScene::PreloadCrossAssets();
 	BuildWidgetTree();
 	RefreshVisuals();
 }
@@ -471,6 +481,8 @@ TSharedRef<SWidget> UFMCodexLocalMatchScreenWidget::RebuildWidget()
 
 void UFMCodexLocalMatchScreenWidget::NativeDestruct()
 {
+	TacticalScene.CrossEntrance={};
+	TacticalScene.CrossIdleTime=0.f; TacticalScene.Facts.bManualWaiting=false;
 	if (InteractionPanel && InteractionPanel->GetTacticalGuide()) InteractionPanel->GetTacticalGuide()->Close();
 	StopInlineFormulaRevealTimer();
 	CancelTacticalDetailDismiss();
@@ -506,6 +518,8 @@ void UFMCodexLocalMatchScreenWidget::NativeTick(const FGeometry& MyGeometry, flo
 		if (PitchBounds) InteractionPanel->GetTacticalGuide()->UpdateDetailBounds(MyGeometry,PitchBounds->GetCachedGeometry());
 	}
 	if (!WidgetTree || !MatchHeader) return;
+	FMCodexTacticalScene::FitCrossViewport(*WidgetTree,
+		TacticalScene.Facts.bActive && FMCodexTacticalScene::IsCross(TacticalScene.Facts.Method),MyGeometry.GetLocalSize());
 	FMCodexTacticalScene::UpdatePreview(*WidgetTree,TacticalScene);
 	if (TacticalScene.Tick(InDeltaTime)) RefreshVisuals();
 	const bool bEnabled = FMCodexResolutionTheaterPrototype::IsEnabled();
@@ -530,6 +544,57 @@ void UFMCodexLocalMatchScreenWidget::NativeTick(const FGeometry& MyGeometry, flo
 		FMCodexResolutionTheaterPrototype::Tick(*WidgetTree, TheaterMotion, InDeltaTime);
 	if (TheaterMotion.bActive)
 		FMCodexResolutionTheaterPrototype::RefreshHover(*WidgetTree);
+	FMCodexTacticalScene::AnimateCrossEntrance(*WidgetTree,TacticalScene);
+	AdvanceCrossFlow(InDeltaTime);
+}
+
+void UFMCodexLocalMatchScreenWidget::RequestCrossTactic(FName SkillId, EFMCodexUMGBranchIntent Intent)
+{
+	using C = EFMCodexUMGInteractionCategory;
+	if (!MatchBackend || IsScreenRequestPending() || Presentation.bActionWaitPromptReadOnly
+		|| Presentation.Interaction.Category != C::SelectSkill
+		|| (Intent != EFMCodexUMGBranchIntent::CrossHigh && Intent != EFMCodexUMGBranchIntent::CrossLow)) return;
+	const bool bOffered = Presentation.Interaction.SelectionChoices.ContainsByPredicate([SkillId](const auto& Choice)
+		{ return Choice.OptionId == SkillId && Choice.SkillType == ESkillRuleType::Cross && Choice.bEnabled; });
+	if (!bOffered) return;
+	auto& Flow = MatchBackend->CrossPresentationFlow;
+	Flow.Observe(Presentation.Header.AttackSequence);
+	Flow.Draft = Intent; Flow.bBranchSubmitted = false;
+	HideTacticalDetail();
+	if (SubmitScreenRequest(EFMCodexMatchScreenIntent::Skill, SkillId) == EFMCodexMatchScreenSubmission::Rejected)
+		Flow.Draft = EFMCodexUMGBranchIntent::None;
+	// Local can complete synchronously; Network waits for correlated ACK + View.
+	AdvanceCrossFlow(0.f);
+}
+
+void UFMCodexLocalMatchScreenWidget::AdvanceCrossFlow(float DeltaSeconds)
+{
+	if (!MatchBackend) return;
+	using C = EFMCodexUMGInteractionCategory;
+	auto& Flow = MatchBackend->CrossPresentationFlow;
+	Flow.Observe(Presentation.Header.AttackSequence);
+	const auto& Interaction = Presentation.Interaction;
+	const bool bSetup = Presentation.InlineFormula.ContestId == TEXT("Cross.Setup");
+	const bool bRoute = Interaction.Category == C::RollCrossRoute;
+
+	if (!bSetup && Interaction.Category != C::SelectSkill) Flow.Draft = EFMCodexUMGBranchIntent::None;
+	if (IsScreenRequestPending() || IsInlineFormulaRevealInputBlocked() || TacticalScene.IsAnimating()
+		|| Presentation.bActionWaitPromptReadOnly || Presentation.FullTime.bVisible) return;
+	if (bSetup && Interaction.Category == C::SelectBranchIntent && !Flow.bBranchSubmitted
+		&& Flow.Draft != EFMCodexUMGBranchIntent::None
+		&& Interaction.BranchChoices.ContainsByPredicate([&](const auto& Choice){ return Choice.Intent == Flow.Draft; }))
+	{
+		// Mark before dispatch: Local refreshes synchronously inside this call.
+		Flow.bBranchSubmitted = true;
+		SubmitScreenRequest(EFMCodexMatchScreenIntent::Branch, NAME_None, NAME_None, Flow.Draft);
+		RefreshVisuals();
+		return;
+	}
+	if (!bRoute || !TheaterMotion.bActive || !Interaction.PrimaryAction.bAvailable || Flow.bRouteSubmitted) return;
+	if (DeltaSeconds>.15f || !TacticalScene.CrossEntrance.CanAutoRoll(GFrameCounter)) return;
+	Flow.bRouteSubmitted = true;
+	Flow.bRouteRejected = SubmitScreenRequest(EFMCodexMatchScreenIntent::Continue) == EFMCodexMatchScreenSubmission::Rejected;
+	RefreshVisuals();
 }
 
 void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
@@ -542,7 +607,9 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 	auto TheaterPresentation=Presentation;
 	TheaterPresentation.ThroughBallResolution=BuildDisplayedThroughBallResolution();
 	const bool bActive = WantsTheater(TheaterPresentation, Displayed);
-	if (bActive && !WidgetTree->FindWidget(TEXT("ResolutionTheater")))
+	const bool bWarmCross=Presentation.Interaction.Category==EFMCodexUMGInteractionCategory::SelectSkill
+  && Presentation.Interaction.SelectionChoices.ContainsByPredicate([](const auto& C){return C.SkillType==ESkillRuleType::Cross;});
+	if ((bActive || bWarmCross) && !WidgetTree->FindWidget(TEXT("ResolutionTheater")))
 	{
 		UButton* Primary = nullptr; UButton* High = nullptr; UButton* Low = nullptr;
 		auto* Theater = Build(*WidgetTree, Primary, High, Low, ResolutionTheaterAthletes);
@@ -557,6 +624,12 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 		CastChecked<UButton>(WidgetTree->FindWidget(TEXT("TheaterSelectionReturn")))->OnClicked.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::HandleCornerReturnRequested);
 		CastChecked<UFMCodexCardRackWidget>(WidgetTree->FindWidget(TEXT("TheaterTakers")))->OnCardSelectionRequested.AddUObject(this, &UFMCodexLocalMatchScreenWidget::HandleSetPieceHandCardRequested);
 	}
+ if(bWarmCross)
+ {
+  FMCodexTacticalScene::WarmCrossSurface(*WidgetTree);
+  WidgetTree->FindWidget(TEXT("ResolutionTheater"))->TakeWidget();
+  if(!bActive)WidgetTree->FindWidget(TEXT("ResolutionTheater"))->SetVisibility(ESlateVisibility::Collapsed);
+ }
 	if (bActive)
 	{
 		TheaterPresentation.LongShotResolution=BuildDisplayedLongShotResolution();
@@ -565,8 +638,22 @@ void UFMCodexLocalMatchScreenWidget::RefreshResolutionTheater(
 		TheaterPresentation.OpponentRack=BuildDisplayedHandRack(Presentation.OpponentRack);
 		const bool bConfirmation=MatchController?MatchController->GetInteractionView().bCornerLockConfirmationPending:bNetworkCornerConfirmation;
 		Refresh(*WidgetTree, TheaterPresentation, Displayed, DisplayedHeader, IsScreenRequestPending(), TheaterTakerInspection, bConfirmation);
+		// Keep the disclosed score/formula intact. Only the Cross headline waits
+		// for its celebration; Tick refreshes this plate when the effect ends.
+		if (FMCodexTacticalScene::IsCross(TacticalScene.Facts.Method) && TacticalScene.Celebration.IsActive())
+			WidgetTree->FindWidget(TEXT("CrossResultPlate"))->SetVisibility(ESlateVisibility::Collapsed);
+		if (MatchBackend)
+		{
+			const auto& Flow = MatchBackend->CrossPresentationFlow;
+			if (Presentation.InlineFormula.ContestId == TEXT("Cross.Setup") && Flow.Draft != EFMCodexUMGBranchIntent::None)
+				WidgetTree->FindWidget(TEXT("TheaterChoices"))->SetVisibility(ESlateVisibility::Collapsed);
+			if (Presentation.Interaction.Category == EFMCodexUMGInteractionCategory::RollCrossRoute && !Flow.bRouteRejected)
+				WidgetTree->FindWidget(TEXT("TheaterPrimaryBounds"))->SetVisibility(ESlateVisibility::Collapsed);
+		}
 		FMCodexTacticalScene::RefreshSurface(*WidgetTree,TacticalScene,[Weak=TWeakObjectPtr<UFMCodexLocalMatchScreenWidget>(this)]()
 		{ if (Weak.IsValid()) Weak->SkipTacticalScene(); });
+		if (FMCodexTacticalScene::IsCross(TacticalScene.Facts.Method) && TacticalScene.IsAnimating())
+			CastChecked<UTextBlock>(WidgetTree->FindWidget(TEXT("TheaterStatus")))->SetText(NSLOCTEXT("CrossFlow","InMotion","传中进行中"));
 
 		SetPieceResolutionSurface->SetVisibility(ESlateVisibility::Collapsed);
 		if (IsOrdinaryShotConsumer(TheaterPresentation.LongShotResolution))
@@ -650,7 +737,8 @@ void UFMCodexLocalMatchScreenWidget::RefreshFromPresentation(
 	// Any authoritative presentation rebuild invalidates the transient hover
 	// source. The newly rendered tactical cards can publish a fresh identity.
 	HideTacticalDetail();
-	if (PitchWidget != nullptr)
+	if (PitchWidget != nullptr && (bDeploymentDragActive
+		|| !FMCodexLocalMatchScreenWidget::CrossCoversBoard(InPresentation)))
 	{
 		PitchWidget->EndDeploymentDrag();
 	}
@@ -984,6 +1072,7 @@ bool UFMCodexLocalMatchScreenWidget::IsScreenRequestPending() const
 
 void UFMCodexLocalMatchScreenWidget::ResetPresentationSession()
 {
+	if (MatchBackend) MatchBackend->CrossPresentationFlow = {};
 	if (InteractionPanel && InteractionPanel->GetTacticalGuide()) InteractionPanel->GetTacticalGuide()->ResetContext();
 	TacticalScene = {};
 	ResetInlineFormulaRevealState();
@@ -1002,6 +1091,9 @@ void UFMCodexLocalMatchScreenWidget::ResetPresentationSession()
 
 void UFMCodexLocalMatchScreenWidget::NotifyScreenRequestRejected()
 {
+	if (MatchBackend) MatchBackend->CrossPresentationFlow.Draft = EFMCodexUMGBranchIntent::None;
+	if (MatchBackend && MatchBackend->CrossPresentationFlow.bRouteSubmitted)
+		MatchBackend->CrossPresentationFlow.bRouteRejected = true;
 	CancelInlineFormulaReveal();
 	ObservePendingCrossRoll(Presentation);
 	RefreshVisuals();
@@ -1038,7 +1130,8 @@ EFMCodexMatchScreenSubmission UFMCodexLocalMatchScreenWidget::SubmitScreenReques
 
 void UFMCodexLocalMatchScreenWidget::RequestStartNewMatch()
 {
-	SubmitScreenRequest(EFMCodexMatchScreenIntent::StartMatch);
+	if (SubmitScreenRequest(EFMCodexMatchScreenIntent::StartMatch) == EFMCodexMatchScreenSubmission::Completed && MatchBackend)
+		MatchBackend->CrossPresentationFlow = {};
 }
 
 void UFMCodexLocalMatchScreenWidget::RequestRollTacticalPoints()
@@ -1272,6 +1365,14 @@ void UFMCodexLocalMatchScreenWidget::HandleSkillRequested(const FName SkillId)
 void UFMCodexLocalMatchScreenWidget::HandleTacticalDetailRequested(
 	const FName SkillId)
 {
+ ShowTacticalDetail(SkillId,EFMCodexUMGBranchIntent::None);
+}
+void UFMCodexLocalMatchScreenWidget::HandleCrossDetailRequested(FName SkillId, EFMCodexUMGBranchIntent Intent)
+{
+ ShowTacticalDetail(SkillId,Intent);
+}
+void UFMCodexLocalMatchScreenWidget::ShowTacticalDetail(FName SkillId, EFMCodexUMGBranchIntent Intent)
+{
 	if (TacticalDetailPanel == nullptr || SkillId.IsNone()
 		|| Presentation.Interaction.Category
 			!= EFMCodexUMGInteractionCategory::SelectSkill)
@@ -1290,7 +1391,8 @@ void UFMCodexLocalMatchScreenWidget::HandleTacticalDetailRequested(
 		return;
 	}
 	const FFMCodexUMGTacticalDetailViewModel Detail =
-		FFMCodexTacticalDetailPresentationBuilder::Build(Choice->SkillType);
+		Choice->SkillType==ESkillRuleType::Cross ? FFMCodexTacticalDetailPresentationBuilder::BuildCrossChoice(Intent)
+		: FFMCodexTacticalDetailPresentationBuilder::Build(Choice->SkillType);
 	if (!Detail.bValid)
 	{
 		return;
@@ -3013,6 +3115,8 @@ void UFMCodexLocalMatchScreenWidget::BuildWidgetTree()
 		this, &UFMCodexLocalMatchScreenWidget::HandleMarkerRequested);
 	InteractionPanel->OnSkillRequested.AddDynamic(
 		this, &UFMCodexLocalMatchScreenWidget::HandleSkillRequested);
+	InteractionPanel->OnCrossRequested.AddDynamic(this, &UFMCodexLocalMatchScreenWidget::RequestCrossTactic);
+	InteractionPanel->OnCrossDetailRequested.AddDynamic(this,&UFMCodexLocalMatchScreenWidget::HandleCrossDetailRequested);
 	InteractionPanel->OnTacticalDetailRequested.AddDynamic(
 		this,
 		&UFMCodexLocalMatchScreenWidget::HandleTacticalDetailRequested);
@@ -4439,6 +4543,12 @@ float UFMCodexLocalMatchScreenWidget::ActiveRollResultHoldDuration() const
 	using namespace FMCodexLocalMatchScreenWidget;
 	// Use only the accepted purpose, never dice values, score or success/failure.
 	// Legacy consumers keep their existing presentation contract.
+	// Cross needs time to read the landed digit AND the actual High/Low route.
+	// Extend this existing hold only; keep the v2 motion and all other purposes.
+	if (UsesTheaterRollMotion()
+		&& ActiveCrossRollReveal.Kind == EFMCodexUMGCrossRollRevealKind::InitialRoute
+		&& ActiveCrossRollReveal.ContestId == TEXT("Cross.Route"))
+		return CrossRouteReadableResultHoldDuration;
 	if (UsesTheaterRollMotion() && IsIntermediateRoll(ActiveCrossRollReveal))
 		return IntermediateRollResultHoldDuration;
 
@@ -5299,16 +5409,6 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	}
 	RefreshFullCardProductionReviewSurface();
 #endif
-	auto DisplayedPitch = Presentation.PitchRegions;
-	if (!CanRevealTacticalPointDependentPresentation())
-		for (auto& Region : DisplayedPitch) for (auto& PitchSlot : Region.Slots)
-		{
-			PitchSlot.Card.PitchMiniVisibleTacticalSkills.Reset();
-			PitchSlot.Card.DefensiveCounterTraits.Reset();
-			PitchSlot.Card.PitchMiniTacticalMatchCount = 0;
-			PitchSlot.Card.bHasPitchMiniTacticalMatch = false;
-		}
-	PitchWidget->RefreshFromPitchPresentation(DisplayedPitch);
 	FFMCodexUMGInlineFormulaSurfaceViewModel DisplayedInlineFormula =
 		BuildDisplayedInlineFormula();
 	FFMCodexUMGThroughBallResolutionViewModel DisplayedThroughBall =
@@ -5321,6 +5421,23 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	if (!SpatialFacts.bActive)
 		SpatialFacts = FMCodexTacticalScene::ProjectCross(DisplayedInlineFormula, Presentation.Header,
 			bSpatialAllowed && FMCodexResolutionTheaterPrototype::WantsTheater(Presentation, DisplayedInlineFormula));
+	// Cross covers the board. Keep its last widgets instead of reconstructing
+	// forty hidden cards on every view/ACK/reveal refresh. The next non-Cross
+	// refresh repopulates them from the current safe presentation before reveal.
+	const bool bCrossCoversBoard = SpatialFacts.bActive && FMCodexTacticalScene::IsCross(SpatialFacts.Method);
+	if (!bCrossCoversBoard)
+	{
+		auto DisplayedPitch = Presentation.PitchRegions;
+		if (!CanRevealTacticalPointDependentPresentation())
+			for (auto& Region : DisplayedPitch) for (auto& PitchSlot : Region.Slots)
+			{
+				PitchSlot.Card.PitchMiniVisibleTacticalSkills.Reset();
+				PitchSlot.Card.DefensiveCounterTraits.Reset();
+				PitchSlot.Card.PitchMiniTacticalMatchCount = 0;
+				PitchSlot.Card.bHasPitchMiniTacticalMatch = false;
+			}
+		PitchWidget->RefreshFromPitchPresentation(DisplayedPitch);
+	}
 	TacticalScene.Sync(SpatialFacts);
 	TacticalScene.Gate(DisplayedInlineFormula);
 	TacticalScene.Gate(DisplayedLongShot);
@@ -5417,14 +5534,17 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 	// TP facts disclose during ResultHold, but its exit still obscures the hand.
 	// Consume the actual surface dismissal, including already-dismissed entry paths.
 	const bool bAllowHandSkillReveal = TacticalPointRevealSurface->GetVisibility() == ESlateVisibility::Collapsed;
-	LocalRackWidget->RefreshFromPresentation(
-		BuildDisplayedHandRack(Presentation.LocalRack),
-		Presentation.Header.AttackSequence, Presentation.Header.CurrentAttackerTacticalPoints,
-		bAllowHandSkillReveal, Presentation.Header.CurrentPhaseLabel);
-	OpponentRackWidget->RefreshFromPresentation(
-		BuildDisplayedHandRack(Presentation.OpponentRack),
-		Presentation.Header.AttackSequence, Presentation.Header.CurrentAttackerTacticalPoints,
-		bAllowHandSkillReveal, Presentation.Header.CurrentPhaseLabel);
+	if (!bCrossCoversBoard)
+	{
+		LocalRackWidget->RefreshFromPresentation(
+			BuildDisplayedHandRack(Presentation.LocalRack),
+			Presentation.Header.AttackSequence, Presentation.Header.CurrentAttackerTacticalPoints,
+			bAllowHandSkillReveal, Presentation.Header.CurrentPhaseLabel);
+		OpponentRackWidget->RefreshFromPresentation(
+			BuildDisplayedHandRack(Presentation.OpponentRack),
+			Presentation.Header.AttackSequence, Presentation.Header.CurrentAttackerTacticalPoints,
+			bAllowHandSkillReveal, Presentation.Header.CurrentPhaseLabel);
+	}
 	if (!bTacticalPointRevealVisible)
 	{
 		TacticalPointRollReel->RefreshFromPresentation({});
@@ -5469,7 +5589,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshVisuals()
 		}
 		TacticalPointRevealResult->SetText(Copy);
 	}
-	BindDetailHoverSources();
+	if (!bCrossCoversBoard) BindDetailHoverSources();
 
 	const bool bDeploymentContext = Presentation.Interaction.Category
 		== EFMCodexUMGInteractionCategory::Deploy;

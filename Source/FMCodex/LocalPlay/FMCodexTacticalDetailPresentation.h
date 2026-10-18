@@ -11,7 +11,9 @@ public:
 	static FText BuildCornerChoiceHint(EMatchPlayCornerRouteIntent Route, bool bStackedChoice = false);
 	static FText BuildCornerRouteHint(EMatchPlayCornerRouteIntent Intent);
 	static FText BuildCrossRouteHint(EMatchPlayElectiveBranchIntent Intent);
+	static FText BuildCrossRouteRange(EMatchPlayElectiveBranchIntent Intent, bool bHigh);
 	static FText BuildThroughBallRouteHint();
+	static FFMCodexUMGTacticalDetailViewModel BuildCrossChoice(EFMCodexUMGBranchIntent Intent);
 	static FFMCodexUMGTacticalDetailViewModel Build(
 		ESkillRuleType SkillType);
 

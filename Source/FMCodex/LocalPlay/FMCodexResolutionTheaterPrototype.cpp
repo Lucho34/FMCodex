@@ -6,6 +6,7 @@
 #include "FMCodexOutcomePresentation.h"
 #include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexPlayerUIStyle.h"
+#include "FMCodexMatchShellStyle.h"
 #include "FMCodexRollReelWidget.h"
 #include "FMCodexRollPresentationStyle.h"
 #include "FMCodexPitchWidget.h"
@@ -69,7 +70,14 @@ const FLinearColor Aqua = Color(68,226,216), Gold = Color(235,214,164);
 const FLinearColor Mint = Color(57,231,186);
 FLinearColor Alpha(FLinearColor V, float A) { V.A=A; return V; }
 FName Named(const FString& Prefix, const TCHAR* Suffix) { return FName(*(Prefix+Suffix)); }
-template<typename T> T* Find(UWidgetTree& Tree, FName Name) { return CastChecked<T>(Tree.FindWidget(Name)); }
+template<typename T> T* Find(UWidgetTree& Tree, FName Name)
+{
+ // Theater controls have stable names and are constructed directly in this
+ // tree. Avoid walking the entire match board for each label/value refresh.
+ // Retain traversal for any external/nested widget supplied by a consumer.
+ UWidget* Widget=FindObjectFast<UWidget>(&Tree,Name);
+ return CastChecked<T>(Widget?Widget:Tree.FindWidget(Name));
+}
 void Show(UWidget& W, bool bShow) { W.SetVisibility(bShow ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed); }
 void SetText(UWidgetTree& Tree, FName Name, const FString& Value) { Find<UTextBlock>(Tree,Name)->SetText(FText::FromString(Value)); }
 UTextBlock* Text(UWidgetTree& Tree, FName Name, int32 Size, FLinearColor Tint=White)
@@ -104,7 +112,7 @@ USizeBox* Rule(UWidgetTree& Tree, float Width, FLinearColor Tint=Quiet)
 }
 
 // Small vector marks share one stroke family; they encode no match facts.
-enum class EMark { Ball, Shield, Dice, Arrow };
+enum class EMark { Ball, Shield, Dice, Arrow, Cross };
 class STheaterMark final : public SLeafWidget
 {
 public:
@@ -123,7 +131,13 @@ public:
 			TArray<FVector2D> P; for (const auto& V:Points) P.Add(V*Size/48.f);
 			FSlateDrawElement::MakeLines(Out,Layer,G.ToPaintGeometry(),P,ESlateDrawEffect::None,Tint,true,1.8f);
 		};
-		if (Mark==EMark::Dice)
+		if (Mark==EMark::Cross)
+		{
+			Line({{5,37},{8,25},{14,17},{23,12},{33,11},{40,14}});
+			Line({{3,31},{5,38},{11,34}});
+			Line({{35,8},{42,10},{44,16},{40,22},{33,20},{31,14},{35,8}});
+		}
+		else if (Mark==EMark::Dice)
 		{
 			Line({{24,3},{43,14},{43,35},{24,46},{5,35},{5,14},{24,3}});
 			Line({{5,14},{24,25},{43,14}}); Line({{24,25},{24,46}});
@@ -390,6 +404,19 @@ USizeBox* RollOperand(UWidgetTree& Tree, const FString& Prefix)
 {
 	// A stable 68x76 allocation hosts ?, Theater Roll v2, then the disclosed digit.
 	auto* Unknown=Tree.ConstructWidget<UOverlay>(UOverlay::StaticClass(),Named(Prefix,TEXT("UnknownSlot")));
+	// Cross's pending die is decoration behind the original placeholder/reel.
+	// It owns no value or clock; other consumers collapse it.
+	auto* Well=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),Named(Prefix,TEXT("DieWell")));
+	Well->SetPadding(FMargin(0)); Well->SetBrush(FSlateRoundedBoxBrush(Ink,9.f,Alpha(Quiet,.8f),1.f)); Well->SetBrushColor(FLinearColor::White);
+	auto* Dots=Tree.ConstructWidget<UOverlay>(); Well->AddChild(Dots);
+	for(int32 I=0;I<4;++I)
+	{
+		auto* Dot=Tree.ConstructWidget<UBorder>(); Dot->SetPadding(FMargin(0)); Dot->SetBrush(FSlateRoundedBoxBrush(Color(32,53,70),4.f)); Dot->SetBrushColor(FLinearColor::White);
+		auto* Slot=Dots->AddChildToOverlay(Bounds(Tree,Dot,8,8)); Slot->SetHorizontalAlignment(I%2?HAlign_Right:HAlign_Left); Slot->SetVerticalAlignment(I<2?VAlign_Top:VAlign_Bottom); Slot->SetPadding(FMargin(8));
+	}
+	auto* WellSlot=Unknown->AddChildToOverlay(Well); WellSlot->SetHorizontalAlignment(HAlign_Fill); WellSlot->SetVerticalAlignment(VAlign_Fill); WellSlot->SetPadding(FMargin(2,9,2,3)); Show(*Well,false);
+	auto* DieCaption=Text(Tree,Named(Prefix,TEXT("DieCaption")),15,Quiet); DieCaption->SetText(LOCTEXT("DiceLabel","骰点"));
+	auto* DieCaptionSlot=Unknown->AddChildToOverlay(DieCaption); DieCaptionSlot->SetHorizontalAlignment(HAlign_Center); DieCaptionSlot->SetVerticalAlignment(VAlign_Top); DieCaptionSlot->SetPadding(FMargin(0,-34,0,0)); Show(*DieCaption,false);
 	for (const auto Suffix:{TEXT("Pending"),TEXT("RollValue")})
 	{
 		auto* Digit=Text(Tree,Named(Prefix,Suffix),40,FString(Suffix)==TEXT("Pending")?Quiet:FMCodexRollPresentationStyle::AuthoritativeLandedValue()); Digit->SetJustification(ETextJustify::Center);
@@ -415,7 +442,7 @@ USizeBox* RollOperand(UWidgetTree& Tree, const FString& Prefix)
 void BuildSide(UWidgetTree& Tree, UHorizontalBox& Middle, const FString& Prefix, UTexture2D* Atlas)
 {
 	auto* Panel=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),Named(Prefix,TEXT("Panel")));
-	auto* Layers=Glass(Tree,*Panel);
+	auto* Layers=Glass(Tree,*Panel,Named(Prefix,TEXT("Glass")));
 	const bool bAttack=Prefix==TEXT("TheaterAttack");
 	auto* Player=Athlete(Tree,Named(Prefix,TEXT("Silhouette")),Atlas,bAttack);
 	auto* PlayerBounds=Bounds(Tree,Fit(Tree,Player,HAlign_Center),138,178);
@@ -431,14 +458,15 @@ void BuildSide(UWidgetTree& Tree, UHorizontalBox& Middle, const FString& Prefix,
 	auto* BodySlot=Layers->AddChildToOverlay(Body); BodySlot->SetHorizontalAlignment(HAlign_Fill); BodySlot->SetVerticalAlignment(VAlign_Fill);
 	BodySlot->SetPadding(bAttack?FMargin(160,16,22,16):FMargin(22,16,160,16));
 	auto* Head=Tree.ConstructWidget<UHorizontalBox>();
-	auto* IconSlot=Head->AddChildToHorizontalBox(Mark(Tree,NAME_None,Prefix==TEXT("TheaterAttack")?EMark::Ball:EMark::Shield,30)); IconSlot->SetPadding(FMargin(0,0,14,0)); IconSlot->SetVerticalAlignment(VAlign_Center);
+	auto* IconSlot=Head->AddChildToHorizontalBox(Mark(Tree,Named(Prefix,TEXT("SideIcon")),Prefix==TEXT("TheaterAttack")?EMark::Ball:EMark::Shield,30)); IconSlot->SetPadding(FMargin(0,0,14,0)); IconSlot->SetVerticalAlignment(VAlign_Center);
 	Head->AddChildToHorizontalBox(Text(Tree,Named(Prefix,TEXT("Side")),32))->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 	auto* Badge=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),Named(Prefix,TEXT("Badge")));
 	Badge->SetPadding(FMargin(13,3)); Badge->SetBrush(FSlateRoundedBoxBrush(FLinearColor::White,4.f));
 	auto* Active=Text(Tree,Named(Prefix,TEXT("Active")),17,Ink); Badge->AddChild(Active);
 	Head->AddChildToHorizontalBox(Badge)->SetVerticalAlignment(VAlign_Center);
 	Body->AddChildToVerticalBox(Head);
-	Body->AddChildToVerticalBox(Rule(Tree,0,Quiet))->SetPadding(FMargin(0,8,0,10));
+	auto* HeadRule=Rule(Tree,0,Quiet); HeadRule->Rename(*Named(Prefix,TEXT("HeadRule")).ToString(),&Tree);
+	Body->AddChildToVerticalBox(HeadRule)->SetPadding(FMargin(0,8,0,10));
 	auto* People=Tree.ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(),Named(Prefix,TEXT("People")));
 	Body->AddChildToVerticalBox(People);
 	auto* Value=Tree.ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(),Named(Prefix,TEXT("Value")));
@@ -448,6 +476,8 @@ void BuildSide(UWidgetTree& Tree, UHorizontalBox& Middle, const FString& Prefix,
 	BaseHover->SetBrushColor(FLinearColor::Transparent); BaseHover->SetPadding(FMargin(0));
 	BaseHover->SetVisibility(ESlateVisibility::Visible);
 	auto* BaseContent=Tree.ConstructWidget<UOverlay>(); BaseHover->AddChild(Bounds(Tree,BaseContent,84,86));
+	auto* BaseCaption=Text(Tree,Named(Prefix,TEXT("BaseCaption")),15,Quiet); BaseCaption->SetText(LOCTEXT("BaseLabel","基础值"));
+	auto* BaseCaptionSlot=BaseContent->AddChildToOverlay(BaseCaption); BaseCaptionSlot->SetHorizontalAlignment(HAlign_Center); BaseCaptionSlot->SetVerticalAlignment(VAlign_Top); BaseCaptionSlot->SetPadding(FMargin(0,-24,0,0)); Show(*BaseCaption,false);
 	auto* Number=Text(Tree,Named(Prefix,TEXT("Number")),34,Quiet); Number->SetJustification(ETextJustify::Center);
 	BaseContent->AddChildToOverlay(Number); AlignEquationText(*Number);
 	auto* Underline=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),Named(Prefix,TEXT("BaseUnderline")));
@@ -859,7 +889,7 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 	auto* BackSlot=Root->AddChildToOverlay(Backdrop); BackSlot->SetHorizontalAlignment(HAlign_Fill); BackSlot->SetVerticalAlignment(VAlign_Fill);
 	auto* Body=Tree.ConstructWidget<UVerticalBox>();
 	auto* Pad=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),TEXT("TheaterBodyPadding")); Pad->SetBrushColor(FLinearColor::Transparent); Pad->SetPadding(FMargin(0,32,0,76)); Pad->AddChild(Body);
-	auto* Design=Bounds(Tree,Pad,1600,900);
+	auto* Design=Bounds(Tree,Pad,1600,900); Design->Rename(TEXT("TheaterDesignBounds"),&Tree);
 	auto* FitRoot=Tree.ConstructWidget<UScaleBox>(UScaleBox::StaticClass(),TEXT("TheaterContent")); FitRoot->SetStretch(EStretch::ScaleToFit); FitRoot->AddChild(Design);
 	auto* FitSlot=Root->AddChildToOverlay(FitRoot); FitSlot->SetHorizontalAlignment(HAlign_Fill); FitSlot->SetVerticalAlignment(VAlign_Fill);
 	auto* Context=Text(Tree,TEXT("TheaterContext"),13,Alpha(Quiet,.85f)); Context->SetJustification(ETextJustify::Center);
@@ -891,7 +921,7 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 	Body->AddChildToVerticalBox(TopBounds)->SetPadding(FMargin(0,16,0,0));
 	// Explicit overlay ordering lets the pitch continue under the controls without
 	// sharing their paint layers. Both columns retain the original vertical layout.
-	auto* Stage=Tree.ConstructWidget<UOverlay>(); Stage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	auto* Stage=Tree.ConstructWidget<UOverlay>(UOverlay::StaticClass(),TEXT("TheaterStage")); Stage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	Body->AddChildToVerticalBox(Stage)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 	auto* SceneColumn=Tree.ConstructWidget<UVerticalBox>(); SceneColumn->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	auto* SceneSlot=Stage->AddChildToOverlay(SceneColumn); SceneSlot->SetHorizontalAlignment(HAlign_Fill); SceneSlot->SetVerticalAlignment(VAlign_Fill);
@@ -912,7 +942,7 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 	auto* Center=Tree.ConstructWidget<UOverlay>();
 	auto* CenterBounds=Bounds(Tree,Center,0); CenterBounds->Rename(TEXT("TheaterCenterBounds"),&Tree);
 	ControlColumn->AddChildToVerticalBox(CenterBounds)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
-	auto* Composition=Tree.ConstructWidget<UVerticalBox>();
+	auto* Composition=Tree.ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(),TEXT("TheaterComposition"));
 	auto* CompositionFit=Tree.ConstructWidget<UScaleBox>(UScaleBox::StaticClass(),TEXT("TheaterCompositionFit"));
 	CompositionFit->SetStretchDirection(EStretchDirection::DownOnly); CompositionFit->AddChild(Composition);
 	auto* CompositionSlot=Center->AddChildToOverlay(CompositionFit); CompositionSlot->SetVerticalAlignment(VAlign_Fill); CompositionSlot->SetHorizontalAlignment(HAlign_Fill);
@@ -924,7 +954,8 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 	auto* VSText=Text(Tree,TEXT("TheaterVSLabel"),28,Quiet); VSText->SetText(FText::FromString(TEXT("VS"))); VSText->SetJustification(ETextJustify::Center); VS->AddChild(VSText);
 	auto* VSBounds=Bounds(Tree,VS,64.f); auto* VSSlot=Middle->AddChildToHorizontalBox(VSBounds); VSSlot->SetVerticalAlignment(VAlign_Center); VSSlot->SetPadding(FMargin(10,0));
 	BuildSide(Tree,*Middle,TEXT("TheaterDefense"),Athletes);
-	Composition->AddChildToVerticalBox(Middle)->SetHorizontalAlignment(HAlign_Center);
+	auto* DuelHome=Tree.ConstructWidget<USizeBox>(USizeBox::StaticClass(),TEXT("TheaterDuelHome")); DuelHome->AddChild(Middle);
+	Composition->AddChildToVerticalBox(DuelHome)->SetHorizontalAlignment(HAlign_Center);
 	auto* Candidates=Tree.ConstructWidget<UFMCodexCardRackWidget>(UFMCodexCardRackWidget::StaticClass(),TEXT("TheaterTakers"));
 	Candidates->SetProminentDraftSelection(true);
 	auto* InspectionRow=Tree.ConstructWidget<UHorizontalBox>();
@@ -991,7 +1022,8 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 
 	auto* Bottom=Tree.ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(),TEXT("TheaterBottom"));
 	auto* BottomBounds=Bounds(Tree,Bottom,1040); BottomBounds->Rename(TEXT("TheaterBottomBounds"),&Tree);
-	auto* BottomSlot=Composition->AddChildToVerticalBox(BottomBounds); BottomSlot->SetHorizontalAlignment(HAlign_Center); BottomSlot->SetPadding(FMargin(0,16,0,0));
+	auto* BottomHome=Tree.ConstructWidget<USizeBox>(USizeBox::StaticClass(),TEXT("TheaterBottomHome")); BottomHome->AddChild(BottomBounds);
+	auto* BottomSlot=Composition->AddChildToVerticalBox(BottomHome); BottomSlot->SetHorizontalAlignment(HAlign_Center); BottomSlot->SetPadding(FMargin(0,16,0,0));
 	auto* Lane=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),TEXT("TheaterInfoBar"));
 	auto* LaneLayers=Glass(Tree,*Lane,TEXT("TheaterLaneGlass"));
 	auto* InfoRow=Tree.ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(),TEXT("TheaterReasonLayout"));
@@ -1071,7 +1103,257 @@ UOverlay* Build(UWidgetTree& Tree, UButton*& Primary, UButton*& High, UButton*& 
 	auto* EventSlot=ActionLane->AddChildToOverlay(EventBounds);
 	EventSlot->SetHorizontalAlignment(HAlign_Center); EventSlot->SetVerticalAlignment(VAlign_Center);
 	Show(*EventBounds,false);
+	// Cross reuses the same formula operands, tooltips, reel and action controls.
+	// Only their parent layout changes; other theater consumers retain their stack.
+	auto* Broadcast=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),TEXT("CrossBroadcastBand"));
+	Broadcast->SetBrush(FSlateRoundedBoxBrush(Color(5,20,32),0.f,Alpha(Aqua,.30f),1.f));
+	Broadcast->SetBrushColor(FLinearColor::White); Broadcast->SetPadding(FMargin(32,12));
+	auto* BroadcastRow=Tree.ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(),TEXT("CrossBroadcastRow"));
+	Broadcast->AddChild(BroadcastRow);
+ // Four visual regions: identity, attack, defense, action. The two formula
+ // regions reuse their existing operands and the central VS without rebuilding.
+ auto* CrossContext=Tree.ConstructWidget<UVerticalBox>();
+ auto* CrossType=Text(Tree,TEXT("CrossBroadcastType"),26,White);
+ CrossType->SetFont(FMCodexMatchShellStyle::Font(26,true));
+ CrossContext->AddChildToVerticalBox(CrossType);
+ auto* CrossPhase=Text(Tree,TEXT("CrossBroadcastPhase"),17,Quiet); CrossPhase->SetAutoWrapText(true);
+ CrossContext->AddChildToVerticalBox(CrossPhase)->SetPadding(FMargin(0,8,0,0));
+ auto* CrossReason=Text(Tree,TEXT("CrossBroadcastReason"),15,Quiet); CrossReason->SetAutoWrapText(true);
+ CrossContext->AddChildToVerticalBox(CrossReason)->SetPadding(FMargin(0,10,0,0));
+ auto* Identity=Bounds(Tree,CrossContext,236); Identity->Rename(TEXT("CrossBroadcastIdentity"),&Tree);
+ BroadcastRow->AddChildToHorizontalBox(Identity)->SetVerticalAlignment(VAlign_Center);
+ auto* RouteContext=Tree.ConstructWidget<UHorizontalBox>();
+ for(bool HighRoute:{true,false})
+ {
+  const TCHAR* Prefix=HighRoute?TEXT("CrossRouteHigh"):TEXT("CrossRouteLow");
+  auto* Plate=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),Named(Prefix,TEXT("Plate")));
+  Plate->SetPadding(FMargin(3));
+  auto* Inset=Tree.ConstructWidget<UBorder>();
+  Inset->SetBrush(FSlateRoundedBoxBrush(Color(7,24,39),4.f,Alpha(Color(66,103,127),.35f),1.f));
+  Inset->SetBrushColor(FLinearColor::White); Inset->SetPadding(FMargin(22,18)); Plate->AddChild(Inset);
+  auto* Copy=Tree.ConstructWidget<UHorizontalBox>(); Inset->AddChild(Copy);
+  auto* Diagram=Tree.ConstructWidget<UFMCodexMatchFlowDiagram>();
+  Diagram->SetDiagram(HighRoute?EFMCodexFlowDiagram::HighCross:EFMCodexFlowDiagram::LowCross);
+  auto* DiagramSlot=Copy->AddChildToHorizontalBox(Bounds(Tree,Diagram,72,52));
+  DiagramSlot->SetVerticalAlignment(VAlign_Center); DiagramSlot->SetPadding(FMargin(0,0,24,0));
+  auto* Labels=Tree.ConstructWidget<UVerticalBox>();
+  Copy->AddChildToHorizontalBox(Labels)->SetVerticalAlignment(VAlign_Center);
+  Labels->AddChildToVerticalBox(Text(Tree,Named(Prefix,TEXT("Range")),18,Quiet))->SetPadding(FMargin(0,0,0,6));
+  auto* Label=Text(Tree,Named(Prefix,TEXT("Title")),24,White);
+  Label->SetText(HighRoute?LOCTEXT("RangeHigh","高球传中"):LOCTEXT("RangeLow","低球传中"));
+  Label->SetFont(FMCodexMatchShellStyle::Font(24,true));
+  Labels->AddChildToVerticalBox(Label);
+  Plate->SetVisibility(ESlateVisibility::HitTestInvisible);
+  auto* Slot=RouteContext->AddChildToHorizontalBox(Bounds(Tree,Plate,420));
+  Slot->SetVerticalAlignment(VAlign_Center); Slot->SetPadding(FMargin(HighRoute?0:84,0,0,0));
+ }
+ auto* RouteBounds=Bounds(Tree,RouteContext,924); RouteBounds->Rename(TEXT("CrossRouteContextBounds"),&Tree);
+ Middle->AddChildToHorizontalBox(RouteBounds)->SetVerticalAlignment(VAlign_Center);
+ Show(*RouteBounds,false);
+ // Only the scoreboard and disclosed result banner remain over the pitch.
+ auto* CrossHeader=Tree.ConstructWidget<UOverlay>(UOverlay::StaticClass(),TEXT("CrossBroadcastHeader"));
+	auto* Score=Tree.ConstructWidget<UBorder>(); Score->SetBrushColor(Alpha(Ink,.94f)); Score->SetPadding(FMargin(0));
+	auto* ScoreRow=Tree.ConstructWidget<UHorizontalBox>(); Score->AddChild(ScoreRow);
+	for (int32 I=0;I<5;++I)
+	{
+		if (I==0 || I==4)
+		{
+			auto* Accent=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),I==0?TEXT("CrossScoreLeftAccent"):TEXT("CrossScoreRightAccent")); Accent->SetPadding(FMargin(0));
+			ScoreRow->AddChildToHorizontalBox(Bounds(Tree,Accent,4,38));
+		}
+		else
+		{
+			auto* Label=Text(Tree,I==1?TEXT("CrossScoreLeft"):I==2?TEXT("CrossScoreValue"):TEXT("CrossScoreRight"),I==2?26:18);
+			Label->SetJustification(ETextJustify::Center);
+			auto* Slot=ScoreRow->AddChildToHorizontalBox(Bounds(Tree,Label,I==2?108:114)); Slot->SetVerticalAlignment(VAlign_Center);
+		}
+	}
+	auto* ScoreSlot=CrossHeader->AddChildToOverlay(Score); ScoreSlot->SetHorizontalAlignment(HAlign_Center); ScoreSlot->SetVerticalAlignment(VAlign_Top); ScoreSlot->SetPadding(FMargin(0,20,0,0));
+	auto* CrossOutcome=FMCodexOutcomePresentation::BuildPrimary(Tree,TEXT("CrossBroadcastOutcome"));
+	CrossOutcome->SetAutoWrapText(true);
+ auto ResultStyle=CrossOutcome->GetCurrentDefaultTextStyle();
+ const auto ResultFont=FMCodexMatchShellStyle::Font(28,true);
+ ResultStyle.SetFont(ResultFont); ResultStyle.SetShadowOffset(FVector2D(0,1)); ResultStyle.SetShadowColorAndOpacity(Alpha(Ink,.9f));
+ auto* ResultStyles=CrossOutcome->GetTextStyleSet();
+ for(const auto Name:{FName(TEXT("Goal")),FName(TEXT("NoGoal"))})
+  if(auto* Style=ResultStyles->FindRow<FRichTextStyleRow>(Name,TEXT("CrossResult")))Style->TextStyle.SetFont(ResultFont);
+ CrossOutcome->SetTextStyleSet(nullptr); CrossOutcome->SetTextStyleSet(ResultStyles); CrossOutcome->SetDefaultTextStyle(ResultStyle);
+	auto* ResultCopy=Tree.ConstructWidget<UVerticalBox>(); ResultCopy->AddChildToVerticalBox(CrossOutcome);
+	auto* ResultReason=Text(Tree,TEXT("CrossBroadcastResultReason"),17,Color(200,218,230)); ResultReason->SetAutoWrapText(true); ResultReason->SetJustification(ETextJustify::Center);
+	ResultCopy->AddChildToVerticalBox(ResultReason)->SetPadding(FMargin(0,4,0,0));
+ auto* ResultPlate=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),TEXT("CrossResultPlate"));
+ ResultPlate->SetBrush(FSlateRoundedBoxBrush(Alpha(Color(5,20,32),.95f),8.f,Color(65,106,126),1.f));
+ ResultPlate->SetBrushColor(FLinearColor::White); ResultPlate->SetPadding(FMargin(24,14)); ResultPlate->AddChild(ResultCopy);
+ auto* OutcomeSlot=CrossHeader->AddChildToOverlay(Bounds(Tree,ResultPlate,760)); OutcomeSlot->SetHorizontalAlignment(HAlign_Center); OutcomeSlot->SetVerticalAlignment(VAlign_Top); OutcomeSlot->SetPadding(FMargin(0,94,0,0));
+ Show(*ResultPlate,false);
+	// Route notification consumes only the displayed reveal, sharing the result
+	// family's quiet navy frame without an extra timer or confirmation action.
+	auto* RouteNotice=Tree.ConstructWidget<UBorder>(UBorder::StaticClass(),TEXT("CrossRouteNotice"));
+	RouteNotice->SetBrush(FSlateRoundedBoxBrush(Alpha(Color(5,20,32),.96f),8.f,Color(65,106,126),1.f));
+	RouteNotice->SetBrushColor(FLinearColor::White); RouteNotice->SetPadding(FMargin(24,14));
+	auto* RouteCopy=Tree.ConstructWidget<UVerticalBox>(); RouteNotice->AddChild(RouteCopy);
+	auto* RouteCaption=Text(Tree,NAME_None,15,Color(101,213,245)); RouteCaption->SetText(LOCTEXT("RouteConfirmedCaption","路线已确认"));
+	RouteCopy->AddChildToVerticalBox(RouteCaption)->SetHorizontalAlignment(HAlign_Center);
+	auto* RouteTitle=Text(Tree,TEXT("CrossRouteNoticeTitle"),32,White); RouteTitle->SetFont(FMCodexMatchShellStyle::Font(32,true));
+	RouteCopy->AddChildToVerticalBox(RouteTitle)->SetHorizontalAlignment(HAlign_Center);
+	auto* RouteDetail=Text(Tree,TEXT("CrossRouteNoticeDetail"),17,Quiet);
+	RouteCopy->AddChildToVerticalBox(RouteDetail)->SetHorizontalAlignment(HAlign_Center);
+	auto* RouteNoticeSlot=CrossHeader->AddChildToOverlay(Bounds(Tree,RouteNotice,760));
+	RouteNoticeSlot->SetHorizontalAlignment(HAlign_Center); RouteNoticeSlot->SetVerticalAlignment(VAlign_Top); RouteNoticeSlot->SetPadding(FMargin(0,94,0,0));
+	Show(*RouteNotice,false);
+	auto* HeaderSlot=Stage->AddChildToOverlay(CrossHeader); HeaderSlot->SetHorizontalAlignment(HAlign_Fill); HeaderSlot->SetVerticalAlignment(VAlign_Top);
+	CrossHeader->SetVisibility(ESlateVisibility::Collapsed);
+	auto* BroadcastBounds=Bounds(Tree,Broadcast,1600,200); BroadcastBounds->Rename(TEXT("CrossBroadcastBounds"),&Tree);
+	Composition->AddChildToVerticalBox(BroadcastBounds);
+	Show(*BroadcastBounds,false);
 	return Root;
+}
+
+void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
+	const FFMCodexUMGInlineFormulaSurfaceViewModel& P, const FFMCodexUMGMatchHeaderViewModel& H, bool bPending)
+{
+	const bool Cross=P.ContestId==TEXT("Cross.Setup") || P.ContestId==TEXT("Cross.Route") || IsFormulaContest(P.ContestId);
+	Show(*Tree.FindWidget(TEXT("CrossRouteNotice")),false);
+	auto* Row=Find<UHorizontalBox>(Tree,TEXT("CrossBroadcastRow"));
+	auto* Duel=Find<UHorizontalBox>(Tree,TEXT("TheaterDuel"));
+	auto* Bottom=Find<USizeBox>(Tree,TEXT("TheaterBottomBounds"));
+	auto* DuelHome=Find<USizeBox>(Tree,TEXT("TheaterDuelHome"));
+	auto* BottomHome=Find<USizeBox>(Tree,TEXT("TheaterBottomHome"));
+	if (Cross && Duel->GetParent()!=Row)
+	{
+		Duel->RemoveFromParent(); Bottom->RemoveFromParent();
+		Row->AddChildToHorizontalBox(Duel)->SetVerticalAlignment(VAlign_Center);
+		auto* ActionSlot=Row->AddChildToHorizontalBox(Bottom);
+		ActionSlot->SetVerticalAlignment(VAlign_Center); ActionSlot->SetPadding(FMargin(24,0,0,0));
+	}
+	else if (!Cross && Duel->GetParent()==Row)
+	{
+		Duel->RemoveFromParent(); Bottom->RemoveFromParent();
+		// Fixed homes preserve the live Slate order on return to another tactic.
+		DuelHome->AddChild(Duel); BottomHome->AddChild(Bottom);
+	}
+ const bool Route=Cross && (P.ContestId==TEXT("Cross.Route") || P.ContestId==TEXT("Cross.Setup"));
+ Show(*Tree.FindWidget(TEXT("CrossRouteContextBounds")),Route);
+ Show(*Tree.FindWidget(TEXT("TheaterAttackPanelBounds")),!Route);
+ if(Cross)
+ {
+  Show(*Tree.FindWidget(TEXT("TheaterDefensePanelBounds")),!Route);
+  Show(*Tree.FindWidget(TEXT("TheaterVS"))->GetParent(),!Route);
+ }
+ Show(*Tree.FindWidget(TEXT("TheaterVS")),!Route);
+ if(Route)
+ {
+  // Both static ranges are neutral until the displayed route has disclosed its result.
+  // Never choose a route locally from the die or unrevealed authoritative state.
+  const FName Disclosed=P.RouteResultLabel.IsEmpty()?NAME_None:Screen.InlineFormula.ContestId;
+  for(bool HighRoute:{true,false})
+  {
+   const TCHAR* Prefix=HighRoute?TEXT("CrossRouteHigh"):TEXT("CrossRouteLow");
+   const bool Selected=Disclosed==(HighRoute?TEXT("Cross.High"):TEXT("Cross.Low"));
+   Find<UTextBlock>(Tree,Named(Prefix,TEXT("Range")))->SetText(FFMCodexTacticalDetailPresentationBuilder::BuildCrossRouteRange(P.SpatialCrossIntent,HighRoute));
+   Find<UBorder>(Tree,Named(Prefix,TEXT("Plate")))->SetBrush(FSlateRoundedBoxBrush(Color(16,43,64),6.f,Selected?Color(101,213,245):Color(49,76,91),1.f));
+   Find<UBorder>(Tree,Named(Prefix,TEXT("Plate")))->SetBrushColor(FLinearColor::White);
+   Find<UTextBlock>(Tree,Named(Prefix,TEXT("Title")))->SetColorAndOpacity(Selected?Color(101,213,245):White);
+  }
+ }
+	Show(*DuelHome,!Cross); Show(*BottomHome,!Cross);
+	Show(*Tree.FindWidget(TEXT("CrossBroadcastBounds")),Cross);
+	Tree.FindWidget(TEXT("CrossBroadcastHeader"))->SetVisibility(Cross?ESlateVisibility::HitTestInvisible:ESlateVisibility::Collapsed);
+	Show(*Tree.FindWidget(TEXT("TheaterTopBounds")),!Cross);
+	Show(*Tree.FindWidget(TEXT("TheaterContext")),!Cross);
+	Show(*Tree.FindWidget(TEXT("TheaterLighting")),!Cross);
+	for (const auto Prefix:{TEXT("TheaterAttack"),TEXT("TheaterDefense")})
+	{
+		Find<USizeBox>(Tree,Named(Prefix,TEXT("PanelBounds")))->SetWidthOverride(Cross?420.f:600.f);
+		Show(*Tree.FindWidget(Named(Prefix,TEXT("SilhouetteBounds"))),!Cross);
+		for (const auto Suffix:{TEXT("Glass"),TEXT("People"),TEXT("HeadRule")}) Show(*Tree.FindWidget(Named(Prefix,Suffix)),!Cross);
+		Show(*Tree.FindWidget(Named(Prefix,TEXT("SideIcon")))->GetParent(),!Cross);
+		Show(*Tree.FindWidget(Named(Prefix,TEXT("BaseCaption"))),Cross);
+		Show(*Tree.FindWidget(Named(Prefix,TEXT("DieCaption"))),Cross);
+		Show(*Tree.FindWidget(Named(Prefix,TEXT("DieWell"))),Cross && Tree.FindWidget(Named(Prefix,TEXT("Pending")))->GetVisibility()!=ESlateVisibility::Collapsed);
+		auto* Side=Find<UTextBlock>(Tree,Named(Prefix,TEXT("Side")));
+		// The original title retains the legacy font asset. Restore that asset as
+		// well as its size when leaving Cross; changing the face name alone leaks
+		// Cross's explicit CJK typeface into the next tactical consumer.
+		auto SideFont=Find<UTextBlock>(Tree,TEXT("TheaterTitle"))->GetFont(); SideFont.Size=32;
+		Side->SetFont(Cross?FMCodexMatchShellStyle::Font(22,true):SideFont); Side->SetColorAndOpacity(White);
+		CastChecked<UOverlaySlot>(Tree.FindWidget(Named(Prefix,TEXT("SafeContent")))->Slot)->SetPadding(
+			Cross?FMargin(20,8):FString(Prefix)==TEXT("TheaterAttack")?FMargin(160,16,22,16):FMargin(22,16,160,16));
+		auto* Frame=Find<UBorder>(Tree,Named(Prefix,TEXT("Panel")));
+		Frame->SetBrushColor(Cross?FLinearColor::White:FLinearColor::Transparent);
+		Show(*Tree.FindWidget(Named(Prefix,TEXT("Accent"))),!Cross);
+		if(Cross)
+		{
+			const bool Attack=FString(Prefix)==TEXT("TheaterAttack");
+			const auto TeamColor=FMCodexMatchShellStyle::HeaderAccent(
+    (Attack?P.AttackRow.Side:P.DefenseRow.Side)==H.LeftPlayerSide?H.LeftAttackTurnTracker.PrimarySideColor:H.RightAttackTurnTracker.PrimarySideColor);
+			Find<UBorder>(Tree,Named(Prefix,TEXT("Accent")))->SetBrushColor(TeamColor);
+			Frame->SetBrush(FSlateRoundedBoxBrush(Color(5,20,32),6.f,TeamColor,1.f));
+			// Winner/current badges still use the original projected semantics.
+   const auto OwnerSide=(Attack?P.AttackRow.Side:P.DefenseRow.Side);
+   const FText Player=FFMCodexPlayerUIPresentationText::MatchScreenLabel(OwnerSide==H.LeftPlayerSide?H.LeftPlayerLabel:H.RightPlayerLabel);
+   Find<UTextBlock>(Tree,Named(Prefix,TEXT("Side")))->SetText(FText::Format(Attack?LOCTEXT("AttackOwner","{0} · 进攻"):LOCTEXT("DefenseOwner","{0} · 防守"),Player));
+		}
+	}
+	Find<UTextBlock>(Tree,TEXT("TheaterStatus"))->SetAutoWrapText(Cross);
+	auto* ActionLabel=Find<UTextBlock>(Tree,TEXT("TheaterContinueLabel"));
+	auto ActionFont=Find<UTextBlock>(Tree,TEXT("TheaterTitle"))->GetFont(); ActionFont.Size=26;
+	ActionLabel->SetFont(Cross?FMCodexMatchShellStyle::Font(22,true):ActionFont); ActionLabel->SetColorAndOpacity(Ink);
+	auto* ActionButton=Find<UButton>(Tree,TEXT("TheaterContinue"));
+	auto ActionStyle=ActionButton->GetStyle();
+	ActionStyle.SetNormal(FSlateRoundedBoxBrush(Cross?Color(43,225,200):Mint,9.f,Alpha(White,Cross?.18f:.55f),1.f)); ActionButton->SetStyle(ActionStyle);
+	for (const auto Name:{TEXT("TheaterHigh"),TEXT("TheaterLow")})
+		CastChecked<USizeBox>(Tree.FindWidget(Name)->GetParent())->SetWidthOverride(Cross?145.f:240.f);
+	if (!Cross) return;
+	Find<UTextBlock>(Tree,TEXT("TheaterHighLabel"))->SetText(LOCTEXT("CrossHighShort","高球"));
+	Find<UTextBlock>(Tree,TEXT("TheaterLowLabel"))->SetText(LOCTEXT("CrossLowShort","低球"));
+	Bottom->SetWidthOverride(260.f);
+	// The legacy 320-wide button exceeded this 260-wide lane and displaced its
+	// center relative to the status. Keep the same centered overlay and fit it.
+	Find<USizeBox>(Tree,TEXT("TheaterPrimaryBounds"))->SetWidthOverride(260.f);
+	Show(*Tree.FindWidget(TEXT("TheaterRollLeading")),false);
+	Show(*Tree.FindWidget(TEXT("TheaterNextTrailing")),false);
+	Show(*Tree.FindWidget(TEXT("TheaterInfoBar"))->GetParent(),false);
+	const bool LeftA=H.LeftPlayerSide==EInitialTurnOrderPlayer::PlayerA;
+	SetText(Tree,TEXT("CrossScoreLeft"),FFMCodexPlayerUIPresentationText::MatchScreenLabel(H.LeftPlayerLabel).ToString());
+	SetText(Tree,TEXT("CrossScoreRight"),FFMCodexPlayerUIPresentationText::MatchScreenLabel(H.RightPlayerLabel).ToString());
+	SetText(Tree,TEXT("CrossScoreValue"),FString::Printf(TEXT("%s : %s"),*(LeftA?H.PlayerAScoreLabel:H.PlayerBScoreLabel),*(LeftA?H.PlayerBScoreLabel:H.PlayerAScoreLabel)));
+	Find<UBorder>(Tree,TEXT("CrossScoreLeftAccent"))->SetBrushColor(FMCodexMatchShellStyle::HeaderAccent(H.LeftAttackTurnTracker.PrimarySideColor));
+	Find<UBorder>(Tree,TEXT("CrossScoreRightAccent"))->SetBrushColor(FMCodexMatchShellStyle::HeaderAccent(H.RightAttackTurnTracker.PrimarySideColor));
+	// Copy only the already-gated canonical headline, not raw resolution facts.
+	auto* Outcome=Find<URichTextBlock>(Tree,TEXT("CrossBroadcastOutcome"));
+	Outcome->SetText(Find<URichTextBlock>(Tree,TEXT("TheaterOutcome"))->GetText());
+	Show(*Outcome,P.bNarrativeAvailable && !P.bDiceRevealVisible);
+	Show(*Tree.FindWidget(TEXT("CrossResultPlate")),P.bNarrativeAvailable && !P.bDiceRevealVisible);
+	SetText(Tree,TEXT("CrossBroadcastResultReason"),P.ResolutionReasonLabel);
+	Show(*Tree.FindWidget(TEXT("CrossBroadcastResultReason")),P.bNarrativeAvailable && !P.bDiceRevealVisible && !P.ResolutionReasonLabel.IsEmpty());
+	const FName VisibleRoute=Route && !P.RouteResultLabel.IsEmpty()?Screen.InlineFormula.ContestId:P.ContestId;
+	const bool Low=VisibleRoute==TEXT("Cross.Low") || (VisibleRoute==TEXT("Cross.Route") && P.SpatialCrossIntent==EMatchPlayElectiveBranchIntent::CrossLow);
+	const bool RouteRevealed=P.ContestId==TEXT("Cross.Route") && !P.RouteResultLabel.IsEmpty();
+	Show(*Tree.FindWidget(TEXT("CrossRouteNotice")),RouteRevealed);
+	Find<UTextBlock>(Tree,TEXT("CrossRouteNoticeTitle"))->SetText(RouteRevealed?(Low?LOCTEXT("LowCross","低球传中"):LOCTEXT("HighCross","高球传中")):FText::GetEmpty());
+	SetText(Tree,TEXT("CrossRouteNoticeDetail"),RouteRevealed?P.RouteResultLabel:FString());
+	Find<UTextBlock>(Tree,TEXT("CrossBroadcastType"))->SetText(P.ContestId==TEXT("Cross.Setup")?LOCTEXT("Cross","传中")
+		:Low?LOCTEXT("LowCross","低球传中"):LOCTEXT("HighCross","高球传中"));
+	Find<UTextBlock>(Tree,TEXT("CrossBroadcastPhase"))->SetText(P.ContestId==TEXT("Cross.Setup")?LOCTEXT("CrossConfirm","确认传中方式")
+		:P.ContestId==TEXT("Cross.Route")?LOCTEXT("CrossRouteBeat","传中路线判定")
+		:P.bNarrativeAvailable?LOCTEXT("CrossSettled","本次传中结果"):FText::GetEmpty());
+	Show(*Tree.FindWidget(TEXT("CrossBroadcastPhase")),Route || P.bNarrativeAvailable);
+	SetText(Tree,TEXT("CrossBroadcastReason"),P.bNarrativeAvailable?P.ResolutionReasonLabel
+		:P.ContestId==TEXT("Cross.Route")?(!P.RouteResultLabel.IsEmpty()?P.RouteResultLabel
+   :FString())
+   :LOCTEXT("CrossDetails","悬停基础值查看明细").ToString());
+	Show(*Tree.FindWidget(TEXT("CrossBroadcastReason")),!P.bNarrativeAvailable && !Route);
+	auto* Status=Find<UTextBlock>(Tree,TEXT("TheaterStatus")); Status->SetAutoWrapText(true);
+	SetText(Tree,TEXT("TheaterStatus"),bPending?LOCTEXT("PendingRequest","操作已提交，等待确认").ToString()
+		:Route && !P.RouteResultLabel.IsEmpty()?LOCTEXT("CrossRouteConfirmed","路线已确认").ToString()
+  :P.bDiceRevealVisible?LOCTEXT("CrossRevealing","正在揭示掷点").ToString()
+		:Screen.Interaction.Category==C::RollCrossRoute && !Screen.bActionWaitPromptReadOnly?LOCTEXT("CrossAutoReady","等待掷点").ToString()
+		:Screen.bMirrorActionWaitPrompt?Screen.ActionWaitActorText.ToString()+TEXT("\n")+Screen.ActionWaitActionText.ToString()
+		:FFMCodexPlayerUIPresentationText::MatchScreenLabel(Screen.Interaction.ExpectedActorLabel).ToString());
+	Show(*Status,true);
+	if (P.PrimaryAction.Action.Category==C::RollCrossAttack)
+		Find<UTextBlock>(Tree,TEXT("TheaterContinueLabel"))->SetText(LOCTEXT("CrossExecute","实施战术"));
 }
 FFMCodexUMGInlineFormulaRowViewModel ThroughBallContext(const FFMCodexUMGMatchScreenViewModel& Screen,
 	bool bCarrier)
@@ -1194,6 +1476,8 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	if (bThroughEvent && !FMCodexOutcomePresentation::IsFinalReady(Through.bNarrativeAvailable,Through.bDiceRevealVisible))
 	{
 		ClearTakerInspection(Tree,Inspection);
+		// This consumer returns before the normal shared-layout reset below.
+		RefreshCrossBroadcast(Tree,Screen,FFMCodexUMGInlineFormulaSurfaceViewModel(),H,bRequestPending);
 		RefreshThroughBallEvent(Tree,Screen,H,bRequestPending);
 		return;
 	}
@@ -1757,6 +2041,7 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 		Show(*Tree.FindWidget(TEXT("TheaterSelectionReturnBounds")),bActor && bSelectionConfirmationPending && !bRequestPending);
 		Find<UButton>(Tree,TEXT("TheaterSelectionReturn"))->SetIsEnabled(bActor && !bRequestPending);
 	}
+	RefreshCrossBroadcast(Tree,Screen,P,H,bRequestPending);
 }
 void RefreshReel(UWidgetTree& Tree, const FFMCodexUMGRollReelViewModel& Reel)
 {
@@ -1872,6 +2157,15 @@ void Tick(UWidgetTree& Tree, FMotion& Motion, float DeltaSeconds)
 		if (!Motion.bActive) return;
 		Tree.FindWidget(TEXT("TheaterTop"))->SetRenderOpacity(Ease(.08f,.18f));
 		Tree.FindWidget(TEXT("TheaterContext"))->SetRenderOpacity(Ease(.08f,.18f));
+  if(Tree.FindWidget(TEXT("CrossBroadcastHeader"))->GetVisibility()!=ESlateVisibility::Collapsed)
+  {
+   // Cross enters as one complete scene. Its light emphasis is driven by the
+   // scene's painted-frame clock, not the legacy sequential panel entrance.
+   for(const auto Name:{TEXT("TheaterAttackPanel"),TEXT("TheaterDefensePanel"),TEXT("TheaterBottom")})
+   {auto* W=Tree.FindWidget(Name);W->SetRenderOpacity(1);W->SetRenderTranslation(FVector2D::ZeroVector);Show(*W,true);}
+   auto* VS=Tree.FindWidget(TEXT("TheaterVS")); VS->SetRenderOpacity(1);VS->SetRenderScale(FVector2D(1));
+   return;
+  }
 		int32 Index=0;
 		for (const auto& Pair : {TPair<const TCHAR*,float>(TEXT("TheaterAttackPanel"),-38.f),{TEXT("TheaterDefensePanel"),38.f}})
 		{

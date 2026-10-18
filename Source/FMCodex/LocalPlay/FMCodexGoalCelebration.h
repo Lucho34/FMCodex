@@ -8,12 +8,14 @@ class FSlateWindowElementList;
 namespace FMCodexGoalCelebration
 {
 inline constexpr float Duration=1.50f;
+inline constexpr float CrossDuration=2.f;
 struct FState
 {
  float Elapsed=Duration;
+ float PlaybackDuration=Duration;
  bool bConsumed=false;
- bool Start(bool bDisclosedGoal);
- bool IsActive() const {return Elapsed<Duration;}
+ bool Start(bool bDisclosedGoal,float InDuration=Duration);
+ bool IsActive() const {return Elapsed<PlaybackDuration;}
  void Tick(float DeltaSeconds);
  bool Skip();
  void Reset() {*this=FState();}
