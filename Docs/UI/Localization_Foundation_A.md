@@ -123,14 +123,82 @@ Both focused checks passed after correcting inherited placeholder-target duplica
 The final incremental Development Editor build succeeded. Logs are under `Saved/LocalizationFoundation`.
 These results establish the pilot only, not complete coverage or user visual acceptance.
 
-## USER PIE and Foundation B boundary
+## Foundation A acceptance
 
-USER PIE remains **PENDING** for Chinese/English presentation and fit. In Editor Preferences → Region & Language,
-choose **Preview Game Language** (English or Simplified Chinese), then start a fresh PIE session.
-Check the deployment finish/reference buttons and the Header attack-turn heading/progress. Restore Chinese preview afterward.
-Other UI will remain Chinese by design. Do not change Editor Language to perform this check.
+USER PIE for English and Simplified Chinese passed and Foundation A was manually committed.
+The engineering evidence above is historical; it does not constitute Foundation B acceptance.
 
-Foundation B should trace and migrate a bounded set of shared actions (including Next Round, defender roll and pending status) through all final widget paths,
-retain distinct typed actions, remove lossy FText/FString boundaries where needed, and add final-visible-text checks per consumer.
-Also address culture-dependent Chinese text comparisons before broader coverage, translation coverage gates, overflow/font checks and an eventual packaged-language smoke.
-Keep player-content Excel → JSON independent. Do not infer full English readiness from this pilot.
+## Foundation B: shared tactical text ownership
+
+The controlled scope is the Crossing, CutInside and LongShot broadcast theaters.
+`FFMCodexPlayerUIPresentationText` owns these four shared meanings:
+
+| Helper | Stable namespace / key | Chinese | English | Final control |
+|---|---|---|---|---|
+| `ShotDefenseRollAction` | `FMCodexPlayerUIPresentationText / ShotDefenseRollAction` | 防守方掷点 | Defender Rolls | `TheaterContinueLabel` |
+| `ActionAcknowledgementPending` | `FMCodexResolutionTheater / PendingRequest` | 操作已提交，等待确认 | Action submitted. Awaiting confirmation | `TheaterStatus` |
+| `DiceRevealing` | `FMCodexResolutionTheater / CrossRevealing` | 正在揭示掷点 | Revealing dice | `TheaterStatus` |
+| `DiceSettled` | `FMCodexResolutionTheater / CutRollLanded` | 掷点已落定 | Dice settled | `TheaterStatus` in ordinary shot result hold |
+
+Centralization retains existing identities, including the historical theater namespace for the three statuses.
+Crossing retains its existing reveal/route-specific lifecycle; it is not forced to show the ordinary-shot settled status.
+The unused theater-local `DefenseRoll` identity is removed in favor of the existing shared `ShotDefenseRollAction` identity.
+No String Table is needed for these C++ presentation meanings.
+
+`FMCodexLocalMatchUMGPresentation.cpp` maps the distinct `RollCrossDefense`,
+`RollCutInsideShotDirectDefense`, and `RollLongShotDirectDefense` categories to the shared defender text.
+Availability and category are preserved. Theater rendering no longer replaces the Cross defender label locally.
+`FFMCodexUMGPrimaryActionViewModel::Label` is now FText: the existing typed action and its resolution-slot copies
+carry it directly into UTextBlock. Direct consumers (including lower-panel, formula and progression surfaces)
+were adapted for that field type; their action routing/layout/timing did not change.
+Existing test fixtures were mechanically adapted to construct FText or compare display snapshots.
+Legacy canonical-label conversion for other primary actions now happens once in the presentation builder.
+
+The three selected broadcast status branches pass the helper FText directly to UTextBlock without ToString/FromString.
+Their pending/reveal/settled selection conditions are unchanged. No translated label selects a gameplay action.
+
+Intentional boundaries and deferred work:
+
+- InteractionView strings, serialized Network presentation data, stable IDs, command categories, logs and external player names remain unchanged.
+- Legacy `PrimaryActionLabel` / `ContinueActionLabel` / `ActionPromptLabel` compatibility fields remain FString snapshots.
+  The selected final CTA consumes the FText primary action, not these snapshots.
+- Other primary-action mappings, narrative, formula descriptions, actor/wait concatenation, branch hints, Tutorial and non-broadcast status paths remain incremental migration work.
+- Other tactical families using the centralized pending helper share its translation, but their full text pipelines are not certified here.
+- The canonical player Excel → JSON pipeline is separate and unchanged.
+
+Future theater code must use typed state/category to select semantics, reuse the existing text owner for equivalent meanings,
+retain FText through display fields, and test the final control after all refresh/override paths.
+Do not merge different gameplay actions because their labels match; do not add a late widget override for a shared CTA.
+New keys should describe stable meaning/context. Existing correct keys must not be renamed merely to match a class/file name.
+
+### Foundation B verification
+
+Run Gather → Export, edit the four selected English PO entries, then Import → Compile using the commands above.
+Preserve Foundation A's four pilot translations. Review manifest/archive counts and the conflicts report together.
+
+The existing `FMCodex.LocalPlay.LongShotProduction.06.FinalVisibleText` test now covers fresh Chinese and English widgets
+for LongShot, CutInside and high Crossing. It enters real authority-backed states through Skill → Branch and manual rolls,
+checks the final visible/enabled defender button, checks namespace/key identity, rejects a usable non-owner CTA,
+and clicks the real button to verify one accepted family-specific typed intent.
+It also projects only pending/reel flags on the production-created formula to check the final status text, identity and disabled CTA
+through the production theater refresh. It never seeds expected labels into presentation fixtures.
+This is an in-process action/authority harness, not independent Host/Remote validation.
+
+Retain `FMCodex.Localization.FoundationA.VisibleUI` for the four pilot entries and
+`FMCodex.LocalPlay.MatchShell.ActionHierarchyAndWaiting` for the directly adapted lower-panel consumer.
+No configuration change requires rerunning FoundationA.Configuration or broad gameplay suites.
+Fresh controls per culture suffice; live whole-match language switching is not claimed.
+
+Foundation B engineering evidence (2026-10-19): Gather / Export / Import / Compile exited 0; conflicts 0.
+Manifest identities changed from 840 to 839, solely removing the redundant theater `DefenseRoll` key.
+English now has 8 translated entries (4 retained + 4 shared texts) and 831 intentionally untranslated entries;
+Chinese has 839 native entries. The three focused checks above passed, and the final incremental Development Editor build passed.
+The first compile exposed old aggregate test initializers and a UE5.3 TOptional inspection API mismatch;
+these test adaptations were corrected before the successful build and focused run.
+Evidence: `Saved/LocalizationFoundation/FoundationB-Build.log`, `FoundationB-Focused.log`, and the four pipeline logs.
+No broad suites, cook, Shipping, additional PIE automation or independent Host/Remote run were performed.
+
+USER PIE for Foundation B is **PENDING**. In Preview Game Language, select each culture and start fresh PIE.
+Inspect defender CTA wording and fit in the three theaters, plus pending/revealing/settled status where applicable.
+Chinese wording/layout should remain familiar; English is intentionally partial. Timing remains ~4.04 seconds per deciding die,
+3.0 seconds for result reading and 5.0 seconds for Next Turn. No packaged-game, Steam or independent Host/Remote acceptance is claimed.

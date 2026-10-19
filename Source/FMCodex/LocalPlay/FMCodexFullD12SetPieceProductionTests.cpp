@@ -927,7 +927,7 @@ bool FFMCodexCornerDraftAndResolutionProductionTest::RunTest(
 			&& CornerTerminalPresentation.InlineFormula.bShowDefenseRow
 			&& CornerTerminalPresentation.InlineFormula.RouteResultLabel.Contains(
 				TEXT(" vs 防守"))
-			&& CornerTerminalPresentation.InlineFormula.PrimaryAction.Action.Label
+			&& CornerTerminalPresentation.InlineFormula.PrimaryAction.Action.Label.ToString()
 				== TEXT("下一回合"));
 	TestTrue(TEXT("Corner score fixture is an authoritative Goal"), Controller->GetInteractionView().bSetPieceGoal);
 	Screen->RefreshFromPresentation(CornerTerminalPresentation);
@@ -1025,7 +1025,7 @@ bool FFMCodexFullD12RevealAndCentralOwnershipTest::RunTest(
 				== TEXT("定位球类型")
 			&& FormulaSurface->GetPresentation().TacticalPlayerSummaryLabel
 				== TEXT("1–2：角球  3–4：远距离任意球  5：近距离任意球  6：点球")
-			&& FormulaSurface->GetPresentation().PrimaryAction.Action.Label
+			&& FormulaSurface->GetPresentation().PrimaryAction.Action.Label.ToString()
 				== TEXT("掷定位球类型")
 			&& SetPieceSurface->GetVisibility() == ESlateVisibility::Collapsed
 			&& Screen->GetInteractionPanel()->GetVisibility()
@@ -1346,7 +1346,7 @@ bool FFMCodexShortSetPieceOrdinarySurfaceRepairTest::RunTest(
 				.Contains(TEXT("由权威结果计入"))
 			&& AttackPending.InlineFormula.RouteResultLabel.IsEmpty()
 			&& !AttackPending.InlineFormula.ContestLabel.Contains(TEXT("短任意球"))
-			&& AttackPending.InlineFormula.PrimaryAction.Action.Label
+			&& AttackPending.InlineFormula.PrimaryAction.Action.Label.ToString()
 				== TEXT("进攻方掷点"));
 
 	TestTrue(TEXT("Short Direct overrides accepted"),
@@ -1401,7 +1401,7 @@ bool FFMCodexShortSetPieceOrdinarySurfaceRepairTest::RunTest(
 				DefensePending.InlineFormula.DefenseRow.KnownNonRollSubtotal)
 			&& DefensePending.InlineFormula.RouteResultLabel.IsEmpty()
 			&& DefensePending.InlineFormula.bDefenseRowActive
-			&& DefensePending.InlineFormula.PrimaryAction.Action.Label
+			&& DefensePending.InlineFormula.PrimaryAction.Action.Label.ToString()
 				== TEXT("防守方掷点"));
 	DirectWorld.Controller->SubmitProjectedPrimaryPlayerIntent();
 	const auto DirectTerminal = ProjectDirect();
@@ -1435,7 +1435,7 @@ bool FFMCodexShortSetPieceOrdinarySurfaceRepairTest::RunTest(
 			&& DirectTerminal.InlineFormula.StatusLabel
 				== TEXT("近距离任意球 · 直接射门 · 进球")
 			&& !DirectTerminal.InlineFormula.ContestLabel.Contains(TEXT("短任意球"))
-			&& DirectTerminal.InlineFormula.PrimaryAction.Action.Label
+			&& DirectTerminal.InlineFormula.PrimaryAction.Action.Label.ToString()
 				== TEXT("下一回合"));
 
 	UFMCodexLocalMatchScreenWidget* DirectScreen =
@@ -1525,7 +1525,7 @@ bool FFMCodexShortSetPieceOrdinarySurfaceRepairTest::RunTest(
 	TestTrue(TEXT("Short Angled starts in the same shell without compare rows"),
 		AngledPending.InlineFormula.bVisible
 			&& !AngledPending.InlineFormula.bShowFormulaRows
-			&& AngledPending.InlineFormula.PrimaryAction.Action.Label
+			&& AngledPending.InlineFormula.PrimaryAction.Action.Label.ToString()
 				== TEXT("掷战术配合双骰"));
 	TestTrue(TEXT("Short Angled pair overrides accepted"),
 		SetOverride(*AngledWorld.Controller, ETarget::ShortFreeKickAngledA, 4)
@@ -1552,7 +1552,7 @@ bool FFMCodexShortSetPieceOrdinarySurfaceRepairTest::RunTest(
 			&& !AngledTerminal.InlineFormula.ContestLabel.Contains(TEXT("扑出"))
 			&& AngledTerminal.InlineFormula.StatusLabel
 				== TEXT("近距离任意球 · 战术配合 · 进球")
-			&& AngledTerminal.InlineFormula.PrimaryAction.Action.Label
+			&& AngledTerminal.InlineFormula.PrimaryAction.Action.Label.ToString()
 				== TEXT("下一回合"));
 	UFMCodexInlineResolutionFormulaSurfaceWidget* AngledSurface =
 		NewObject<UFMCodexInlineResolutionFormulaSurfaceWidget>(
@@ -1687,7 +1687,7 @@ bool FFMCodexSetPiecePresentationFamilyMatrixRepairTest::RunTest(
 				== TEXT("点球 · 常规点球 · 进球")
 			&& PenaltyDirect.InlineFormula.RouteResultLabel.Contains(
 				TEXT(" vs 防守"))
-			&& PenaltyDirect.InlineFormula.PrimaryAction.Action.Label
+			&& PenaltyDirect.InlineFormula.PrimaryAction.Action.Label.ToString()
 				== TEXT("下一回合"));
 	TestTrue(TEXT("Penalty Direct miss uses the goalkeeper only on its opposed route"),
 		PenaltyDirectMiss.InlineFormula.bShowAttackRow
@@ -1712,7 +1712,7 @@ bool FFMCodexSetPiecePresentationFamilyMatrixRepairTest::RunTest(
 			&& Panenka.InlineFormula.StatusLabel
 				== TEXT("点球 · 勺子点球 · 进球")
 			&& Panenka.InlineFormula.RouteResultLabel == TEXT("掷点结果：6")
-			&& !Panenka.InlineFormula.PrimaryAction.Action.Label.Contains(
+			&& !Panenka.InlineFormula.PrimaryAction.Action.Label.ToString().Contains(
 				TEXT("Continue")));
 	return true;
 }
@@ -1840,7 +1840,7 @@ bool FFMCodexSetPieceP0HelpersAndPairDisclosureTest::RunTest(
 		TestTrue(TEXT("Settled pair retains arithmetic and central Next Round"),
 			Formula->GetPresentation().RouteResultLabel == TEXT("D6 6 + D6 5 = 11")
 				&& Formula->GetPresentation().RollHelperLabel.IsEmpty()
-				&& Formula->GetPresentation().PrimaryAction.Action.Label == TEXT("下一回合"));
+				&& Formula->GetPresentation().PrimaryAction.Action.Label.ToString() == TEXT("下一回合"));
 		TestTrue(TEXT("Sequential display does not change accepted authority state"),
 			StateAfterRequest == SerializeState(World.Host->GetMatchSnapshot().Snapshot));
 		World.Controller->StartNewDemoMatch();
@@ -2040,7 +2040,7 @@ bool FFMCodexCornerFocusedProductionRepairTest::RunTest(const FString& Parameter
 				&& !View.bHasSetPieceAttackD6 && !View.bHasSetPieceDefenseD6
 				&& !View.bHasSetPieceFormula && !Formula.bShowFormulaRows
 				&& !Screen->IsInlineFormulaRevealInputBlocked()
-				&& Formula.PrimaryAction.Action.Label == TEXT("下一回合")
+				&& Formula.PrimaryAction.Action.Label.ToString() == TEXT("下一回合")
 				&& !Formula.ContestLabel.Contains(TEXT("系统进球")));
 		TestTrue(TEXT("No-roll terminal discloses its outcome and authoritative score together without a timer"),
 			Formula.bNarrativeAvailable

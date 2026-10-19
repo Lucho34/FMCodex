@@ -103,7 +103,7 @@ void UFMCodexLocalMatchScreenWidget::ApplyNextRoundCountdown()
 		{
 			const auto Text = NextRoundCountdown.bCounting
 				? FText::Format(NSLOCTEXT("FMCodexNextRound", "Countdown", "下一回合（{0}）"), FText::AsNumber(NextRoundCountdown.Remaining()))
-				: FText::FromString(Presentation.Interaction.PrimaryAction.Label);
+				: Presentation.Interaction.PrimaryAction.Label;
 			if (!Label->GetText().EqualTo(Text)) Label->SetText(Text);
 			Label->SetJustification(ETextJustify::Center);
 		}

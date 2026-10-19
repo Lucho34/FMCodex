@@ -40,7 +40,7 @@ bool FFMCodexNextRoundCountdownTest::RunTest(const FString&)
 	V.Interaction.ExpectedActorLabel = TEXT("玩家 A");
 	V.Interaction.PrimaryAction.bAvailable = true;
 	V.Interaction.PrimaryAction.Category = C::AdvanceAfterTerminal;
-	V.Interaction.PrimaryAction.Label = TEXT("下一回合");
+	V.Interaction.PrimaryAction.Label = FText::FromString(TEXT("下一回合"));
 	V.Interaction.bCanContinue = true;
 	auto Show = [&]() { S->RefreshFromPresentation(V); };
 	auto Tick = [&](float D) { A::Tick(*S, D); };
@@ -151,7 +151,7 @@ bool FFMCodexNextRoundCrossTheaterReadingTest::RunTest(const FString&)
   V.Header.AttackSequence=1;V.Header.CurrentPhaseLabel=TEXT("结果");
   V.Interaction.Category=C::AdvanceAfterTerminal;V.Interaction.ExpectedActorLabel=TEXT("玩家 A");
   V.Interaction.PrimaryAction={};V.Interaction.PrimaryAction.bAvailable=true;
-  V.Interaction.PrimaryAction.Category=C::AdvanceAfterTerminal;V.Interaction.PrimaryAction.Label=TEXT("下一回合");
+  V.Interaction.PrimaryAction.Category=C::AdvanceAfterTerminal;V.Interaction.PrimaryAction.Label = FText::FromString(TEXT("下一回合"));
   V.Interaction.bCanContinue=true;
   auto& F=V.InlineFormula;
   F.bVisible=F.bNarrativeAvailable=F.bCanContinue=true;

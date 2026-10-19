@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-18 14:46\n"
-"PO-Revision-Date: 2026-10-18 14:46\n"
+"POT-Creation-Date: 2026-10-18 23:51\n"
+"PO-Revision-Date: 2026-10-18 23:51\n"
 "Language-Team: \n"
 "Language: zh-Hans\n"
 "MIME-Version: 1.0\n"
@@ -469,8 +469,8 @@ msgid "{0}中"
 msgstr "{0}中"
 
 #. Key:	FormulaResolving
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.cpp(709)
-#: Source/FMCodex/LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.cpp(709)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.cpp(708)
+#: Source/FMCodex/LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.cpp(708)
 msgctxt "FMCodexOutcome,FormulaResolving"
 msgid "正在结算"
 msgstr "正在结算"
@@ -483,15 +483,15 @@ msgid "当前"
 msgstr "当前"
 
 #. Key:	FinalValue
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.cpp(948)
-#: Source/FMCodex/LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.cpp(948)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.cpp(947)
+#: Source/FMCodex/LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.cpp(947)
 msgctxt "FMCodexFormula,FinalValue"
 msgid "最终值"
 msgstr "最终值"
 
 #. Key:	CurrentValue
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.cpp(949)
-#: Source/FMCodex/LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.cpp(949)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.cpp(948)
+#: Source/FMCodex/LocalPlay/FMCodexInlineResolutionFormulaSurfaceWidget.cpp(948)
 msgctxt "FMCodexFormula,CurrentValue"
 msgid "当前值"
 msgstr "当前值"
@@ -1273,19 +1273,12 @@ msgctxt "FMCodexPlayerUIPresentationText,ReadyToPlay"
 msgid "准备开始"
 msgstr "准备开始"
 
-#. Key:	ResolutionPending
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1000)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1000)
-msgctxt "FMCodexPlayerUIPresentationText,ResolutionPending"
-msgid "等待结算"
-msgstr "等待结算"
-
-#. Key:	ResolutionResolved
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1005)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1005)
-msgctxt "FMCodexPlayerUIPresentationText,ResolutionResolved"
-msgid "公式已结算"
-msgstr "公式已结算"
+#. Key:	ResolutionAttackRow
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1006)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1006)
+msgctxt "FMCodexPlayerUIPresentationText,ResolutionAttackRow"
+msgid "进攻"
+msgstr "进攻"
 
 #. Key:	StartLocalMatch
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(101)
@@ -1294,19 +1287,19 @@ msgctxt "FMCodexPlayerUIPresentationText,StartLocalMatch"
 msgid "开始本地对战"
 msgstr "开始本地对战"
 
-#. Key:	ResolutionAttackRoll
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1010)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1010)
-msgctxt "FMCodexPlayerUIPresentationText,ResolutionAttackRoll"
-msgid "进攻掷点"
-msgstr "进攻掷点"
+#. Key:	ResolutionDefenseRow
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1011)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1011)
+msgctxt "FMCodexPlayerUIPresentationText,ResolutionDefenseRow"
+msgid "防守"
+msgstr "防守"
 
-#. Key:	ResolutionAttackRollSettled
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1015)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1015)
-msgctxt "FMCodexPlayerUIPresentationText,ResolutionAttackRollSettled"
-msgid "进攻掷点已落定"
-msgstr "进攻掷点已落定"
+#. Key:	ResolutionPending
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1016)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1016)
+msgctxt "FMCodexPlayerUIPresentationText,ResolutionPending"
+msgid "等待结算"
+msgstr "等待结算"
 
 #. Key:	StartMatch
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(102)
@@ -1315,19 +1308,19 @@ msgctxt "FMCodexPlayerUIPresentationText,StartMatch"
 msgid "开始比赛"
 msgstr "开始比赛"
 
-#. Key:	ResolutionDefenseRoll
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1020)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1020)
-msgctxt "FMCodexPlayerUIPresentationText,ResolutionDefenseRoll"
-msgid "防守掷点"
-msgstr "防守掷点"
+#. Key:	ResolutionResolved
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1021)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1021)
+msgctxt "FMCodexPlayerUIPresentationText,ResolutionResolved"
+msgid "公式已结算"
+msgstr "公式已结算"
 
-#. Key:	ResolutionDefenseRollSettled
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1025)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1025)
-msgctxt "FMCodexPlayerUIPresentationText,ResolutionDefenseRollSettled"
-msgid "防守掷点已落定"
-msgstr "防守掷点已落定"
+#. Key:	ResolutionAttackRoll
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1026)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1026)
+msgctxt "FMCodexPlayerUIPresentationText,ResolutionAttackRoll"
+msgid "进攻掷点"
+msgstr "进攻掷点"
 
 #. Key:	RollTacticalPoints
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(103)
@@ -1336,12 +1329,19 @@ msgctxt "FMCodexPlayerUIPresentationText,RollTacticalPoints"
 msgid "掷战术点"
 msgstr "掷战术点"
 
-#. Key:	ContinueResolution
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1030)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1030)
-msgctxt "FMCodexPlayerUIPresentationText,ContinueResolution"
-msgid "继续结算"
-msgstr "继续结算"
+#. Key:	ResolutionAttackRollSettled
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1031)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1031)
+msgctxt "FMCodexPlayerUIPresentationText,ResolutionAttackRollSettled"
+msgid "进攻掷点已落定"
+msgstr "进攻掷点已落定"
+
+#. Key:	ResolutionDefenseRoll
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1036)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1036)
+msgctxt "FMCodexPlayerUIPresentationText,ResolutionDefenseRoll"
+msgid "防守掷点"
+msgstr "防守掷点"
 
 #. Key:	DeploymentPhase
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(104)
@@ -1350,40 +1350,19 @@ msgctxt "FMCodexPlayerUIPresentationText,DeploymentPhase"
 msgid "部署阶段"
 msgstr "部署阶段"
 
-#. Key:	LiveMatch
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1043)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1043)
-msgctxt "FMCodexPlayerUIPresentationText,LiveMatch"
-msgid "比赛进行中"
-msgstr "比赛进行中"
+#. Key:	ResolutionDefenseRollSettled
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1041)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1041)
+msgctxt "FMCodexPlayerUIPresentationText,ResolutionDefenseRollSettled"
+msgid "防守掷点已落定"
+msgstr "防守掷点已落定"
 
-#. Key:	LocalMatch
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1044)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1044)
-msgctxt "FMCodexPlayerUIPresentationText,LocalMatch"
-msgid "本地对战"
-msgstr "本地对战"
-
-#. Key:	UnknownCard
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1047)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1047)
-msgctxt "FMCodexPlayerUIPresentationText,UnknownCard"
-msgid "未知球员卡"
-msgstr "未知球员卡"
-
-#. Key:	UnknownRole
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1048)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1048)
-msgctxt "FMCodexPlayerUIPresentationText,UnknownRole"
-msgid "位置未知"
-msgstr "位置未知"
-
-#. Key:	UnknownRarity
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1049)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1049)
-msgctxt "FMCodexPlayerUIPresentationText,UnknownRarity"
-msgid "稀有度未知"
-msgstr "稀有度未知"
+#. Key:	ContinueResolution
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1046)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1046)
+msgctxt "FMCodexPlayerUIPresentationText,ContinueResolution"
+msgid "继续结算"
+msgstr "继续结算"
 
 #. Key:	SelectionPhase
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(105)
@@ -1392,68 +1371,12 @@ msgctxt "FMCodexPlayerUIPresentationText,SelectionPhase"
 msgid "选择阶段"
 msgstr "选择阶段"
 
-#. Key:	NoSkill
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1050)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1050)
-msgctxt "FMCodexPlayerUIPresentationText,NoSkill"
-msgid "无技能"
-msgstr "无技能"
-
-#. Key:	AttributesUnavailable
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1051)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1051)
-msgctxt "FMCodexPlayerUIPresentationText,AttributesUnavailable"
-msgid "属性不可用"
-msgstr "属性不可用"
-
-#. Key:	Unavailable
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1052)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1052)
-msgctxt "FMCodexPlayerUIPresentationText,Unavailable"
-msgid "不可用"
-msgstr "不可用"
-
-#. Key:	PortraitPlaceholder
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1053)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1053)
-msgctxt "FMCodexPlayerUIPresentationText,PortraitPlaceholder"
-msgid "球员肖像\n素材待接入"
-msgstr "球员肖像\n素材待接入"
-
-#. Key:	SkillsHeading
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1054)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1054)
-msgctxt "FMCodexPlayerUIPresentationText,SkillsHeading"
-msgid "技能"
-msgstr "技能"
-
-#. Key:	AttributesHeading
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1055)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1055)
-msgctxt "FMCodexPlayerUIPresentationText,AttributesHeading"
-msgid "属性"
-msgstr "属性"
-
-#. Key:	FullCardAttributesHeading
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1056)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1056)
-msgctxt "FMCodexPlayerUIPresentationText,FullCardAttributesHeading"
-msgid "球员属性"
-msgstr "球员属性"
-
-#. Key:	OverallHeading
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1057)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1057)
-msgctxt "FMCodexPlayerUIPresentationText,OverallHeading"
-msgid "总能力值"
-msgstr "总能力值"
-
-#. Key:	PositionHeading
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1058)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1058)
-msgctxt "FMCodexPlayerUIPresentationText,PositionHeading"
-msgid "位置"
-msgstr "位置"
+#. Key:	LiveMatch
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1059)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1059)
+msgctxt "FMCodexPlayerUIPresentationText,LiveMatch"
+msgid "比赛进行中"
+msgstr "比赛进行中"
 
 #. Key:	ResolutionPhase
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(106)
@@ -1462,26 +1385,61 @@ msgctxt "FMCodexPlayerUIPresentationText,ResolutionPhase"
 msgid "结算阶段"
 msgstr "结算阶段"
 
-#. Key:	FullCardPositionTypeHeading
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1061)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1061)
-msgctxt "FMCodexPlayerUIPresentationText,FullCardPositionTypeHeading"
-msgid "位置类型"
-msgstr "位置类型"
+#. Key:	LocalMatch
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1060)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1060)
+msgctxt "FMCodexPlayerUIPresentationText,LocalMatch"
+msgid "本地对战"
+msgstr "本地对战"
 
-#. Key:	MissingBioValue
+#. Key:	UnknownCard
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1063)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1063)
+msgctxt "FMCodexPlayerUIPresentationText,UnknownCard"
+msgid "未知球员卡"
+msgstr "未知球员卡"
+
+#. Key:	UnknownRole
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1064)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1064)
+msgctxt "FMCodexPlayerUIPresentationText,UnknownRole"
+msgid "位置未知"
+msgstr "位置未知"
+
+#. Key:	UnknownRarity
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1065)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1065)
+msgctxt "FMCodexPlayerUIPresentationText,UnknownRarity"
+msgid "稀有度未知"
+msgstr "稀有度未知"
+
+#. Key:	NoSkill
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1066)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1066)
+msgctxt "FMCodexPlayerUIPresentationText,NoSkill"
+msgid "无技能"
+msgstr "无技能"
+
+#. Key:	AttributesUnavailable
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1067)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1067)
+msgctxt "FMCodexPlayerUIPresentationText,AttributesUnavailable"
+msgid "属性不可用"
+msgstr "属性不可用"
+
+#. Key:	Unavailable
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1068)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1068)
-msgctxt "FMCodexPlayerUIPresentationText,MissingBioValue"
-msgid "—"
-msgstr "—"
+msgctxt "FMCodexPlayerUIPresentationText,Unavailable"
+msgid "不可用"
+msgstr "不可用"
 
-#. Key:	FullCardIdentitySupplementBoth
+#. Key:	PortraitPlaceholder
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1069)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1069)
-msgctxt "FMCodexPlayerUIPresentationText,FullCardIdentitySupplementBoth"
-msgid "国籍：{0}  |  俱乐部：{1}"
-msgstr "国籍：{0}  |  俱乐部：{1}"
+msgctxt "FMCodexPlayerUIPresentationText,PortraitPlaceholder"
+msgid "球员肖像\n素材待接入"
+msgstr "球员肖像\n素材待接入"
 
 #. Key:	DeployCards
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(107)
@@ -1490,26 +1448,47 @@ msgctxt "FMCodexPlayerUIPresentationText,DeployCards"
 msgid "部署球员"
 msgstr "部署球员"
 
-#. Key:	BirthDateHeading
+#. Key:	SkillsHeading
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1070)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1070)
+msgctxt "FMCodexPlayerUIPresentationText,SkillsHeading"
+msgid "技能"
+msgstr "技能"
+
+#. Key:	AttributesHeading
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1071)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1071)
+msgctxt "FMCodexPlayerUIPresentationText,AttributesHeading"
+msgid "属性"
+msgstr "属性"
+
+#. Key:	FullCardAttributesHeading
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1072)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1072)
+msgctxt "FMCodexPlayerUIPresentationText,FullCardAttributesHeading"
+msgid "球员属性"
+msgstr "球员属性"
+
+#. Key:	OverallHeading
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1073)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1073)
+msgctxt "FMCodexPlayerUIPresentationText,OverallHeading"
+msgid "总能力值"
+msgstr "总能力值"
+
+#. Key:	PositionHeading
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1074)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1074)
-msgctxt "FMCodexPlayerUIPresentationText,BirthDateHeading"
-msgid "出生日期"
-msgstr "出生日期"
+msgctxt "FMCodexPlayerUIPresentationText,PositionHeading"
+msgid "位置"
+msgstr "位置"
 
-#. Key:	HeightHeading
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1075)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1075)
-msgctxt "FMCodexPlayerUIPresentationText,HeightHeading"
-msgid "身高"
-msgstr "身高"
-
-#. Key:	WeightHeading
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1076)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1076)
-msgctxt "FMCodexPlayerUIPresentationText,WeightHeading"
-msgid "体重"
-msgstr "体重"
+#. Key:	FullCardPositionTypeHeading
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1077)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1077)
+msgctxt "FMCodexPlayerUIPresentationText,FullCardPositionTypeHeading"
+msgid "位置类型"
+msgstr "位置类型"
 
 #. Key:	FinishDeployment
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(108)
@@ -1518,19 +1497,19 @@ msgctxt "FMCodexPlayerUIPresentationText,FinishDeployment"
 msgid "完成部署"
 msgstr "完成部署"
 
-#. Key:	DeploymentHandInstruction
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1080)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1080)
-msgctxt "FMCodexPlayerUIPresentationText,DeploymentHandInstruction"
-msgid "拖动球员卡进行部署"
-msgstr "拖动球员卡进行部署"
+#. Key:	MissingBioValue
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1084)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1084)
+msgctxt "FMCodexPlayerUIPresentationText,MissingBioValue"
+msgid "—"
+msgstr "—"
 
-#. Key:	EmptyPitchSlot
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1086)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1086)
-msgctxt "FMCodexPlayerUIPresentationText,EmptyPitchSlot"
-msgid "空位置"
-msgstr "空位置"
+#. Key:	FullCardIdentitySupplementBoth
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1085)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1085)
+msgctxt "FMCodexPlayerUIPresentationText,FullCardIdentitySupplementBoth"
+msgid "国籍：{0}  |  俱乐部：{1}"
+msgstr "国籍：{0}  |  俱乐部：{1}"
 
 #. Key:	TacticalReference
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(109)
@@ -1539,19 +1518,33 @@ msgctxt "FMCodexPlayerUIPresentationText,TacticalReference"
 msgid "战术说明"
 msgstr "战术说明"
 
-#. Key:	ValidDeploymentTarget
+#. Key:	BirthDateHeading
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1090)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1090)
+msgctxt "FMCodexPlayerUIPresentationText,BirthDateHeading"
+msgid "出生日期"
+msgstr "出生日期"
+
+#. Key:	HeightHeading
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1091)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1091)
-msgctxt "FMCodexPlayerUIPresentationText,ValidDeploymentTarget"
-msgid "可部署位置"
-msgstr "可部署位置"
+msgctxt "FMCodexPlayerUIPresentationText,HeightHeading"
+msgid "身高"
+msgstr "身高"
 
-#. Key:	InvalidDeploymentTarget
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1097)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1097)
-msgctxt "FMCodexPlayerUIPresentationText,InvalidDeploymentTarget"
-msgid "不可部署"
-msgstr "不可部署"
+#. Key:	WeightHeading
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1092)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1092)
+msgctxt "FMCodexPlayerUIPresentationText,WeightHeading"
+msgid "体重"
+msgstr "体重"
+
+#. Key:	DeploymentHandInstruction
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1096)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1096)
+msgctxt "FMCodexPlayerUIPresentationText,DeploymentHandInstruction"
+msgid "拖动球员卡进行部署"
+msgstr "拖动球员卡进行部署"
 
 #. Key:	SkillLongShot
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(11)
@@ -1567,19 +1560,19 @@ msgctxt "FMCodexPlayerUIPresentationText,CloseTacticalReference"
 msgid "关闭战术说明"
 msgstr "关闭战术说明"
 
-#. Key:	OccupiedDeploymentTarget
+#. Key:	EmptyPitchSlot
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1102)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1102)
-msgctxt "FMCodexPlayerUIPresentationText,OccupiedDeploymentTarget"
-msgid "已占用"
-msgstr "已占用"
+msgctxt "FMCodexPlayerUIPresentationText,EmptyPitchSlot"
+msgid "空位置"
+msgstr "空位置"
 
-#. Key:	UnavailableDeploymentTarget
+#. Key:	ValidDeploymentTarget
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1107)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1107)
-msgctxt "FMCodexPlayerUIPresentationText,UnavailableDeploymentTarget"
-msgid "位置不可用"
-msgstr "位置不可用"
+msgctxt "FMCodexPlayerUIPresentationText,ValidDeploymentTarget"
+msgid "可部署位置"
+msgstr "可部署位置"
 
 #. Key:	SelectCarrier
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(111)
@@ -1588,19 +1581,19 @@ msgctxt "FMCodexPlayerUIPresentationText,SelectCarrier"
 msgid "选择持球球员"
 msgstr "选择持球球员"
 
-#. Key:	LongFreeKickPowerStage
+#. Key:	InvalidDeploymentTarget
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1113)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1113)
-msgctxt "FMCodexPlayerUIPresentationText,LongFreeKickPowerStage"
-msgid "重炮轰门"
-msgstr "重炮轰门"
+msgctxt "FMCodexPlayerUIPresentationText,InvalidDeploymentTarget"
+msgid "不可部署"
+msgstr "不可部署"
 
-#. Key:	CornerCandidateCount
+#. Key:	OccupiedDeploymentTarget
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1118)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1118)
-msgctxt "FMCodexPlayerUIPresentationText,CornerCandidateCount"
-msgid "已选：{0}/3"
-msgstr "已选：{0}/3"
+msgctxt "FMCodexPlayerUIPresentationText,OccupiedDeploymentTarget"
+msgid "已占用"
+msgstr "已占用"
 
 #. Key:	ClickPitchPlayer
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(112)
@@ -1609,26 +1602,19 @@ msgctxt "FMCodexPlayerUIPresentationText,ClickPitchPlayer"
 msgid "点击场上球员选择"
 msgstr "点击场上球员选择"
 
-#. Key:	CornerCandidateInstruction
+#. Key:	UnavailableDeploymentTarget
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1123)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1123)
-msgctxt "FMCodexPlayerUIPresentationText,CornerCandidateInstruction"
-msgid "从手牌按顺序选择 0–3 名候选球员；再次单击可撤销。"
-msgstr "从手牌按顺序选择 0–3 名候选球员；再次单击可撤销。"
+msgctxt "FMCodexPlayerUIPresentationText,UnavailableDeploymentTarget"
+msgid "位置不可用"
+msgstr "位置不可用"
 
-#. Key:	CornerLockAttackCandidates
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1128)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1128)
-msgctxt "FMCodexPlayerUIPresentationText,CornerLockAttackCandidates"
-msgid "锁定进攻候选"
-msgstr "锁定进攻候选"
-
-#. Key:	CornerLockDefenseCandidates
+#. Key:	LongFreeKickPowerStage
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1129)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1129)
-msgctxt "FMCodexPlayerUIPresentationText,CornerLockDefenseCandidates"
-msgid "锁定防守候选"
-msgstr "锁定防守候选"
+msgctxt "FMCodexPlayerUIPresentationText,LongFreeKickPowerStage"
+msgid "重炮轰门"
+msgstr "重炮轰门"
 
 #. Key:	SelectMarker
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(113)
@@ -1637,19 +1623,19 @@ msgctxt "FMCodexPlayerUIPresentationText,SelectMarker"
 msgid "选择盯人球员"
 msgstr "选择盯人球员"
 
-#. Key:	CornerLockEmptyCandidates
+#. Key:	CornerCandidateCount
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1134)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1134)
-msgctxt "FMCodexPlayerUIPresentationText,CornerLockEmptyCandidates"
-msgid "当前尚未选择候选球员，确定现在锁定吗？"
-msgstr "当前尚未选择候选球员，确定现在锁定吗？"
+msgctxt "FMCodexPlayerUIPresentationText,CornerCandidateCount"
+msgid "已选：{0}/3"
+msgstr "已选：{0}/3"
 
-#. Key:	CornerLockUnderfilledCandidates
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1135)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1135)
-msgctxt "FMCodexPlayerUIPresentationText,CornerLockUnderfilledCandidates"
-msgid "当前仅选择了 {0}/3 名候选球员，确定现在锁定吗？"
-msgstr "当前仅选择了 {0}/3 名候选球员，确定现在锁定吗？"
+#. Key:	CornerCandidateInstruction
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1139)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1139)
+msgctxt "FMCodexPlayerUIPresentationText,CornerCandidateInstruction"
+msgid "从手牌按顺序选择 0–3 名候选球员；再次单击可撤销。"
+msgstr "从手牌按顺序选择 0–3 名候选球员；再次单击可撤销。"
 
 #. Key:	DeclineMarker
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(114)
@@ -1658,12 +1644,19 @@ msgctxt "FMCodexPlayerUIPresentationText,DeclineMarker"
 msgid "放弃盯人"
 msgstr "放弃盯人"
 
-#. Key:	CornerCandidateBonus
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1140)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1140)
-msgctxt "FMCodexPlayerUIPresentationText,CornerCandidateBonus"
-msgid "候选人数占优加成 {0}"
-msgstr "候选人数占优加成 {0}"
+#. Key:	CornerLockAttackCandidates
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1144)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1144)
+msgctxt "FMCodexPlayerUIPresentationText,CornerLockAttackCandidates"
+msgid "锁定进攻候选"
+msgstr "锁定进攻候选"
+
+#. Key:	CornerLockDefenseCandidates
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1145)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1145)
+msgctxt "FMCodexPlayerUIPresentationText,CornerLockDefenseCandidates"
+msgid "锁定防守候选"
+msgstr "锁定防守候选"
 
 #. Key:	ChooseTactical
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(115)
@@ -1671,6 +1664,27 @@ msgstr "候选人数占优加成 {0}"
 msgctxt "FMCodexPlayerUIPresentationText,ChooseTactical"
 msgid "选择战术"
 msgstr "选择战术"
+
+#. Key:	CornerLockEmptyCandidates
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1150)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1150)
+msgctxt "FMCodexPlayerUIPresentationText,CornerLockEmptyCandidates"
+msgid "当前尚未选择候选球员，确定现在锁定吗？"
+msgstr "当前尚未选择候选球员，确定现在锁定吗？"
+
+#. Key:	CornerLockUnderfilledCandidates
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1151)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1151)
+msgctxt "FMCodexPlayerUIPresentationText,CornerLockUnderfilledCandidates"
+msgid "当前仅选择了 {0}/3 名候选球员，确定现在锁定吗？"
+msgstr "当前仅选择了 {0}/3 名候选球员，确定现在锁定吗？"
+
+#. Key:	CornerCandidateBonus
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1156)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(1156)
+msgctxt "FMCodexPlayerUIPresentationText,CornerCandidateBonus"
+msgid "候选人数占优加成 {0}"
+msgstr "候选人数占优加成 {0}"
 
 #. Key:	DeclineTactical
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(116)
@@ -2316,12 +2330,12 @@ msgctxt "FMCodexPlayerUIPresentationText,ShotDefenseRollAction"
 msgid "防守方掷点"
 msgstr "防守方掷点"
 
-#. Key:	ShotPairedRollAction
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(376)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(376)
-msgctxt "FMCodexPlayerUIPresentationText,ShotPairedRollAction"
-msgid "掷两枚骰"
-msgstr "掷两枚骰"
+#. Key:	PendingRequest
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(377)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(377)
+msgctxt "FMCodexResolutionTheater,PendingRequest"
+msgid "操作已提交，等待确认"
+msgstr "操作已提交，等待确认"
 
 #. Key:	AttributeShooting
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(38)
@@ -2330,19 +2344,19 @@ msgctxt "FMCodexPlayerUIPresentationText,AttributeShooting"
 msgid "射门"
 msgstr "射门"
 
-#. Key:	CutInsideProductionTitle
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(381)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(381)
-msgctxt "FMCodexPlayerUIPresentationText,CutInsideProductionTitle"
-msgid "内切"
-msgstr "内切"
+#. Key:	CrossRevealing
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(382)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(382)
+msgctxt "FMCodexResolutionTheater,CrossRevealing"
+msgid "正在揭示掷点"
+msgstr "正在揭示掷点"
 
-#. Key:	CutInsideBranchChoiceStage
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(386)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(386)
-msgctxt "FMCodexPlayerUIPresentationText,CutInsideBranchChoiceStage"
-msgid "选择内切方式"
-msgstr "选择内切方式"
+#. Key:	CutRollLanded
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(387)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(387)
+msgctxt "FMCodexResolutionTheater,CutRollLanded"
+msgid "掷点已落定"
+msgstr "掷点已落定"
 
 #. Key:	AttributeControl
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(39)
@@ -2351,12 +2365,19 @@ msgctxt "FMCodexPlayerUIPresentationText,AttributeControl"
 msgid "控球"
 msgstr "控球"
 
-#. Key:	CutInsideDirectStage
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(391)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(391)
-msgctxt "FMCodexPlayerUIPresentationText,CutInsideDirectStage"
-msgid "直接射门"
-msgstr "直接射门"
+#. Key:	ShotPairedRollAction
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(392)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(392)
+msgctxt "FMCodexPlayerUIPresentationText,ShotPairedRollAction"
+msgid "掷两枚骰"
+msgstr "掷两枚骰"
+
+#. Key:	CutInsideProductionTitle
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(397)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(397)
+msgctxt "FMCodexPlayerUIPresentationText,CutInsideProductionTitle"
+msgid "内切"
+msgstr "内切"
 
 #. Key:	AttributePassing
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(40)
@@ -2365,12 +2386,19 @@ msgctxt "FMCodexPlayerUIPresentationText,AttributePassing"
 msgid "传球"
 msgstr "传球"
 
-#. Key:	PassControlProductionTitle
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(406)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(406)
-msgctxt "FMCodexPlayerUIPresentationText,PassControlProductionTitle"
-msgid "控球推进"
-msgstr "控球推进"
+#. Key:	CutInsideBranchChoiceStage
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(402)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(402)
+msgctxt "FMCodexPlayerUIPresentationText,CutInsideBranchChoiceStage"
+msgid "选择内切方式"
+msgstr "选择内切方式"
+
+#. Key:	CutInsideDirectStage
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(407)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(407)
+msgctxt "FMCodexPlayerUIPresentationText,CutInsideDirectStage"
+msgid "直接射门"
+msgstr "直接射门"
 
 #. Key:	AttributeDefense
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(41)
@@ -2379,20 +2407,6 @@ msgctxt "FMCodexPlayerUIPresentationText,AttributeDefense"
 msgid "防守"
 msgstr "防守"
 
-#. Key:	CrossProductionTitle
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(411)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(411)
-msgctxt "FMCodexPlayerUIPresentationText,CrossProductionTitle"
-msgid "传中"
-msgstr "传中"
-
-#. Key:	CrossBranchChoiceStage
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(416)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(416)
-msgctxt "FMCodexPlayerUIPresentationText,CrossBranchChoiceStage"
-msgid "选择传中方式"
-msgstr "选择传中方式"
-
 #. Key:	AttributeSpeed
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(42)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(42)
@@ -2400,33 +2414,19 @@ msgctxt "FMCodexPlayerUIPresentationText,AttributeSpeed"
 msgid "速度"
 msgstr "速度"
 
-#. Key:	SelectedRoleCarrier
+#. Key:	PassControlProductionTitle
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(422)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(422)
-msgctxt "FMCodexPlayerUIPresentationText,SelectedRoleCarrier"
-msgid "持球"
-msgstr "持球"
+msgctxt "FMCodexPlayerUIPresentationText,PassControlProductionTitle"
+msgid "控球推进"
+msgstr "控球推进"
 
-#. Key:	SelectedRoleRunner
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(423)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(423)
-msgctxt "FMCodexPlayerUIPresentationText,SelectedRoleRunner"
-msgid "跑位"
-msgstr "跑位"
-
-#. Key:	SelectedRoleMarker
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(424)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(424)
-msgctxt "FMCodexPlayerUIPresentationText,SelectedRoleMarker"
-msgid "盯人"
-msgstr "盯人"
-
-#. Key:	SelectedRoleHelper
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(425)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(425)
-msgctxt "FMCodexPlayerUIPresentationText,SelectedRoleHelper"
-msgid "协防"
-msgstr "协防"
+#. Key:	CrossProductionTitle
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(427)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(427)
+msgctxt "FMCodexPlayerUIPresentationText,CrossProductionTitle"
+msgid "传中"
+msgstr "传中"
 
 #. Key:	AttributeStrength
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(43)
@@ -2435,19 +2435,26 @@ msgctxt "FMCodexPlayerUIPresentationText,AttributeStrength"
 msgid "力量"
 msgstr "力量"
 
-#. Key:	MarkerWrongPhysicalArea
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(434)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(434)
-msgctxt "FMCodexPlayerUIPresentationText,MarkerWrongPhysicalArea"
-msgid "盯人球员必须与持球球员位于同一半区"
-msgstr "盯人球员必须与持球球员位于同一半区"
+#. Key:	CrossBranchChoiceStage
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(432)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(432)
+msgctxt "FMCodexPlayerUIPresentationText,CrossBranchChoiceStage"
+msgid "选择传中方式"
+msgstr "选择传中方式"
 
-#. Key:	RunnerIsGoalkeeper
+#. Key:	SelectedRoleCarrier
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(438)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(438)
+msgctxt "FMCodexPlayerUIPresentationText,SelectedRoleCarrier"
+msgid "持球"
+msgstr "持球"
+
+#. Key:	SelectedRoleRunner
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(439)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(439)
-msgctxt "FMCodexPlayerUIPresentationText,RunnerIsGoalkeeper"
-msgid "门将不能作为跑位球员"
-msgstr "门将不能作为跑位球员"
+msgctxt "FMCodexPlayerUIPresentationText,SelectedRoleRunner"
+msgid "跑位"
+msgstr "跑位"
 
 #. Key:	AttributeStamina
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(44)
@@ -2456,19 +2463,19 @@ msgctxt "FMCodexPlayerUIPresentationText,AttributeStamina"
 msgid "体力"
 msgstr "体力"
 
-#. Key:	RunnerMatchesCarrier
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(444)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(444)
-msgctxt "FMCodexPlayerUIPresentationText,RunnerMatchesCarrier"
-msgid "跑位球员不能与持球球员相同"
-msgstr "跑位球员不能与持球球员相同"
+#. Key:	SelectedRoleMarker
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(440)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(440)
+msgctxt "FMCodexPlayerUIPresentationText,SelectedRoleMarker"
+msgid "盯人"
+msgstr "盯人"
 
-#. Key:	RunnerMissingRequiredPositionType
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(449)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(449)
-msgctxt "FMCodexPlayerUIPresentationText,RunnerMissingRequiredPositionType"
-msgid "该球员不符合当前跑位位置要求"
-msgstr "该球员不符合当前跑位位置要求"
+#. Key:	SelectedRoleHelper
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(441)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(441)
+msgctxt "FMCodexPlayerUIPresentationText,SelectedRoleHelper"
+msgid "协防"
+msgstr "协防"
 
 #. Key:	AttributeHandling
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(45)
@@ -2477,19 +2484,19 @@ msgctxt "FMCodexPlayerUIPresentationText,AttributeHandling"
 msgid "手控球"
 msgstr "手控球"
 
-#. Key:	RunnerNotInAttackingForwardArea
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(454)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(454)
-msgctxt "FMCodexPlayerUIPresentationText,RunnerNotInAttackingForwardArea"
-msgid "直塞要求跑位球员位于前场"
-msgstr "直塞要求跑位球员位于前场"
+#. Key:	MarkerWrongPhysicalArea
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(450)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(450)
+msgctxt "FMCodexPlayerUIPresentationText,MarkerWrongPhysicalArea"
+msgid "盯人球员必须与持球球员位于同一半区"
+msgstr "盯人球员必须与持球球员位于同一半区"
 
-#. Key:	HelperIsGoalkeeper
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(459)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(459)
-msgctxt "FMCodexPlayerUIPresentationText,HelperIsGoalkeeper"
-msgid "门将不能作为协防球员"
-msgstr "门将不能作为协防球员"
+#. Key:	RunnerIsGoalkeeper
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(455)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(455)
+msgctxt "FMCodexPlayerUIPresentationText,RunnerIsGoalkeeper"
+msgid "门将不能作为跑位球员"
+msgstr "门将不能作为跑位球员"
 
 #. Key:	AttributePositioning
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(46)
@@ -2498,19 +2505,19 @@ msgctxt "FMCodexPlayerUIPresentationText,AttributePositioning"
 msgid "站位"
 msgstr "站位"
 
-#. Key:	HelperMatchesMarker
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(464)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(464)
-msgctxt "FMCodexPlayerUIPresentationText,HelperMatchesMarker"
-msgid "该球员已被指定为盯人球员，请选择其他协防球员"
-msgstr "该球员已被指定为盯人球员，请选择其他协防球员"
+#. Key:	RunnerMatchesCarrier
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(460)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(460)
+msgctxt "FMCodexPlayerUIPresentationText,RunnerMatchesCarrier"
+msgid "跑位球员不能与持球球员相同"
+msgstr "跑位球员不能与持球球员相同"
 
-#. Key:	HelperWrongPhysicalArea
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(469)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(469)
-msgctxt "FMCodexPlayerUIPresentationText,HelperWrongPhysicalArea"
-msgid "协防球员必须与跑位球员位于同一半区"
-msgstr "协防球员必须与跑位球员位于同一半区"
+#. Key:	RunnerMissingRequiredPositionType
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(465)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(465)
+msgctxt "FMCodexPlayerUIPresentationText,RunnerMissingRequiredPositionType"
+msgid "该球员不符合当前跑位位置要求"
+msgstr "该球员不符合当前跑位位置要求"
 
 #. Key:	AttributeReflexes
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(47)
@@ -2519,12 +2526,40 @@ msgctxt "FMCodexPlayerUIPresentationText,AttributeReflexes"
 msgid "反应"
 msgstr "反应"
 
+#. Key:	RunnerNotInAttackingForwardArea
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(470)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(470)
+msgctxt "FMCodexPlayerUIPresentationText,RunnerNotInAttackingForwardArea"
+msgid "直塞要求跑位球员位于前场"
+msgstr "直塞要求跑位球员位于前场"
+
+#. Key:	HelperIsGoalkeeper
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(475)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(475)
+msgctxt "FMCodexPlayerUIPresentationText,HelperIsGoalkeeper"
+msgid "门将不能作为协防球员"
+msgstr "门将不能作为协防球员"
+
 #. Key:	AttributeAerial
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(48)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(48)
 msgctxt "FMCodexPlayerUIPresentationText,AttributeAerial"
 msgid "制空"
 msgstr "制空"
+
+#. Key:	HelperMatchesMarker
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(480)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(480)
+msgctxt "FMCodexPlayerUIPresentationText,HelperMatchesMarker"
+msgid "该球员已被指定为盯人球员，请选择其他协防球员"
+msgstr "该球员已被指定为盯人球员，请选择其他协防球员"
+
+#. Key:	HelperWrongPhysicalArea
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(485)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(485)
+msgctxt "FMCodexPlayerUIPresentationText,HelperWrongPhysicalArea"
+msgid "协防球员必须与跑位球员位于同一半区"
+msgstr "协防球员必须与跑位球员位于同一半区"
 
 #. Key:	AttributeAnticipation
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(49)
@@ -2533,27 +2568,6 @@ msgctxt "FMCodexPlayerUIPresentationText,AttributeAnticipation"
 msgid "预判"
 msgstr "预判"
 
-#. Key:	CompactDemoPlayer
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(494)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(494)
-msgctxt "FMCodexPlayerUIPresentationText,CompactDemoPlayer"
-msgid "{0}队 {1}号"
-msgstr "{0}队 {1}号"
-
-#. Key:	CompactDemoTeamA
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(495)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(495)
-msgctxt "FMCodexPlayerUIPresentationText,CompactDemoTeamA"
-msgid "A"
-msgstr "A"
-
-#. Key:	CompactDemoTeamB
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(496)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(496)
-msgctxt "FMCodexPlayerUIPresentationText,CompactDemoTeamB"
-msgid "B"
-msgstr "B"
-
 #. Key:	AttributeOneOnOne
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(50)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(50)
@@ -2561,502 +2575,509 @@ msgctxt "FMCodexPlayerUIPresentationText,AttributeOneOnOne"
 msgid "单刀"
 msgstr "单刀"
 
+#. Key:	CompactDemoPlayer
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(510)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(510)
+msgctxt "FMCodexPlayerUIPresentationText,CompactDemoPlayer"
+msgid "{0}队 {1}号"
+msgstr "{0}队 {1}号"
+
+#. Key:	CompactDemoTeamA
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(511)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(511)
+msgctxt "FMCodexPlayerUIPresentationText,CompactDemoTeamA"
+msgid "A"
+msgstr "A"
+
+#. Key:	CompactDemoTeamB
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(512)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(512)
+msgctxt "FMCodexPlayerUIPresentationText,CompactDemoTeamB"
+msgid "B"
+msgstr "B"
+
 #. Key:	CompactDemoGoalkeeperA
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(502)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(502)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(518)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(518)
 msgctxt "FMCodexPlayerUIPresentationText,CompactDemoGoalkeeperA"
 msgid "A队 门将"
 msgstr "A队 门将"
 
 #. Key:	CompactDemoGoalkeeperB
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(503)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(503)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(519)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(519)
 msgctxt "FMCodexPlayerUIPresentationText,CompactDemoGoalkeeperB"
 msgid "B队 门将"
 msgstr "B队 门将"
 
 #. Key:	CompactAnonymousPlayer
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(512)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(512)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(528)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(528)
 msgctxt "FMCodexPlayerUIPresentationText,CompactAnonymousPlayer"
 msgid "球员"
 msgstr "球员"
 
 #. Key:	HandMicroMartinelli
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(529)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(529)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(545)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(545)
 msgctxt "FMCodexPlayerUIPresentationText,HandMicroMartinelli"
 msgid "马丁内利"
 msgstr "马丁内利"
 
 #. Key:	HandMicroGabriel
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(533)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(533)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(549)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(549)
 msgctxt "FMCodexPlayerUIPresentationText,HandMicroGabriel"
 msgid "加布里埃尔"
 msgstr "加布里埃尔"
 
 #. Key:	HandMicroMerino
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(537)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(537)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(553)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(553)
 msgctxt "FMCodexPlayerUIPresentationText,HandMicroMerino"
 msgid "梅里诺"
 msgstr "梅里诺"
 
 #. Key:	HandMicroGvardiol
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(541)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(541)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(557)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(557)
 msgctxt "FMCodexPlayerUIPresentationText,HandMicroGvardiol"
 msgid "格瓦迪奥尔"
 msgstr "格瓦迪奥尔"
 
 #. Key:	HandMicroBernardo
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(545)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(545)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(561)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(561)
 msgctxt "FMCodexPlayerUIPresentationText,HandMicroBernardo"
 msgid "贝尔纳多"
 msgstr "贝尔纳多"
 
 #. Key:	HandMicroDoku
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(549)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(549)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(565)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(565)
 msgctxt "FMCodexPlayerUIPresentationText,HandMicroDoku"
 msgid "多库"
 msgstr "多库"
 
 #. Key:	HandMicroKvaratskhelia
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(553)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(553)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(569)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(569)
 msgctxt "FMCodexPlayerUIPresentationText,HandMicroKvaratskhelia"
 msgid "克瓦拉茨赫利亚"
 msgstr "克瓦拉茨赫利亚"
 
 #. Key:	HandMicroFallbackGvardiol
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(566)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(566)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(582)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(582)
 msgctxt "FMCodexPlayerUIPresentationText,HandMicroFallbackGvardiol"
 msgid "格瓦"
 msgstr "格瓦"
 
 #. Key:	HandMicroFallbackKvaratskhelia
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(570)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(570)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(586)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(586)
 msgctxt "FMCodexPlayerUIPresentationText,HandMicroFallbackKvaratskhelia"
 msgid "克瓦拉"
 msgstr "克瓦拉"
 
 #. Key:	CompactRoleUnknown
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(602)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(602)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(618)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(618)
 msgctxt "FMCodexPlayerUIPresentationText,CompactRoleUnknown"
 msgid "?"
 msgstr "?"
 
 #. Key:	CompactRoleUnknownFallback
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(616)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(616)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(632)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(632)
 msgctxt "FMCodexPlayerUIPresentationText,CompactRoleUnknownFallback"
 msgid "?"
 msgstr "?"
 
 #. Key:	HandMicroCompactRoleUnknown
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(634)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(634)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(650)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(650)
 msgctxt "FMCodexPlayerUIPresentationText,HandMicroCompactRoleUnknown"
 msgid "?"
 msgstr "?"
 
 #. Key:	AttributeValueFormat
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(683)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(683)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(699)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(699)
 msgctxt "FMCodexPlayerUIPresentationText,AttributeValueFormat"
 msgid "{0} {1}"
 msgstr "{0} {1}"
 
 #. Key:	AttributeStaminaTier
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(693)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(693)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(709)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(709)
 msgctxt "FMCodexPlayerUIPresentationText,AttributeStaminaTier"
 msgid "体力"
 msgstr "体力"
 
 #. Key:	StatusAvailable
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(705)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(705)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(721)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(721)
 msgctxt "FMCodexPlayerUIPresentationText,StatusAvailable"
 msgid "可用"
 msgstr "可用"
 
 #. Key:	StatusDeployed
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(706)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(706)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(722)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(722)
 msgctxt "FMCodexPlayerUIPresentationText,StatusDeployed"
 msgid "已部署"
 msgstr "已部署"
 
 #. Key:	StatusUsed
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(707)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(707)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(723)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(723)
 msgctxt "FMCodexPlayerUIPresentationText,StatusUsed"
 msgid "已使用"
 msgstr "已使用"
 
 #. Key:	StatusActive
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(708)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(708)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(724)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(724)
 msgctxt "FMCodexPlayerUIPresentationText,StatusActive"
 msgid "已激活"
 msgstr "已激活"
 
 #. Key:	RarityCommon
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(716)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(716)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(732)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(732)
 msgctxt "FMCodexPlayerUIPresentationText,RarityCommon"
 msgid "普通"
 msgstr "普通"
 
 #. Key:	RarityRegional
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(717)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(717)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(733)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(733)
 msgctxt "FMCodexPlayerUIPresentationText,RarityRegional"
 msgid "区域级"
 msgstr "区域级"
 
 #. Key:	RarityNational
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(718)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(718)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(734)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(734)
 msgctxt "FMCodexPlayerUIPresentationText,RarityNational"
 msgid "国家级"
 msgstr "国家级"
 
 #. Key:	RarityContinental
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(719)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(719)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(735)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(735)
 msgctxt "FMCodexPlayerUIPresentationText,RarityContinental"
 msgid "洲际级"
 msgstr "洲际级"
 
 #. Key:	RarityWorldClass
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(720)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(720)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(736)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(736)
 msgctxt "FMCodexPlayerUIPresentationText,RarityWorldClass"
 msgid "世界级"
 msgstr "世界级"
 
 #. Key:	RarityPilot
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(721)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(721)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(737)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(737)
 msgctxt "FMCodexPlayerUIPresentationText,RarityPilot"
 msgid "试制"
 msgstr "试制"
 
 #. Key:	CompactRarityCommon
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(728)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(728)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(744)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(744)
 msgctxt "FMCodexPlayerUIPresentationText,CompactRarityCommon"
 msgid "普"
 msgstr "普"
 
 #. Key:	CompactRarityRegional
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(729)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(729)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(745)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(745)
 msgctxt "FMCodexPlayerUIPresentationText,CompactRarityRegional"
 msgid "区"
 msgstr "区"
 
 #. Key:	CompactRarityNational
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(730)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(730)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(746)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(746)
 msgctxt "FMCodexPlayerUIPresentationText,CompactRarityNational"
 msgid "国"
 msgstr "国"
 
 #. Key:	CompactRarityContinental
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(731)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(731)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(747)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(747)
 msgctxt "FMCodexPlayerUIPresentationText,CompactRarityContinental"
 msgid "洲"
 msgstr "洲"
 
 #. Key:	CompactRarityWorldClass
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(732)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(732)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(748)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(748)
 msgctxt "FMCodexPlayerUIPresentationText,CompactRarityWorldClass"
 msgid "世"
 msgstr "世"
 
 #. Key:	CompactRarityPilot
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(733)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(733)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(749)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(749)
 msgctxt "FMCodexPlayerUIPresentationText,CompactRarityPilot"
 msgid "试"
 msgstr "试"
 
 #. Key:	CompactRarityUnknown
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(734)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(734)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(750)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(750)
 msgctxt "FMCodexPlayerUIPresentationText,CompactRarityUnknown"
 msgid "?"
 msgstr "?"
 
 #. Key:	OwnerPlayerA
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(739)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(739)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(755)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(755)
 msgctxt "FMCodexPlayerUIPresentationText,OwnerPlayerA"
 msgid "玩家 A"
 msgstr "玩家 A"
 
 #. Key:	OwnerPlayerB
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(740)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(740)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(756)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(756)
 msgctxt "FMCodexPlayerUIPresentationText,OwnerPlayerB"
 msgid "玩家 B"
 msgstr "玩家 B"
 
 #. Key:	OwnerUnavailable
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(742)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(742)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(758)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(758)
 msgctxt "FMCodexPlayerUIPresentationText,OwnerUnavailable"
 msgid "玩家未知"
 msgstr "玩家未知"
 
 #. Key:	RecoveryNotificationTitle
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(747)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(747)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(763)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(763)
 msgctxt "FMCodexPlayerUIPresentationText,RecoveryNotificationTitle"
 msgid "球员返回手牌"
 msgstr "球员返回手牌"
 
 #. Key:	RecoveryOwnerPlayerA
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(756)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(756)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(772)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(772)
 msgctxt "FMCodexPlayerUIPresentationText,RecoveryOwnerPlayerA"
 msgid "玩家A"
 msgstr "玩家A"
 
 #. Key:	RecoveryOwnerPlayerB
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(758)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(758)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(774)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(774)
 msgctxt "FMCodexPlayerUIPresentationText,RecoveryOwnerPlayerB"
 msgid "玩家B"
 msgstr "玩家B"
 
 #. Key:	RecoveryOwnerFallback
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(760)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(760)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(776)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(776)
 msgctxt "FMCodexPlayerUIPresentationText,RecoveryOwnerFallback"
 msgid "玩家"
 msgstr "玩家"
 
 #. Key:	RecoveryEntryFormat
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(769)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(769)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(785)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(785)
 msgctxt "FMCodexPlayerUIPresentationText,RecoveryEntryFormat"
 msgid "{0} · {1}"
 msgstr "{0} · {1}"
 
 #. Key:	LocalRackHeading
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(779)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(779)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(795)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(795)
 msgctxt "FMCodexPlayerUIPresentationText,LocalRackHeading"
 msgid "本方"
 msgstr "本方"
 
 #. Key:	OpponentRackHeading
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(780)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(780)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(796)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(796)
 msgctxt "FMCodexPlayerUIPresentationText,OpponentRackHeading"
 msgid "对方"
 msgstr "对方"
 
 #. Key:	RegionForward
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(786)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(786)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(802)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(802)
 msgctxt "FMCodexPlayerUIPresentationText,RegionForward"
 msgid "前场"
 msgstr "前场"
 
 #. Key:	RegionMidfield
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(787)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(787)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(803)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(803)
 msgctxt "FMCodexPlayerUIPresentationText,RegionMidfield"
 msgid "中场"
 msgstr "中场"
 
 #. Key:	RegionBackfield
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(788)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(788)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(804)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(804)
 msgctxt "FMCodexPlayerUIPresentationText,RegionBackfield"
 msgid "后场"
 msgstr "后场"
 
 #. Key:	TurnFormat
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(802)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(802)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(818)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(818)
 msgctxt "FMCodexPlayerUIPresentationText,TurnFormat"
 msgid "第 {0} 轮进攻"
 msgstr "第 {0} 轮进攻"
 
 #. Key:	PreMatchTurn
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(804)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(804)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(820)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(820)
 msgctxt "FMCodexPlayerUIPresentationText,PreMatchTurn"
 msgid "赛前"
 msgstr "赛前"
 
 #. Key:	TacticalPointsFormat
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(809)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(809)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(825)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(825)
 msgctxt "FMCodexPlayerUIPresentationText,TacticalPointsFormat"
 msgid "战术点  {0}"
 msgstr "战术点  {0}"
 
 #. Key:	TacticalPointsHeading
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(815)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(815)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(831)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(831)
 msgctxt "FMCodexPlayerUIPresentationText,TacticalPointsHeading"
 msgid "战术点"
 msgstr "战术点"
 
 #. Key:	AttackTurnHeading
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(820)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(820)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(836)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(836)
 msgctxt "FMCodexPlayerUIPresentationText,AttackTurnHeading"
 msgid "进攻回合"
 msgstr "进攻回合"
 
 #. Key:	CurrentAttackProgress
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(829)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(829)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(845)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(845)
 msgctxt "FMCodexPlayerUIPresentationText,CurrentAttackProgress"
 msgid "{0} 第 {1}/{2} 次进攻"
 msgstr "{0} 第 {1}/{2} 次进攻"
 
 #. Key:	WaitingForTacticalPointRoll
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(836)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(836)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(852)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(852)
 msgctxt "FMCodexPlayerUIPresentationText,WaitingForTacticalPointRoll"
 msgid "等待掷出战术点"
 msgstr "等待掷出战术点"
 
 #. Key:	ResolutionCrossHigh
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(844)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(844)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(860)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(860)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionCrossHigh"
 msgid "高球传中"
 msgstr "高球传中"
 
 #. Key:	ResolutionCrossLow
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(848)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(848)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(864)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(864)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionCrossLow"
 msgid "低球传中"
 msgstr "低球传中"
 
 #. Key:	ResolutionThroughBallBehind
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(852)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(852)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(868)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(868)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionThroughBallBehind"
 msgid "身后球对抗"
 msgstr "身后球对抗"
 
 #. Key:	ResolutionThroughBallOneOnOneDirect
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(857)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(857)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(873)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(873)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionThroughBallOneOnOneDirect"
 msgid "直接射门"
 msgstr "直接射门"
 
 #. Key:	ResolutionLongShotDirect
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(862)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(862)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(878)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(878)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionLongShotDirect"
 msgid "直接射门"
 msgstr "直接射门"
 
 #. Key:	ResolutionCutInsideDirect
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(866)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(866)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(882)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(882)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionCutInsideDirect"
 msgid "内切直接射门"
 msgstr "内切直接射门"
 
 #. Key:	ResolutionPassControlPass
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(870)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(870)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(886)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(886)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionPassControlPass"
 msgid "传球推进"
 msgstr "传球推进"
 
 #. Key:	ResolutionPassControlDribble
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(874)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(874)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(890)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(890)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionPassControlDribble"
 msgid "盘带推进"
 msgstr "盘带推进"
 
 #. Key:	ResolutionPassControlRun
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(878)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(878)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(894)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(894)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionPassControlRun"
 msgid "跑动推进"
 msgstr "跑动推进"
 
 #. Key:	ResolutionRoleCarrier
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(889)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(889)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(905)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(905)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionRoleCarrier"
 msgid "持球"
 msgstr "持球"
 
 #. Key:	ResolutionRoleRunner
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(891)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(891)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(907)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(907)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionRoleRunner"
 msgid "跑位"
 msgstr "跑位"
 
 #. Key:	ResolutionRoleMarker
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(893)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(893)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(909)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(909)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionRoleMarker"
 msgid "盯人"
 msgstr "盯人"
 
 #. Key:	ResolutionRoleHelper
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(895)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(895)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(911)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(911)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionRoleHelper"
 msgid "协防"
 msgstr "协防"
 
 #. Key:	ResolutionRoleGoalkeeper
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(897)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(897)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(913)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(913)
 msgctxt "FMCodexPlayerUIPresentationText,ResolutionRoleGoalkeeper"
 msgid "门将"
 msgstr "门将"
 
 #. Key:	TacticalDetailRoleRunner
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(908)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(908)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(924)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(924)
 msgctxt "FMCodexPlayerUIPresentationText,TacticalDetailRoleRunner"
 msgid "跑位球员"
 msgstr "跑位球员"
-
-#. Key:	ShotDeadCornerOutcomeMiss
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(921)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(921)
-msgctxt "FMCodexPlayerUIPresentationText,ShotDeadCornerOutcomeMiss"
-msgid "未进球"
-msgstr "未进球"
-
-#. Key:	ShotDeadCornerOutcomeGoal
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(925)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(925)
-msgctxt "FMCodexPlayerUIPresentationText,ShotDeadCornerOutcomeGoal"
-msgid "进球"
-msgstr "进球"
 
 #. Key:	MatchLocal
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(93)
@@ -3065,19 +3086,12 @@ msgctxt "FMCodexPlayerUIPresentationText,MatchLocal"
 msgid "本地对战"
 msgstr "本地对战"
 
-#. Key:	ThroughBallAntiOffsideOutcomeOffside
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(932)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(932)
-msgctxt "FMCodexPlayerUIPresentationText,ThroughBallAntiOffsideOutcomeOffside"
-msgid "越位"
-msgstr "越位"
-
-#. Key:	ThroughBallAntiOffsideOutcomeSuccess
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(936)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(936)
-msgctxt "FMCodexPlayerUIPresentationText,ThroughBallAntiOffsideOutcomeSuccess"
-msgid "反越位成功"
-msgstr "反越位成功"
+#. Key:	ShotDeadCornerOutcomeMiss
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(937)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(937)
+msgctxt "FMCodexPlayerUIPresentationText,ShotDeadCornerOutcomeMiss"
+msgid "未进球"
+msgstr "未进球"
 
 #. Key:	MatchLive
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(94)
@@ -3086,19 +3100,19 @@ msgctxt "FMCodexPlayerUIPresentationText,MatchLive"
 msgid "比赛进行中"
 msgstr "比赛进行中"
 
-#. Key:	ThroughBallChipOutcomeMiss
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(943)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(943)
-msgctxt "FMCodexPlayerUIPresentationText,ThroughBallChipOutcomeMiss"
-msgid "挑射未进"
-msgstr "挑射未进"
-
-#. Key:	ThroughBallChipOutcomeGoal
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(947)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(947)
-msgctxt "FMCodexPlayerUIPresentationText,ThroughBallChipOutcomeGoal"
+#. Key:	ShotDeadCornerOutcomeGoal
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(941)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(941)
+msgctxt "FMCodexPlayerUIPresentationText,ShotDeadCornerOutcomeGoal"
 msgid "进球"
 msgstr "进球"
+
+#. Key:	ThroughBallAntiOffsideOutcomeOffside
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(948)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(948)
+msgctxt "FMCodexPlayerUIPresentationText,ThroughBallAntiOffsideOutcomeOffside"
+msgid "越位"
+msgstr "越位"
 
 #. Key:	PlayerAction
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(95)
@@ -3107,12 +3121,19 @@ msgctxt "FMCodexPlayerUIPresentationText,PlayerAction"
 msgid "玩家操作"
 msgstr "玩家操作"
 
-#. Key:	TacticalSingleOutcomeRange
+#. Key:	ThroughBallAntiOffsideOutcomeSuccess
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(952)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(952)
+msgctxt "FMCodexPlayerUIPresentationText,ThroughBallAntiOffsideOutcomeSuccess"
+msgid "反越位成功"
+msgstr "反越位成功"
+
+#. Key:	ThroughBallChipOutcomeMiss
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(959)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(959)
-msgctxt "FMCodexPlayerUIPresentationText,TacticalSingleOutcomeRange"
-msgid "{0}：{1}"
-msgstr "{0}：{1}"
+msgctxt "FMCodexPlayerUIPresentationText,ThroughBallChipOutcomeMiss"
+msgid "挑射未进"
+msgstr "挑射未进"
 
 #. Key:	SystemResolution
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(96)
@@ -3121,12 +3142,12 @@ msgctxt "FMCodexPlayerUIPresentationText,SystemResolution"
 msgid "系统结算"
 msgstr "系统结算"
 
-#. Key:	TacticalOutcomeRange
+#. Key:	ThroughBallChipOutcomeGoal
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(963)
 #: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(963)
-msgctxt "FMCodexPlayerUIPresentationText,TacticalOutcomeRange"
-msgid "{0}–{1}：{2}"
-msgstr "{0}–{1}：{2}"
+msgctxt "FMCodexPlayerUIPresentationText,ThroughBallChipOutcomeGoal"
+msgid "进球"
+msgstr "进球"
 
 #. Key:	Information
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(97)
@@ -3134,6 +3155,20 @@ msgstr "{0}–{1}：{2}"
 msgctxt "FMCodexPlayerUIPresentationText,Information"
 msgid "信息"
 msgstr "信息"
+
+#. Key:	TacticalSingleOutcomeRange
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(975)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(975)
+msgctxt "FMCodexPlayerUIPresentationText,TacticalSingleOutcomeRange"
+msgid "{0}：{1}"
+msgstr "{0}：{1}"
+
+#. Key:	TacticalOutcomeRange
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(979)
+#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(979)
+msgctxt "FMCodexPlayerUIPresentationText,TacticalOutcomeRange"
+msgid "{0}–{1}：{2}"
+msgstr "{0}–{1}：{2}"
 
 #. Key:	MatchComplete
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(98)
@@ -3148,20 +3183,6 @@ msgstr "比赛结束"
 msgctxt "FMCodexPlayerUIPresentationText,MatchInProgress"
 msgid "比赛进行中"
 msgstr "比赛进行中"
-
-#. Key:	ResolutionAttackRow
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(990)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(990)
-msgctxt "FMCodexPlayerUIPresentationText,ResolutionAttackRow"
-msgid "进攻"
-msgstr "进攻"
-
-#. Key:	ResolutionDefenseRow
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(995)
-#: Source/FMCodex/LocalPlay/FMCodexPlayerUIPresentationText.cpp(995)
-msgctxt "FMCodexPlayerUIPresentationText,ResolutionDefenseRow"
-msgid "防守"
-msgstr "防守"
 
 #. Key:	TeamArsenal
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexPrototypeTeamContent.cpp(313)
@@ -3345,33 +3366,12 @@ msgctxt "FMCodexResolutionTheater,CrossDetails"
 msgid "悬停基础值查看明细"
 msgstr "悬停基础值查看明细"
 
-#. Key:	PendingRequest
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1435)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1435)
-msgctxt "FMCodexResolutionTheater,PendingRequest"
-msgid "操作已提交，等待确认"
-msgstr "操作已提交，等待确认"
-
 #. Key:	CrossRouteConfirmed
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1436)
 #: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1436)
 msgctxt "FMCodexResolutionTheater,CrossRouteConfirmed"
 msgid "路线已确认"
 msgstr "路线已确认"
-
-#. Key:	CrossRevealing
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1438)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1438)
-msgctxt "FMCodexResolutionTheater,CrossRevealing"
-msgid "正在揭示掷点"
-msgstr "正在揭示掷点"
-
-#. Key:	CutRollLanded
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1438)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1438)
-msgctxt "FMCodexResolutionTheater,CutRollLanded"
-msgid "掷点已落定"
-msgstr "掷点已落定"
 
 #. Key:	CrossAutoReady
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1439)
@@ -3611,506 +3611,499 @@ msgctxt "FMCodexResolutionTheater,NearConfirm"
 msgid "确认主罚球员"
 msgstr "确认主罚球员"
 
-#. Key:	DefenseRoll
+#. Key:	RouteRoll
 #. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1838)
 #: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1838)
-msgctxt "FMCodexResolutionTheater,DefenseRoll"
-msgid "防守方掷点"
-msgstr "防守方掷点"
-
-#. Key:	RouteRoll
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1839)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1839)
 msgctxt "FMCodexResolutionTheater,RouteRoll"
 msgid "判定路线"
 msgstr "判定路线"
 
 #. Key:	NearPairRoll
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1840)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1840)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1839)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1839)
 msgctxt "FMCodexResolutionTheater,NearPairRoll"
 msgid "掷两枚骰子"
 msgstr "掷两枚骰子"
 
 #. Key:	PenaltySingleRoll
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1841)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1841)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1840)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1840)
 msgctxt "FMCodexResolutionTheater,PenaltySingleRoll"
 msgid "掷一枚骰子"
 msgstr "掷一枚骰子"
 
 #. Key:	NextAttack
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1842)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1842)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1841)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1841)
 msgctxt "FMCodexResolutionTheater,NextAttack"
 msgid "下一回合"
 msgstr "下一回合"
 
 #. Key:	CornerHigh
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1859)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1859)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1858)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1858)
 msgctxt "FMCodexResolutionTheater,CornerHigh"
 msgid "高球"
 msgstr "高球"
 
 #. Key:	CornerLow
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1859)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1859)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1858)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1858)
 msgctxt "FMCodexResolutionTheater,CornerLow"
 msgid "低球"
 msgstr "低球"
 
 #. Key:	NearDraft
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1869)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1869)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1868)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1868)
 msgctxt "FMCodexResolutionTheater,NearDraft"
 msgid "已选主罚球员，确认后继续"
 msgstr "已选主罚球员，确认后继续"
 
 #. Key:	NearChooseTaker
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1870)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1870)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1869)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1869)
 msgctxt "FMCodexResolutionTheater,NearChooseTaker"
 msgid "请选择主罚球员"
 msgstr "请选择主罚球员"
 
 #. Key:	NearWaitTaker
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1870)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1870)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1869)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1869)
 msgctxt "FMCodexResolutionTheater,NearWaitTaker"
 msgid "等待进攻方选择主罚球员"
 msgstr "等待进攻方选择主罚球员"
 
 #. Key:	NearWaitMethod
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1871)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1871)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1870)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1870)
 msgctxt "FMCodexResolutionTheater,NearWaitMethod"
 msgid "等待进攻方选择结算方式"
 msgstr "等待进攻方选择结算方式"
 
 #. Key:	NearIneligible
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1872)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1872)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1871)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1871)
 msgctxt "FMCodexResolutionTheater,NearIneligible"
 msgid "战术配合不可用：需射门 + 传球 ≥ 8"
 msgstr "战术配合不可用：需射门 + 传球 ≥ 8"
 
 #. Key:	LongChooseMethod
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1873)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1873)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1872)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1872)
 msgctxt "FMCodexResolutionTheater,LongChooseMethod"
 msgid "当前主罚球员可选择直接射门或重炮轰门"
 msgstr "当前主罚球员可选择直接射门或重炮轰门"
 
 #. Key:	NearChooseMethod
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1873)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1873)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1872)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1872)
 msgctxt "FMCodexResolutionTheater,NearChooseMethod"
 msgid "当前主罚球员可选择直接射门或战术配合"
 msgstr "当前主罚球员可选择直接射门或战术配合"
 
 #. Key:	PenaltyChooseMethod
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1873)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1873)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1872)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1872)
 msgctxt "FMCodexResolutionTheater,PenaltyChooseMethod"
 msgid "当前主罚球员可选择常规点球或勺子点球"
 msgstr "当前主罚球员可选择常规点球或勺子点球"
 
 #. Key:	AttackRolling
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1876)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1876)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1875)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1875)
 msgctxt "FMCodexResolutionTheater,AttackRolling"
 msgid "进攻方掷点中"
 msgstr "进攻方掷点中"
 
 #. Key:	AttackTurn
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1876)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1876)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1875)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1875)
 msgctxt "FMCodexResolutionTheater,AttackTurn"
 msgid "轮到进攻方掷点"
 msgstr "轮到进攻方掷点"
 
 #. Key:	WaitAttack
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1876)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1876)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1875)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1875)
 msgctxt "FMCodexResolutionTheater,WaitAttack"
 msgid "等待进攻方掷点"
 msgstr "等待进攻方掷点"
 
 #. Key:	ChooseCross
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1882)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1882)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1881)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1881)
 msgctxt "FMCodexResolutionTheater,ChooseCross"
 msgid "请选择传中方式"
 msgstr "请选择传中方式"
 
 #. Key:	DefenseRolling
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1889)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1889)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1888)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1888)
 msgctxt "FMCodexResolutionTheater,DefenseRolling"
 msgid "防守方掷点中"
 msgstr "防守方掷点中"
 
 #. Key:	DefenseTurn
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1892)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1892)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1891)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1891)
 msgctxt "FMCodexResolutionTheater,DefenseTurn"
 msgid "轮到防守方掷点"
 msgstr "轮到防守方掷点"
 
 #. Key:	WaitDefense
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1893)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1893)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1892)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1892)
 msgctxt "FMCodexResolutionTheater,WaitDefense"
 msgid "等待防守方掷点"
 msgstr "等待防守方掷点"
 
 #. Key:	RouteHighLanded
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1901)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1901)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1900)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1900)
 msgctxt "FMCodexResolutionTheater,RouteHighLanded"
 msgid "掷点结果为 {0}，判定为高球传中"
 msgstr "掷点结果为 {0}，判定为高球传中"
 
 #. Key:	RouteLowLanded
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1902)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1902)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1901)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1901)
 msgctxt "FMCodexResolutionTheater,RouteLowLanded"
 msgid "掷点结果为 {0}，判定为低球传中"
 msgstr "掷点结果为 {0}，判定为低球传中"
 
 #. Key:	RouteRolling
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1903)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1903)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1902)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1902)
 msgctxt "FMCodexResolutionTheater,RouteRolling"
 msgid "正在判定传中路线"
 msgstr "正在判定传中路线"
 
 #. Key:	ShotDefenseLanded
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1910)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1910)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1909)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1909)
 msgctxt "FMCodexResolutionTheater,ShotDefenseLanded"
 msgid "防守方掷点已落定"
 msgstr "防守方掷点已落定"
 
 #. Key:	ShotAttackLanded
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1911)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1911)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1910)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1910)
 msgctxt "FMCodexResolutionTheater,ShotAttackLanded"
 msgid "进攻方掷点已落定"
 msgstr "进攻方掷点已落定"
 
 #. Key:	DeadCornerMissReason
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1918)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1918)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1917)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1917)
 msgctxt "FMCodexResolutionTheater,DeadCornerMissReason"
 msgid "总和未达到 11–12，未进球"
 msgstr "总和未达到 11–12，未进球"
 
 #. Key:	DeadCornerGoalReason
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1920)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1920)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1919)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1919)
 msgctxt "FMCodexResolutionTheater,DeadCornerGoalReason"
 msgid "总和达到 11–12，进球"
 msgstr "总和达到 11–12，进球"
 
 #. Key:	LongAttackMissHint
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1931)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1931)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1930)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1930)
 msgctxt "FMCodexResolutionTheater,LongAttackMissHint"
 msgid "进攻掷点 1–2：直接射偏"
 msgstr "进攻掷点 1–2：直接射偏"
 
 #. Key:	CornerDraw
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2000)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2000)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1999)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(1999)
 msgctxt "FMCodexResolutionTheater,CornerDraw"
 msgid "一枚共同骰子，确定双方实际球员"
 msgstr "一枚共同骰子，确定双方实际球员"
 
 #. Key:	CornerChooseRoute
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2001)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2001)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2000)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2000)
 msgctxt "FMCodexResolutionTheater,CornerChooseRoute"
 msgid "选择角球路线"
 msgstr "选择角球路线"
 
 #. Key:	CornerRoute
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2001)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2001)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2000)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2000)
 msgctxt "FMCodexResolutionTheater,CornerRoute"
 msgid "路线判定"
 msgstr "路线判定"
 
 #. Key:	CornerDrawHint
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2005)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2005)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2004)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2004)
 msgctxt "FMCodexResolutionTheater,CornerDrawHint"
 msgid "同一掷点确定双方实际球员；号位表示锁定顺序"
 msgstr "同一掷点确定双方实际球员；号位表示锁定顺序"
 
 #. Key:	CornerSelecting
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2005)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2005)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2004)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2004)
 msgctxt "FMCodexResolutionTheater,CornerSelecting"
 msgid "正在确定双方实际球员"
 msgstr "正在确定双方实际球员"
 
 #. Key:	CornerSelected
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2006)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2006)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2005)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2005)
 msgctxt "FMCodexResolutionTheater,CornerSelected"
 msgid "实际进攻与防守球员已选定；其余候选不消耗"
 msgstr "实际进攻与防守球员已选定；其余候选不消耗"
 
 #. Key:	CornerRouteRolling
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2009)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2009)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2008)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2008)
 msgctxt "FMCodexResolutionTheater,CornerRouteRolling"
 msgid "正在判定角球路线"
 msgstr "正在判定角球路线"
 
 #. Key:	CornerAppliedCount
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2019)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2019)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2018)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2018)
 msgctxt "FMCodexResolutionTheater,CornerAppliedCount"
 msgid "{0}候选人数优势 +{1}（公式基础值含此加成）"
 msgstr "{0}候选人数优势 +{1}（公式基础值含此加成）"
 
 #. Key:	AttackSide
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2020)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2020)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2019)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2019)
 msgctxt "FMCodexResolutionTheater,AttackSide"
 msgid "进攻方"
 msgstr "进攻方"
 
 #. Key:	DefenseSide
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2020)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2020)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2019)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2019)
 msgctxt "FMCodexResolutionTheater,DefenseSide"
 msgid "防守方"
 msgstr "防守方"
 
 #. Key:	ShotUnavailable
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2046)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2046)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2045)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2045)
 msgctxt "FMCodexResolutionTheater,ShotUnavailable"
 msgid "当前不可选择{0}"
 msgstr "当前不可选择{0}"
 
 #. Key:	ShotWaiting
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2050)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2050)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2049)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2049)
 msgctxt "FMCodexResolutionTheater,ShotWaiting"
 msgid "等待进攻方选择射门方式"
 msgstr "等待进攻方选择射门方式"
 
 #. Key:	ShotChoose
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2051)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2051)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2050)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2050)
 msgctxt "FMCodexResolutionTheater,ShotChoose"
 msgid "选择本次射门方式"
 msgstr "选择本次射门方式"
 
 #. Key:	DeadCornerRollingGoalHint
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2077)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2077)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2076)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2076)
 msgctxt "FMCodexResolutionTheater,DeadCornerRollingGoalHint"
 msgid "两枚掷点总和达到 11–12：进球"
 msgstr "两枚掷点总和达到 11–12：进球"
 
 #. Key:	OneOnOneMethod
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2091)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2091)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2090)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2090)
 msgctxt "FMCodexResolutionTheater,OneOnOneMethod"
 msgid "单刀 · 选择射门方式"
 msgstr "单刀 · 选择射门方式"
 
 #. Key:	ThroughBallFeet
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2092)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2092)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2091)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2091)
 msgctxt "FMCodexResolutionTheater,ThroughBallFeet"
 msgid "脚下球"
 msgstr "脚下球"
 
 #. Key:	ThroughBallBehind
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2093)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2093)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2092)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2092)
 msgctxt "FMCodexResolutionTheater,ThroughBallBehind"
 msgid "身后球"
 msgstr "身后球"
 
 #. Key:	ThroughBallDirect
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2094)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2094)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2093)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2093)
 msgctxt "FMCodexResolutionTheater,ThroughBallDirect"
 msgid "单刀 · 直接射门"
 msgstr "单刀 · 直接射门"
 
 #. Key:	ChipMethod
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2108)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2108)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2107)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2107)
 msgctxt "FMCodexResolutionTheater,ChipMethod"
 msgid "挑射"
 msgstr "挑射"
 
 #. Key:	ThroughBallChipHint
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2111)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2111)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2110)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2110)
 msgctxt "FMCodexResolutionTheater,ThroughBallChipHint"
 msgid "仅按掷点判定"
 msgstr "仅按掷点判定"
 
 #. Key:	ThroughBallDirectHint
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2111)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2111)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2110)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2110)
 msgctxt "FMCodexResolutionTheater,ThroughBallDirectHint"
 msgid "比较射门与门将单刀"
 msgstr "比较射门与门将单刀"
 
 #. Key:	OneOnOneChoose
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2115)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2115)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2114)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2114)
 msgctxt "FMCodexResolutionTheater,OneOnOneChoose"
 msgid "已形成单刀，选择射门方式"
 msgstr "已形成单刀，选择射门方式"
 
 #. Key:	CornerAttackSelection
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2144)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2144)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2143)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2143)
 msgctxt "FMCodexResolutionTheater,CornerAttackSelection"
 msgid "选择进攻候选"
 msgstr "选择进攻候选"
 
 #. Key:	CornerDefenseSelection
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2144)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2144)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2143)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2143)
 msgctxt "FMCodexResolutionTheater,CornerDefenseSelection"
 msgid "选择防守候选"
 msgstr "选择防守候选"
 
 #. Key:	CornerPlanningCount
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2144)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2144)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2143)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2143)
 msgctxt "FMCodexResolutionTheater,CornerPlanningCount"
 msgid "{0} · 已选 {1} / 3"
 msgstr "{0} · 已选 {1} / 3"
 
 #. Key:	CornerWaitAttack
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2145)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2145)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2144)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2144)
 msgctxt "FMCodexResolutionTheater,CornerWaitAttack"
 msgid "等待进攻方选择候选球员"
 msgstr "等待进攻方选择候选球员"
 
 #. Key:	CornerWaitDefense
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2145)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2145)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2144)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2144)
 msgctxt "FMCodexResolutionTheater,CornerWaitDefense"
 msgid "等待防守方选择候选球员"
 msgstr "等待防守方选择候选球员"
 
 #. Key:	CornerZeroAttack
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2146)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2146)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2145)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2145)
 msgctxt "FMCodexResolutionTheater,CornerZeroAttack"
 msgid "可不派进攻候选；<Danger>若进攻方锁定 0 人，本次角球直接不进球</>"
 msgstr "可不派进攻候选；<Danger>若进攻方锁定 0 人，本次角球直接不进球</>"
 
 #. Key:	CornerZeroDefense
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2147)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2147)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2146)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2146)
 msgctxt "FMCodexResolutionTheater,CornerZeroDefense"
 msgid "可不派防守候选；<Danger>若防守方锁定 0 人且进攻方有候选，对方直接进球</>"
 msgstr "可不派防守候选；<Danger>若防守方锁定 0 人且进攻方有候选，对方直接进球</>"
 
 #. Key:	CornerSealedWait
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2149)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2149)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2148)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2148)
 msgctxt "FMCodexResolutionTheater,CornerSealedWait"
 msgid "双方锁定后公开候选名单，再确定实际对位球员"
 msgstr "双方锁定后公开候选名单，再确定实际对位球员"
 
 #. Key:	CornerConfirmZeroDraft
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2151)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2151)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2150)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2150)
 msgctxt "FMCodexResolutionTheater,CornerConfirmZeroDraft"
 msgid "{0}；确认继续锁定，或返回补充"
 msgstr "{0}；确认继续锁定，或返回补充"
 
 #. Key:	CornerConfirmUnderfilledDraft
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2152)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2152)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2151)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2151)
 msgctxt "FMCodexResolutionTheater,CornerConfirmUnderfilledDraft"
 msgid "已选 {0}/3，<Danger>未选满 3 人</>；确认继续锁定，或返回补充"
 msgstr "已选 {0}/3，<Danger>未选满 3 人</>；确认继续锁定，或返回补充"
 
 #. Key:	CornerFullDraft
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2153)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2153)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2152)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2152)
 msgctxt "FMCodexResolutionTheater,CornerFullDraft"
 msgid "已选满 3 人；可再次点击已选球员撤销，编号表示选人顺序"
 msgstr "已选满 3 人；可再次点击已选球员撤销，编号表示选人顺序"
 
 #. Key:	CornerOrderedDraft
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2154)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2154)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2153)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2153)
 msgctxt "FMCodexResolutionTheater,CornerOrderedDraft"
 msgid "按顺序选择 0–3 名候选；再次点击已选球员撤销，编号表示选人顺序"
 msgstr "按顺序选择 0–3 名候选；再次点击已选球员撤销，编号表示选人顺序"
 
 #. Key:	CornerNoCandidates
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2155)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2155)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2154)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2154)
 msgctxt "FMCodexResolutionTheater,CornerNoCandidates"
 msgid "当前没有可用候选球员\n可确认不派候选"
 msgstr "当前没有可用候选球员\n可确认不派候选"
 
 #. Key:	CornerSealedMessage
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2156)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2156)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2155)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2155)
 msgctxt "FMCodexResolutionTheater,CornerSealedMessage"
 msgid "候选名单封存中\n等待当前玩家锁定"
 msgstr "候选名单封存中\n等待当前玩家锁定"
 
 #. Key:	CornerOwnLocked
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2159)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2159)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2158)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2158)
 msgctxt "FMCodexResolutionTheater,CornerOwnLocked"
 msgid "进攻候选已锁定"
 msgstr "进攻候选已锁定"
 
 #. Key:	CornerNoneLocked
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2164)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2164)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2163)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2163)
 msgctxt "FMCodexResolutionTheater,CornerNoneLocked"
 msgid "不派进攻候选"
 msgstr "不派进攻候选"
 
 #. Key:	CornerAttackAttributes
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2168)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2168)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2167)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2167)
 msgctxt "FMCodexResolutionTheater,CornerAttackAttributes"
 msgid "高球看力量，低球看射门"
 msgstr "高球看力量，低球看射门"
 
 #. Key:	CornerDefenseAttributes
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2169)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2169)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2168)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2168)
 msgctxt "FMCodexResolutionTheater,CornerDefenseAttributes"
 msgid "高球看力量，低球看盯防"
 msgstr "高球看力量，低球看盯防"
 
 #. Key:	CornerCountRule
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2170)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2170)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2169)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2169)
 msgctxt "FMCodexResolutionTheater,CornerCountRule"
 msgid "候选人数多 1 人最终点数 +2，多 2 人 +3；未选中参与角球球员不消耗"
 msgstr "候选人数多 1 人最终点数 +2，多 2 人 +3；未选中参与角球球员不消耗"
 
 #. Key:	CornerContinueLock
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2175)
-#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2175)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2174)
+#: Source/FMCodex/LocalPlay/FMCodexResolutionTheaterPrototype.cpp(2174)
 msgctxt "FMCodexResolutionTheater,CornerContinueLock"
 msgid "继续锁定"
 msgstr "继续锁定"
@@ -5222,22 +5215,22 @@ msgid "战术说明 · 仅供参考"
 msgstr "战术说明 · 仅供参考"
 
 #. Key:	RouteEvent
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexThroughBallResolutionSurfaceWidget.cpp(494)
-#: Source/FMCodex/LocalPlay/FMCodexThroughBallResolutionSurfaceWidget.cpp(494)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexThroughBallResolutionSurfaceWidget.cpp(493)
+#: Source/FMCodex/LocalPlay/FMCodexThroughBallResolutionSurfaceWidget.cpp(493)
 msgctxt "FMCodexThroughBall,RouteEvent"
 msgid "判定直塞路线"
 msgstr "判定直塞路线"
 
 #. Key:	AntiEvent
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexThroughBallResolutionSurfaceWidget.cpp(495)
-#: Source/FMCodex/LocalPlay/FMCodexThroughBallResolutionSurfaceWidget.cpp(495)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexThroughBallResolutionSurfaceWidget.cpp(494)
+#: Source/FMCodex/LocalPlay/FMCodexThroughBallResolutionSurfaceWidget.cpp(494)
 msgctxt "FMCodexThroughBall,AntiEvent"
 msgid "反越位判定"
 msgstr "反越位判定"
 
 #. Key:	Rolling
-#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexThroughBallResolutionSurfaceWidget.cpp(523)
-#: Source/FMCodex/LocalPlay/FMCodexThroughBallResolutionSurfaceWidget.cpp(523)
+#. SourceLocation:	Source/FMCodex/LocalPlay/FMCodexThroughBallResolutionSurfaceWidget.cpp(522)
+#: Source/FMCodex/LocalPlay/FMCodexThroughBallResolutionSurfaceWidget.cpp(522)
 msgctxt "FMCodexThroughBall,Rolling"
 msgid "正在掷点"
 msgstr "正在掷点"

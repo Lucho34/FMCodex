@@ -5,6 +5,7 @@
 #include "FMCodexLocalMatchInteractionView.h"
 #include "FMCodexLocalMatchResolutionFeedback.h"
 #include "FMCodexPlayerUIStyle.h"
+#include "FMCodexPlayerUIPresentationText.h"
 #include "FMCodexMatchShellStyle.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
@@ -75,7 +76,7 @@ bool FMatchShellActionsTest::RunTest(const FString&)
 {
     auto* Dock=NewObject<UFMCodexInteractionPanelWidget>(); Dock->TakeWidget();
     FFMCodexUMGInteractionViewModel P;
-    P.bCanRollTacticalPoints=true; P.PrimaryAction.bAvailable=true; P.PrimaryAction.Label=TEXT("ROLL TACTICAL POINTS");
+    P.bCanRollTacticalPoints=true; P.PrimaryAction.bAvailable=true; P.PrimaryAction.Label = FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("ROLL TACTICAL POINTS"));
     P.ExpectedActorLabel=TEXT("PLAYER A TO ACT");
     P.EmptyStateLabel=TEXT("No player action is available.");
     Dock->RefreshFromPresentation(P);

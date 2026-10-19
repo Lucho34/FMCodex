@@ -73,7 +73,7 @@ bool FFMCodexLocalizationVisibleUITest::RunTest(const FString&)
   FFMCodexUMGInteractionViewModel View;
   View.Category=EFMCodexUMGInteractionCategory::Deploy;
   View.bCanFinishDeployment=true;View.PrimaryAction.bAvailable=true;
-  View.PrimaryAction.Label=TEXT("FINISH DEPLOYMENT");
+  View.PrimaryAction.Label = FText::FromString(TEXT("FINISH DEPLOYMENT"));
   Panel->RefreshFromPresentation(View);
   auto* Header=NewObject<UFMCodexMatchHeaderWidget>();auto HeaderSlate=Header->TakeWidget();
   FFMCodexUMGMatchHeaderViewModel H;

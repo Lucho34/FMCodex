@@ -445,7 +445,7 @@ bool FFMCodexCutInsideProductionDirectStatesTest::RunTest(
 		PendingScreen.LongShotResolution.Formula.PrimaryAction.Claims(
 			PendingScreen.Interaction.PrimaryAction));
 	TestEqual(TEXT("Direct Attack uses the compact player CTA"),
-		PendingScreen.Interaction.PrimaryAction.Label,
+		PendingScreen.Interaction.PrimaryAction.Label.ToString(),
 		FString(TEXT("进攻方掷点")));
 	TestEqual(TEXT("CutInside gate hint uses the exact compact copy"),
 		PendingScreen.LongShotResolution.OutcomeHintLabel,
@@ -468,7 +468,7 @@ bool FFMCodexCutInsideProductionDirectStatesTest::RunTest(
 	TestTrue(TEXT("Defense pending no longer displays the attack helper"),
 		AttackOnlyScreen.LongShotResolution.OutcomeHintLabel.IsEmpty());
 	TestEqual(TEXT("Direct Defense uses the compact player CTA"),
-		AttackOnlyScreen.Interaction.PrimaryAction.Label,
+		AttackOnlyScreen.Interaction.PrimaryAction.Label.ToString(),
 		FString(TEXT("防守方掷点")));
 	TestTrue(TEXT("Attack-only snapshot preserves real Attack value"),
 		AttackOnlyScreen.LongShotResolution.Formula.AttackRow.bFinalValueResolved
@@ -606,7 +606,7 @@ bool FFMCodexCutInsideProductionDeadCornerStatesTest::RunTest(
 		PendingScreen.LongShotResolution.PrimaryAction.Claims(
 			PendingScreen.Interaction.PrimaryAction));
 	TestEqual(TEXT("DeadCorner uses the compact paired-roll CTA"),
-		PendingScreen.Interaction.PrimaryAction.Label,
+		PendingScreen.Interaction.PrimaryAction.Label.ToString(),
 		FString(TEXT("掷两枚骰")));
 	TestFalse(TEXT("DeadCorner never creates a Formula surface"),
 		PendingScreen.LongShotResolution.Formula.bVisible);

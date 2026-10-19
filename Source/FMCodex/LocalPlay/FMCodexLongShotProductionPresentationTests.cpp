@@ -14,6 +14,10 @@
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/ScopeExit.h"
+#include "Internationalization/TextLocalizationManager.h"
+#include "Internationalization/Text.h"
+#include "FMCodexResolutionTheaterPrototype.h"
 #include "FMCodexTacticalDetailPanelWidget.h"
 #include "FMCodexTacticalDetailPresentation.h"
 #include "FMCodexFormulaTooltipTestUtils.h"
@@ -645,10 +649,18 @@ bool FFMCodexShotFinalTextTest::RunTest(const FString&)
   for(;W;W=W->GetParent())if(!W->IsVisible())return false;
   return true;
  };
- for(const bool Cut:{false,true})
+ auto& Loc=FTextLocalizationManager::Get();
+ const bool WasPreview=Loc.IsGameLocalizationPreviewEnabled();
+ const FString PreviousPreview=Loc.GetConfiguredGameLocalizationPreviewLanguage();
+ ON_SCOPE_EXIT {if(WasPreview)Loc.EnableGameLocalizationPreview(PreviousPreview);else Loc.DisableGameLocalizationPreview();Loc.WaitForAsyncTasks();};
+ for(const bool English:{false,true})
  {
+ Loc.EnableGameLocalizationPreview(English?TEXT("en"):TEXT("zh-Hans"));
+ Loc.WaitForAsyncTasks();
+ for(const auto Family:{ESkillRuleType::LongShot,ESkillRuleType::CutInsideShot,ESkillRuleType::Cross})
+ {
+  const bool Cut=Family==ESkillRuleType::CutInsideShot, Cross=Family==ESkillRuleType::Cross;
   FUIFixture F(Cut,false,false);
-  const auto Family=Cut?ESkillRuleType::CutInsideShot:ESkillRuleType::LongShot;
   if(!TestTrue(TEXT("Reach canonical skill selection"),F.SkillFixture(false,Family)))return false;
   auto* Actor=F.Attacker();auto* Defender=F.Defender();
   auto* S=Actor->GetPlayerMatchScreen();auto* D=Defender->GetPlayerMatchScreen();
@@ -657,7 +669,7 @@ bool FFMCodexShotFinalTextTest::RunTest(const FString&)
   if(!TestNotNull(TEXT("Authorized shot skill"),Choice))return false;
   S->RequestSubmitSkill(Choice->OptionId);
   if(!TestEqual(TEXT("Skill accepted before branch"),F.Backend(Actor).LastCode,Code::Accepted))return false;
-  if(!Cut)
+  if(!Cut && !Cross)
   {
    const auto& Options=S->GetInteractionPanel()->GetRenderedOptionWidgets();
    if(!TestEqual(TEXT("Original branch options retained"),Options.Num(),2))return false;
@@ -666,9 +678,16 @@ bool FFMCodexShotFinalTextTest::RunTest(const FString&)
    TestEqual(TEXT("Rendered principal-attribute hint"),Hint->GetText().ToString(),FString(TEXT("（射门 vs 防守）")));
    TestEqual(TEXT("Other branch hint unchanged"),Options[1]->GetSecondaryLabel(),FString(TEXT("（只看两枚掷点）")));
   }
-  S->RequestSubmitBranchIntent(EFMCodexUMGBranchIntent::DirectShot);
+  S->RequestSubmitBranchIntent(Cross?EFMCodexUMGBranchIntent::CrossHigh:EFMCodexUMGBranchIntent::DirectShot);
   if(!TestEqual(TEXT("Original direct branch accepted"),F.Backend(Actor).LastCode,Code::Accepted))return false;
   for(auto* Screen:{S,D}){Screen->SkipTacticalScene();Screen->SkipTacticalScene();}
+  if(Cross)
+  {
+   F.Entropy->Word=1; S->RequestContinueResolution(); // Authoritative high-cross route.
+   if(!TestEqual(TEXT("Cross route accepted"),F.Backend(Actor).LastCode,Code::Accepted))return false;
+   F.Settle();
+   for(auto* Screen:{S,D}){Screen->SkipTacticalScene();Screen->SkipTacticalScene();}
+  }
   F.Entropy->Word=2; // Canonical attack D6=3 reaches the defense phase.
   S->RequestContinueResolution();
   if(!TestEqual(TEXT("Manual attack roll accepted"),F.Backend(Actor).LastCode,Code::Accepted))return false;
@@ -679,21 +698,52 @@ bool FFMCodexShotFinalTextTest::RunTest(const FString&)
    PC->GetPlayerMatchScreen()->SkipTacticalScene();
    PC->GetPlayerMatchScreen()->SkipTacticalScene();
   }
-  const auto Category=Cut?EFMCodexUMGInteractionCategory::RollCutInsideShotDirectDefense
+  const auto Category=Cross?EFMCodexUMGInteractionCategory::RollCrossDefense:Cut?EFMCodexUMGInteractionCategory::RollCutInsideShotDirectDefense
    :EFMCodexUMGInteractionCategory::RollLongShotDirectDefense;
   auto* Button=CastChecked<UButton>(D->GetWidgetFromName(TEXT("TheaterContinue")));
   auto* Label=CastChecked<UTextBlock>(D->GetWidgetFromName(TEXT("TheaterContinueLabel")));
   TestEqual(TEXT("Distinct typed defense category retained"),D->GetPresentation().Interaction.PrimaryAction.Category,Category);
   TestEqual(TEXT("Authority assigns operation to defender"),Defender->GetOwnerView().ExpectedActingSide,Defender->GetOwnerView().ViewerSide);
   TestTrue(TEXT("Final defense button and label are visible and enabled"),Shown(Button) && Shown(Label) && Button->GetIsEnabled());
-  TestEqual(TEXT("Final rendered defense CTA after all refreshes"),Label->GetText().ToString(),FString(TEXT("防守方掷点")));
+  TestEqual(TEXT("Final rendered defense CTA after all refreshes"),Label->GetText().ToString(),FString(English?TEXT("Defender Rolls"):TEXT("防守方掷点")));
   TestFalse(TEXT("Non-owner cannot operate the defense CTA"),Shown(S->GetWidgetFromName(TEXT("TheaterContinue"))) && S->GetWidgetFromName(TEXT("TheaterContinue"))->GetIsEnabled());
+  auto CheckIdentity=[&](const FText& Text,const TCHAR* Namespace,const TCHAR* Key)
+  {
+   const auto N=FTextInspector::GetNamespace(Text); const auto K=FTextInspector::GetKey(Text);
+   TestTrue(TEXT("Final control retains stable namespace/key"),N.IsSet() && K.IsSet() && N.GetValue()==Namespace && K.GetValue()==Key);
+  };
+  CheckIdentity(Label->GetText(),TEXT("FMCodexPlayerUIPresentationText"),TEXT("ShotDefenseRollAction"));
+  // Faithful display-state projection: use the production-created formula, change
+  // only pending/reel flags. Expected labels are never seeded into the fixture.
+  const auto Base=Cross?D->GetInlineFormulaSurface()->GetPresentation():D->GetLongShotResolutionSurface()->GetPresentation().Formula;
+  for(int32 State=0;State<(Cross?2:3);++State)
+  {
+   auto Display=Base;
+   Display.bDiceRevealVisible=State!=0;
+   Display.PrimaryAction.bVisible=State==0;
+   Display.RollReel.bStaticResult=Display.RollReel.bAuthoritativeValue=State==2;
+   FMCodexResolutionTheaterPrototype::FTakerInspection Inspection;
+   FMCodexResolutionTheaterPrototype::Refresh(*D->WidgetTree,D->GetPresentation(),Display,D->GetPresentation().Header,State==0,Inspection);
+   auto* Status=CastChecked<UTextBlock>(D->GetWidgetFromName(TEXT("TheaterStatus")));
+   const TCHAR* ZH[]={TEXT("操作已提交，等待确认"),TEXT("正在揭示掷点"),TEXT("掷点已落定")};
+   const TCHAR* EN[]={TEXT("Action submitted. Awaiting confirmation"),TEXT("Revealing dice"),TEXT("Dice settled")};
+   const TCHAR* Keys[]={TEXT("PendingRequest"),TEXT("CrossRevealing"),TEXT("CutRollLanded")};
+   TestTrue(TEXT("Projected status actually visible"),Shown(Status));
+   TestEqual(TEXT("Localized final status after production refresh"),Status->GetText().ToString(),FString(English?EN[State]:ZH[State]));
+   CheckIdentity(Status->GetText(),TEXT("FMCodexResolutionTheater"),Keys[State]);
+   TestFalse(TEXT("Pending/reveal cannot expose usable CTA"),Shown(Button) && Button->GetIsEnabled());
+  }
+  // Restore through the complete screen refresh before clicking the real button.
+  Defender->RefreshPlayerFacingUI(); D->SkipTacticalScene();D->SkipTacticalScene();
+  TestEqual(TEXT("Stable state restores localized CTA"),Label->GetText().ToString(),FString(English?TEXT("Defender Rolls"):TEXT("防守方掷点")));
+  TestTrue(TEXT("Stable owner action restored"),Shown(Button) && Button->GetIsEnabled());
   const int32 Before=F.Backend(Defender).Sends;
   Button->OnClicked.Broadcast();
   TestEqual(TEXT("Visible button sends one request"),F.Backend(Defender).Sends,Before+1);
   TestEqual(TEXT("Button retains family-specific typed intent"),F.Backend(Defender).Last.IntentKind,
-   Cut?Kind::CutInsideShotDirectDefenseRoll:Kind::LongShotDirectDefenseRoll);
+   Cross?Kind::CrossHighDefenseRoll:Cut?Kind::CutInsideShotDirectDefenseRoll:Kind::LongShotDirectDefenseRoll);
   TestEqual(TEXT("Defender request accepted by authority"),F.Backend(Defender).LastCode,Code::Accepted);
+ }
  }
  return true;
 }

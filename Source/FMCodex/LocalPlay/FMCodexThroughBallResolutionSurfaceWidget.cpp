@@ -455,8 +455,7 @@ void UFMCodexThroughBallResolutionSurfaceWidget::RefreshVisuals(
 		Presentation.PrimaryAction.Action.bAvailable);
 	if (UTextBlock* Label = Cast<UTextBlock>(ContinueButton->GetChildAt(0)))
 	{
-		Label->SetText(FText::FromString(
-			Presentation.PrimaryAction.Action.Label));
+		Label->SetText(Presentation.PrimaryAction.Action.Label);
 	}
 	FMCodexOutcomePresentation::RefreshIntermediate(*WidgetTree, bOutcomeFamily && Presentation.bDiceRevealVisible,
 		FMCodexOutcomePresentation::JoinContext({Presentation.TitleLabel, Presentation.RouteLabel, Presentation.StageLabel}), Presentation.OutcomeRollDetail);

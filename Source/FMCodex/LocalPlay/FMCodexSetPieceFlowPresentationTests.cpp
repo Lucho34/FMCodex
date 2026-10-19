@@ -41,7 +41,7 @@ bool FFMCodexSetPieceFlowIsolationTest::RunTest(const FString&)
 	A.ContestLabel = TEXT("定位球类型"); A.bShowFormulaRows = false;
 	A.TacticalPlayerSummaryLabel = FFMCodexPlayerUIPresentationText::SetPieceTypeRollHint().ToString();
 	A.PrimaryAction.bVisible = true; A.PrimaryAction.Action.bAvailable = true;
-	A.PrimaryAction.Action.Label = TEXT("掷定位球类型");
+	A.PrimaryAction.Action.Label = FText::FromString(TEXT("掷定位球类型"));
 	Formula->RefreshFromPresentation(A);
 	auto* Frame = CastChecked<UFMCodexMatchFlowPanel>(Formula->GetWidgetFromName(TEXT("InlineFormulaSurfaceFrame")));
 	auto* Rules = CastChecked<UUniformGridPanel>(Formula->GetWidgetFromName(TEXT("SetPieceTypeRules")));

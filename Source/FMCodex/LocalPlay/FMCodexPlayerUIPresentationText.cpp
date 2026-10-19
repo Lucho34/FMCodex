@@ -371,6 +371,22 @@ FText FFMCodexPlayerUIPresentationText::ShotDefenseRollAction()
 	return LOCTEXT("ShotDefenseRollAction", "防守方掷点");
 }
 
+// Retain the established theater namespace/key identities when centralizing ownership.
+FText FFMCodexPlayerUIPresentationText::ActionAcknowledgementPending()
+{
+	return NSLOCTEXT("FMCodexResolutionTheater", "PendingRequest", "操作已提交，等待确认");
+}
+
+FText FFMCodexPlayerUIPresentationText::DiceRevealing()
+{
+	return NSLOCTEXT("FMCodexResolutionTheater", "CrossRevealing", "正在揭示掷点");
+}
+
+FText FFMCodexPlayerUIPresentationText::DiceSettled()
+{
+	return NSLOCTEXT("FMCodexResolutionTheater", "CutRollLanded", "掷点已落定");
+}
+
 FText FFMCodexPlayerUIPresentationText::ShotPairedRollAction()
 {
 	return LOCTEXT("ShotPairedRollAction", "掷两枚骰");

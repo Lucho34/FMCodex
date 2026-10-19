@@ -616,14 +616,14 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 				? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 
 	auto SetButton = [](UButton* Button, const bool bVisible,
-		const FString& Label)
+		const FText& Label)
 	{
 		Button->SetVisibility(bVisible
 			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		if (UTextBlock* LabelText = Cast<UTextBlock>(Button->GetChildAt(0)))
 		{
 			LabelText->SetText(
-				FFMCodexPlayerUIPresentationText::MatchScreenLabel(Label));
+				Label);
 		}
 	};
 	SetButton(StartButton, Presentation.bCanStartNewMatch,
@@ -631,7 +631,7 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	SetButton(TacticalPointRollButton, Presentation.bCanRollTacticalPoints,
 		Presentation.PrimaryAction.Label);
 	CastChecked<UTextBlock>(GetWidgetFromName(TEXT("InteractionTacticalPointRollButtonLabel")))->SetText(
-		FFMCodexPlayerUIPresentationText::MatchScreenLabel(Presentation.PrimaryAction.Label));
+		Presentation.PrimaryAction.Label);
 	if (UWidget* RollBounds = TacticalPointRollButton->GetParent())
 	{
 		RollBounds->SetVisibility(Presentation.bCanRollTacticalPoints
@@ -659,7 +659,7 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	SetButton(ContinueButton, bUseContinueButton,
 		Presentation.PrimaryAction.Label);
 	SetButton(DeclineButton, Presentation.bCanDecline,
-		Presentation.DeclineActionLabel);
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(Presentation.DeclineActionLabel));
 	FButtonStyle DeclineStyle = Style.MakeDockButtonStyle(EFMCodexPlayerUIActionRole::Decline);
 	if (bTacticalChoice)
 	{
@@ -670,10 +670,10 @@ void UFMCodexInteractionPanelWidget::RefreshVisuals()
 	DeclineButton->SetStyle(DeclineStyle);
 	CastChecked<UTextBlock>(DeclineButton->GetChildAt(0))->SetFont(FMCodexMatchShellStyle::Font(18, !bTacticalChoice));
 	SetButton(NoLegalButton, Presentation.bCanResolveNoLegal,
-		Presentation.NoLegalActionLabel);
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(Presentation.NoLegalActionLabel));
 	SetButton(DeploymentTacticalReferenceButton,
 		Presentation.Category == EFMCodexUMGInteractionCategory::Deploy && !bContextualTacticalGuide,
-		TEXT("TACTICAL REFERENCE"));
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("TACTICAL REFERENCE")));
 
 	const bool bHasDynamicChoices = !RenderedOptionWidgets.IsEmpty();
 	const bool bHasPrimaryAction = Presentation.PrimaryAction.bAvailable

@@ -2349,7 +2349,7 @@ bool FFMCodexThroughBallProductionAntiAndChipGoldenPathsTest::RunTest(
 	TestEqual(TEXT("Anti pending UMG category"), Pending.Interaction.Category,
 		EFMCodexUMGInteractionCategory::RollThroughBallAntiOffsideAttack);
 	TestEqual(TEXT("Anti pending player CTA"),
-		Pending.Interaction.PrimaryAction.Label, FString(TEXT("掷点判定越位")));
+		Pending.Interaction.PrimaryAction.Label.ToString(), FString(TEXT("掷点判定越位")));
 	TestEqual(TEXT("Anti pending reveal contest"),
 		Pending.Interaction.CrossRollContestId,
 		FName(TEXT("ThroughBall.AntiOffside")));
@@ -2400,7 +2400,7 @@ bool FFMCodexThroughBallProductionAntiAndChipGoldenPathsTest::RunTest(
 			&& Offside.ThroughBallResolution.OneOnOneChoices.IsEmpty()
 			&& Offside.ThroughBallResolution.PrimaryAction.Claims(
 				Offside.Interaction.PrimaryAction)
-			&& Offside.Interaction.PrimaryAction.Label == TEXT("下一回合")
+			&& Offside.Interaction.PrimaryAction.Label.ToString() == TEXT("下一回合")
 			&& Offside.ThroughBallResolution.ActionPromptLabel.IsEmpty()
 			&& !Offside.ThroughBallResolution.OutcomeRollHint.bVisible);
 
@@ -2540,7 +2540,7 @@ bool FFMCodexThroughBallProductionAntiAndChipGoldenPathsTest::RunTest(
 		ChipPending.Interaction.Category
 			== EFMCodexUMGInteractionCategory
 				::RollThroughBallOneOnOneChipShotAttack
-			&& ChipPending.Interaction.PrimaryAction.Label == TEXT("挑射掷点")
+			&& ChipPending.Interaction.PrimaryAction.Label.ToString() == TEXT("挑射掷点")
 			&& ChipPending.Interaction.CrossRollContestId
 				== TEXT("ThroughBall.OneOnOne.ChipShot")
 			&& ChipPending.ThroughBallResolution.StageLabel == TEXT("挑射")

@@ -29,7 +29,7 @@ FFMCodexUMGInlineFormulaSurfaceViewModel Fixture(bool bDense = true)
 	P.RouteResultLabel = bDense ? TEXT("路线掷点 2 → 判定为低球传中") : TEXT("");
 	P.bAttackRowActive = true;
 	P.PrimaryAction.bVisible = P.PrimaryAction.Action.bAvailable = true;
-	P.PrimaryAction.Action.Label = TEXT("进攻方掷点");
+	P.PrimaryAction.Action.Label = FText::FromString(TEXT("进攻方掷点"));
 	P.AttackRow.SideLabel = TEXT("进攻"); P.DefenseRow.SideLabel = TEXT("防守");
 	for (auto* Row : {&P.AttackRow, &P.DefenseRow})
 	{
@@ -87,7 +87,7 @@ bool FFormulaHierarchyRolesTest::RunTest(const FString&)
 			P.DefenseRow.Terms[2].bNextPendingRoll=P.bDefenseRowActive;
 			P.AttackRow.Terms[2].bResolved=P.DefenseRow.Terms[2].bResolved=State==2;
 			// Deliberately contradictory text: no label is an ownership input.
-			P.PrimaryAction.Action.Label=TEXT("无关标签");
+			P.PrimaryAction.Action.Label = FText::FromString(TEXT("无关标签"));
 			Widget->RefreshFromPresentation(P);
 			const E A=State==2 ? E::Resolved : P.bAttackRowActive ? E::Active : E::Context;
 			const E D=State==2 ? E::Resolved : P.bDefenseRowActive ? E::Active : E::Context;

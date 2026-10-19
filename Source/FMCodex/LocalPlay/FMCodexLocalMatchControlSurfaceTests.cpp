@@ -5733,7 +5733,7 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	Start.bCanStartNewMatch = true;
 	Start.PrimaryAction = {
 		true, EFMCodexUMGInteractionCategory::StartMatch,
-		TEXT("START LOCAL MATCH") };
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("START LOCAL MATCH")) };
 	Panel->RefreshFromPresentation(Start);
 	TestTrue(TEXT("StartMatch exposes one readable primary action"),
 		IsVisible(Panel->GetWidgetFromName(TEXT("InteractionStartMatchButton")))
@@ -5745,7 +5745,7 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	Begin.bCanRollTacticalPoints = true;
 	Begin.PrimaryAction = {
 		true, EFMCodexUMGInteractionCategory::TacticalPointRoll,
-		TEXT("ROLL TACTICAL POINTS") };
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("ROLL TACTICAL POINTS")) };
 	Begin.ActionPointLabel = TEXT("Action Point: 6");
 	Panel->RefreshFromPresentation(Begin);
 	const UTextBlock* BeginContext = Cast<UTextBlock>(
@@ -5790,7 +5790,7 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	Deploy.bCanFinishDeployment = true;
 	Deploy.PrimaryAction = {
 		true, EFMCodexUMGInteractionCategory::Deploy,
-		TEXT("FINISH DEPLOYMENT") };
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("FINISH DEPLOYMENT")) };
 	FFMCodexUMGDeploymentChoiceViewModel Ordinary;
 	Ordinary.CardId = Card.CardId;
 	Ordinary.Card = Card;
@@ -5972,7 +5972,7 @@ bool FFMCodexUMGInteractionPanelVisualFoundationTest::RunTest(
 	Continue.bSystemResolution = true;
 	Continue.PrimaryAction = {
 		true, EFMCodexUMGInteractionCategory::ContinueResolution,
-		TEXT("CONTINUE") };
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("CONTINUE")) };
 	Panel->RefreshFromPresentation(Continue);
 	TestTrue(TEXT("System resolution presents advancing rather than choosing"),
 		Panel->GetPresentation().bSystemResolution
@@ -8097,7 +8097,7 @@ bool FFMCodexUMGVisualStyleFoundationTest::RunTest(
 	Action.bCanResolveNoLegal = true;
 	Action.PrimaryAction = {
 		true, EFMCodexUMGInteractionCategory::ContinueResolution,
-		TEXT("CONTINUE") };
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("CONTINUE")) };
 	Action.DeclineActionLabel = TEXT("DECLINE");
 	Action.NoLegalActionLabel = TEXT("NO LEGAL CHOICE");
 	Interaction->RefreshFromPresentation(Action);
@@ -9346,7 +9346,7 @@ bool FFMCodexGoldenLayoutPrototypeTest::RunTest(const FString& Parameters)
 	LongAction.bCanStartNewMatch = true;
 	LongAction.PrimaryAction = {
 		true, EFMCodexUMGInteractionCategory::StartMatch,
-		TEXT("START LOCAL MATCH") };
+		FFMCodexPlayerUIPresentationText::MatchScreenLabel(TEXT("START LOCAL MATCH")) };
 	TextSafeDock->RefreshFromPresentation(LongAction);
 	TextSafeDock->TakeWidget();
 	const UTextBlock* LongActionTitle = Cast<UTextBlock>(
@@ -14336,7 +14336,7 @@ bool FFMCodexResolutionPrimaryActionOwnershipTest::RunTest(
 		FFMCodexUMGPrimaryActionViewModel Action;
 		Action.bAvailable = true;
 		Action.Category = Category;
-		Action.Label = Label;
+		Action.Label = FText::FromString(Label);
 		return Action;
 	};
 	auto Claim = [](const FFMCodexUMGPrimaryActionViewModel& Action)

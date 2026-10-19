@@ -1350,7 +1350,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			Result.bShowDefenseRow = false;
 			ClaimPrimaryAction(Result.PrimaryAction, PrimaryAction);
 			Result.bCanContinue = Result.PrimaryAction.bVisible;
-			Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
+			Result.ContinueActionLabel = Result.PrimaryAction.Action.Label.ToString();
 			return Result;
 		}
 		if (bTypeRollPending || InteractionView.bHasSetPieceTypeRoll)
@@ -1375,7 +1375,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			}
 			ClaimPrimaryAction(Result.PrimaryAction, PrimaryAction);
 			Result.bCanContinue = Result.PrimaryAction.bVisible;
-			Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
+			Result.ContinueActionLabel = Result.PrimaryAction.Action.Label.ToString();
 			if (bTypeRollPending
 				|| !IsSetPieceOrdinaryResolutionCategory(
 					InteractionView.InteractionCategory)
@@ -1771,7 +1771,7 @@ namespace FMCodexLocalMatchUMGPresentation
 		}
 		ClaimPrimaryAction(Result.PrimaryAction, PrimaryAction);
 		Result.bCanContinue = Result.PrimaryAction.bVisible;
-		Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
+		Result.ContinueActionLabel = Result.PrimaryAction.Action.Label.ToString();
 		return Result;
 	}
 
@@ -2201,7 +2201,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			ClaimPrimaryAction(Result.PrimaryAction, PrimaryAction);
 		}
 		Result.bCanContinue = Result.PrimaryAction.bVisible;
-		Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
+		Result.ContinueActionLabel = Result.PrimaryAction.Action.Label.ToString();
 		return Result;
 	}
 
@@ -2248,7 +2248,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			::ThroughBallTitle().ToString();
 		Result.InteractionCategory = Interaction.Category;
 		Result.OneOnOneChoices = Interaction.OneOnOneChoices;
-		Result.ActionPromptLabel = Interaction.PrimaryAction.Label;
+		Result.ActionPromptLabel = Interaction.PrimaryAction.Label.ToString();
 
 		const FMatchPlayCurrentAttackResolutionFactProjection& Facts =
 			InteractionView.ResolutionFacts;
@@ -2273,7 +2273,7 @@ namespace FMCodexLocalMatchUMGPresentation
 				ClaimPrimaryAction(Result.PrimaryAction, Interaction.PrimaryAction);
 			}
 			Result.bCanContinue = Result.PrimaryAction.bVisible;
-			Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
+			Result.ContinueActionLabel = Result.PrimaryAction.Action.Label.ToString();
 			return Result;
 		}
 
@@ -2452,7 +2452,7 @@ namespace FMCodexLocalMatchUMGPresentation
 					Interaction.PrimaryAction);
 			}
 			Result.bCanContinue = Result.PrimaryAction.bVisible;
-			Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
+			Result.ContinueActionLabel = Result.PrimaryAction.Action.Label.ToString();
 			return Result;
 		}
 
@@ -2509,7 +2509,7 @@ namespace FMCodexLocalMatchUMGPresentation
 					Interaction.PrimaryAction);
 			}
 			Result.bCanContinue = Result.PrimaryAction.bVisible;
-			Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
+			Result.ContinueActionLabel = Result.PrimaryAction.Action.Label.ToString();
 			break;
 		default:
 			break;
@@ -2683,7 +2683,7 @@ namespace FMCodexLocalMatchUMGPresentation
 						Result.PrimaryAction, Interaction.PrimaryAction);
 				}
 				Result.bCanContinue = Result.PrimaryAction.bVisible;
-				Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
+				Result.ContinueActionLabel = Result.PrimaryAction.Action.Label.ToString();
 				return Result;
 			}
 
@@ -2700,7 +2700,7 @@ namespace FMCodexLocalMatchUMGPresentation
 				? FString() : FString(TEXT("等待进攻方掷点"));
 			Result.bCanContinue = Result.Formula.PrimaryAction.bVisible;
 			Result.ContinueActionLabel =
-				Result.Formula.PrimaryAction.Action.Label;
+				Result.Formula.PrimaryAction.Action.Label.ToString();
 			return Result;
 		}
 
@@ -2817,7 +2817,7 @@ namespace FMCodexLocalMatchUMGPresentation
 			ClaimPrimaryAction(Result.PrimaryAction, Interaction.PrimaryAction);
 		}
 		Result.bCanContinue = Result.PrimaryAction.bVisible;
-		Result.ContinueActionLabel = Result.PrimaryAction.Action.Label;
+		Result.ContinueActionLabel = Result.PrimaryAction.Action.Label.ToString();
 		return Result;
 	}
 }
@@ -3641,7 +3641,17 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		|| Result.Interaction.bCanFinishDeployment
 		|| bCanContinueWithSetPiece;
 	Result.Interaction.PrimaryAction.Category = Result.Interaction.Category;
-	Result.Interaction.PrimaryAction.Label =
+	// Display-only normalization. Categories retain their distinct gameplay intents.
+	const auto ActionCategory = Result.Interaction.PrimaryAction.Category;
+	if (bCanContinueWithSetPiece && (ActionCategory == EFMCodexUMGInteractionCategory::RollCrossDefense
+		|| ActionCategory == EFMCodexUMGInteractionCategory::RollCutInsideShotDirectDefense
+		|| ActionCategory == EFMCodexUMGInteractionCategory::RollLongShotDirectDefense))
+	{
+		Result.Interaction.PrimaryAction.Label = FFMCodexPlayerUIPresentationText::ShotDefenseRollAction();
+	}
+	else
+	{
+	Result.Interaction.PrimaryAction.Label = FFMCodexPlayerUIPresentationText::MatchScreenLabel(
 		Result.Interaction.bCanStartNewMatch ? TEXT("START LOCAL MATCH")
 		: Result.Interaction.bCanRollTacticalPoints
 			? TEXT("ROLL TACTICAL POINTS")
@@ -3652,13 +3662,6 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 					::RollCutInsideShotDirectAttack
 					? FFMCodexPlayerUIPresentationText
 						::ShotAttackRollAction().ToString()
-			: InteractionView.InteractionCategory
-				== EFMCodexLocalMatchInteractionCategory
-					::RollCutInsideShotDirectDefense
-				|| InteractionView.InteractionCategory
-					== EFMCodexLocalMatchInteractionCategory::RollLongShotDirectDefense
-					? FFMCodexPlayerUIPresentationText
-						::ShotDefenseRollAction().ToString()
 			: InteractionView.InteractionCategory
 				== EFMCodexLocalMatchInteractionCategory
 					::RollCutInsideShotDeadCorner
@@ -3714,10 +3717,11 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 										: (InteractionView.ContinueActionLabel.IsEmpty()
 									? FString(TEXT("继续结算"))
 					: InteractionView.ContinueActionLabel))
-			: FString();
+			: FString());
+	}
 	Result.Interaction.bCanContinue = bCanContinueWithSetPiece;
 	Result.Interaction.PrimaryActionLabel =
-		Result.Interaction.PrimaryAction.Label;
+		Result.Interaction.PrimaryAction.Label.ToString();
 	Result.Interaction.DeclineActionLabel = InteractionView.bCanDecline
 		? DeclineLabel(InteractionView.InteractionCategory) : FString();
 	Result.Interaction.NoLegalActionLabel =
@@ -3848,7 +3852,7 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 		ResolutionFeedback.bNonBlockingNotification;
 	Result.Resolution.bCanContinue = bCanContinue;
 	Result.Resolution.ContinueActionLabel =
-		bCanContinue ? Result.Interaction.PrimaryAction.Label : FString();
+		bCanContinue ? Result.Interaction.PrimaryAction.Label.ToString() : FString();
 	Result.Resolution.StepLabel = ResolutionFeedback.StepTitle.IsEmpty()
 		? ResolutionFeedback.StepSummary : ResolutionFeedback.StepTitle;
 	Result.Resolution.StepSummaryLabel = ResolutionFeedback.StepSummary;
@@ -3939,7 +3943,7 @@ FFMCodexLocalMatchUMGPresentationBuilder::Build(
 			Result.InlineFormula.bCanContinue =
 				Result.InlineFormula.PrimaryAction.bVisible;
 			Result.InlineFormula.ContinueActionLabel =
-				Result.InlineFormula.PrimaryAction.Action.Label;
+				Result.InlineFormula.PrimaryAction.Action.Label.ToString();
 		}
 	}
 	if (Result.InlineFormula.ContestId == TEXT("Cross.Setup")

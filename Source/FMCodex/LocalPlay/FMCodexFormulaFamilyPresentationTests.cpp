@@ -24,7 +24,7 @@ FFMCodexUMGInlineFormulaSurfaceViewModel Pending()
 	P.StatusLabel = TEXT("等待进攻方掷点");
 	P.bAttackRowActive = true;
 	P.PrimaryAction.bVisible = P.PrimaryAction.Action.bAvailable = true;
-	P.PrimaryAction.Action.Label = TEXT("进攻方掷点");
+	P.PrimaryAction.Action.Label = FText::FromString(TEXT("进攻方掷点"));
 	P.AttackRow.SideLabel = TEXT("进攻方");
 	P.DefenseRow.SideLabel = TEXT("防守方");
 	P.AttackRow.KnownNonRollSubtotalLabel = TEXT("主罚球员远射");

@@ -2281,7 +2281,7 @@ void UFMCodexLocalMatchScreenWidget::RefreshSetPieceResolutionSurface()
 		Label->SetText(View.bCornerLockConfirmationPending
 			? NSLOCTEXT("FMCodexCorner", "ConfirmLock", "继续锁定")
 			: bNetworkConfirm ? NSLOCTEXT("FMCodexSetPiece", "ConfirmTaker", "确认主罚球员")
-			: FText::FromString(Presentation.Interaction.PrimaryAction.Label));
+			: Presentation.Interaction.PrimaryAction.Label);
 	}
 }
 

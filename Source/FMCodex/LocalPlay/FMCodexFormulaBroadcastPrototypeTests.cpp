@@ -26,7 +26,7 @@ FFMCodexUMGInlineFormulaSurfaceViewModel BroadcastFixture()
 	P.ContestId = TEXT("Cross.High"); P.ContestLabel = TEXT("高球传中");
 	P.StatusLabel = TEXT("等待进攻方掷点"); P.bAttackRowActive = true;
 	P.PrimaryAction.bVisible = P.PrimaryAction.Action.bAvailable = true;
-	P.PrimaryAction.Action.Label = TEXT("进攻方掷点");
+	P.PrimaryAction.Action.Label = FText::FromString(TEXT("进攻方掷点"));
 	P.PrimaryAction.Action.Category = EFMCodexUMGInteractionCategory::RollCrossAttack;
 	for (auto* Row : {&P.AttackRow,&P.DefenseRow})
 	{
@@ -77,11 +77,11 @@ bool FFormulaBroadcastIsolationTest::RunTest(const FString&)
 	TestEqual(TEXT("Typed roll action gets concise CTA"),Label(TEXT("BroadcastContinueLabel")),FString(TEXT("掷点")));
 	TestEqual(TEXT("Typed attack owner is explicit above CTA"),Label(TEXT("BroadcastActionContext")),FString(TEXT("轮到进攻方掷点")));
 	P.PrimaryAction.Action.Category = EFMCodexUMGInteractionCategory::RollCrossDefense;
-	P.PrimaryAction.Action.Label = TEXT("任意投影文案"); W->RefreshFromPresentation(P);
+	P.PrimaryAction.Action.Label = FText::FromString(TEXT("任意投影文案")); W->RefreshFromPresentation(P);
 	TestEqual(TEXT("Owner is never parsed from CTA wording"),Label(TEXT("BroadcastActionContext")),FString(TEXT("轮到防守方掷点")));
 	P.PrimaryAction.Action.Category = EFMCodexUMGInteractionCategory::AdvanceAfterTerminal;
-	P.PrimaryAction.Action.Label = TEXT("下一回合"); W->RefreshFromPresentation(P);
-	TestEqual(TEXT("Progression keeps projected label"),Label(TEXT("BroadcastContinueLabel")),P.PrimaryAction.Action.Label);
+	P.PrimaryAction.Action.Label = FText::FromString(TEXT("下一回合")); W->RefreshFromPresentation(P);
+	TestEqual(TEXT("Progression keeps projected label"),Label(TEXT("BroadcastContinueLabel")),P.PrimaryAction.Action.Label.ToString());
 	TestEqual(TEXT("Progression has no misleading dice icon"),W->GetWidgetFromName(TEXT("BroadcastDiceIcon"))->GetVisibility(),ESlateVisibility::Collapsed);
 	P.AttackRow.Participants[1].PlayerName = P.AttackRow.Participants[0].PlayerName;
 	W->RefreshFromPresentation(P);

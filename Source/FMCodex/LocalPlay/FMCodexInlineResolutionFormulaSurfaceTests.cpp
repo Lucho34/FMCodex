@@ -584,7 +584,7 @@ bool FFMCodexInlineResolutionFormulaSurfaceTest::RunTest(
 			LowDefensePending.Interaction.PrimaryAction)
 			&& LowDefensePending.Interaction.PrimaryAction.Category
 				== EFMCodexUMGInteractionCategory::RollCrossDefense
-			&& LowDefensePending.Interaction.PrimaryAction.Label
+			&& LowDefensePending.Interaction.PrimaryAction.Label.ToString()
 				== TEXT("防守方掷点"));
 	FMatchPlayCurrentAttackResolutionFactProjection SettledLow = Unsupported;
 	for (FMatchPlayResolutionRollFact& Roll : SettledLow.Rolls)

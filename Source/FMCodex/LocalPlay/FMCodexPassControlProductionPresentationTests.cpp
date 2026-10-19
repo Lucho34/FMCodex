@@ -342,7 +342,7 @@ bool FFMCodexPassControlProductionRoutePendingTest::RunTest(
 		Surface.StageLabel, FString(TEXT("判定推进方式")));
 	TestTrue(TEXT("Route is one typed central CTA"),
 		Surface.PrimaryAction.Claims(Presentation.Interaction.PrimaryAction)
-			&& Presentation.Interaction.PrimaryAction.Label == TEXT("判定推进方式"));
+			&& Presentation.Interaction.PrimaryAction.Label.ToString() == TEXT("判定推进方式"));
 	TestTrue(TEXT("Route reveal uses its own shared-reel identity"),
 		Presentation.Interaction.CrossRollRevealKind
 				== EFMCodexUMGCrossRollRevealKind::PassControlInitialRoute

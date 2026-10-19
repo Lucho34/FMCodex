@@ -666,8 +666,7 @@ void UFMCodexInlineResolutionFormulaSurfaceWidget::RefreshVisuals()
 		Presentation.PrimaryAction.Action.bAvailable);
 	if (UTextBlock* Label = Cast<UTextBlock>(ContinueButton->GetChildAt(0)))
 	{
-		Label->SetText(FText::FromString(
-			Presentation.PrimaryAction.Action.Label));
+		Label->SetText(Presentation.PrimaryAction.Action.Label);
 	}
 	// Keep the family frame during ResultHold; full final content belongs to
 	// the composition only after the existing reel lifetime ends.

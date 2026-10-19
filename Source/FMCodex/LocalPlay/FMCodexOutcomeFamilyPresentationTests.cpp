@@ -39,7 +39,7 @@ FFMCodexUMGInlineFormulaSurfaceViewModel Detail()
 	P.OutcomeText = FFMCodexOutcomeText(FText::FromString(TEXT("诺尔高远距离任意球重炮轰门")),
 		FText::FromString(TEXT("未能得分")), FText::FromString(TEXT("。")), EFMCodexOutcomeAccent::NoGoal);
 	P.PrimaryAction.bVisible = P.PrimaryAction.Action.bAvailable = true;
-	P.PrimaryAction.Action.Label = TEXT("下一回合");
+	P.PrimaryAction.Action.Label = FText::FromString(TEXT("下一回合"));
 	return P;
 }
 }
@@ -77,7 +77,7 @@ bool FFMCodexOutcomeContentTest::RunTest(const FString&)
 		&& NeutralFrame.Equals(CastChecked<UBorder>(W->GetWidgetFromName(TEXT("InlineFormulaSurfaceFrame")))->GetBrushColor()));
 	P.ContestLabel = TEXT("福登远射偏出。");
 	P.StatusLabel.Empty(); P.RouteResultLabel.Empty(); P.RollHelperLabel.Empty(); P.OutcomeRollDetail.Empty(); P.OutcomeText = {};
-	P.PrimaryAction.Action.Label = TEXT("继续"); P.PrimaryAction.Action.bAvailable = false;
+	P.PrimaryAction.Action.Label = FText::FromString(TEXT("继续")); P.PrimaryAction.Action.bAvailable = false;
 	W->RefreshFromPresentation(P);
 	TestEqual(TEXT("Reuse replaces old result"), PrimaryText->GetText().ToString(), FMCodexOutcomePresentation::PrimaryMarkup(P.ContestLabel, P.OutcomeText));
 	TestTrue(TEXT("Missing context and detail collapse without stale text"), Context->GetVisibility() == ESlateVisibility::Collapsed
@@ -86,7 +86,7 @@ bool FFMCodexOutcomeContentTest::RunTest(const FString&)
 	TestTrue(TEXT("Unavailable action stays disabled and hidden with no orphan separator"), !Button->GetIsEnabled()
 		&& Button->GetParent()->GetVisibility() == ESlateVisibility::Collapsed
 		&& W->GetWidgetFromName(TEXT("OutcomeFooterRule"))->GetVisibility() == ESlateVisibility::Collapsed);
-	TestEqual(TEXT("CTA label refreshes even while hidden"), CastChecked<UTextBlock>(Button->GetChildAt(0))->GetText().ToString(), P.PrimaryAction.Action.Label);
+	TestEqual(TEXT("CTA label refreshes even while hidden"), CastChecked<UTextBlock>(Button->GetChildAt(0))->GetText().ToString(), P.PrimaryAction.Action.Label.ToString());
 	P.PrimaryAction.Action.bAvailable = true;
 	W->RefreshFromPresentation(P);
 	auto* Renderer = new FWidgetRenderer(true);
@@ -95,7 +95,7 @@ bool FFMCodexOutcomeContentTest::RunTest(const FString&)
 	const float ShortHeight = PrimaryText->GetDesiredSize().Y;
 	P.ContestLabel = TEXT("亚历山大·阿诺德与刘易斯·斯凯利的远距离任意球进攻被防守方化解，本次进攻未能得分。");
 	P.RouteResultLabel = TEXT("已经揭示的完整详细信息保持原文，以可换行的辅助细节显示，不裁掉末尾的结果文字。");
-	P.PrimaryAction.Action.Label = TEXT("继续进入下一回合");
+	P.PrimaryAction.Action.Label = FText::FromString(TEXT("继续进入下一回合"));
 	W->RefreshFromPresentation(P);
 	Renderer->DrawWidget(Target, Slate, FVector2D(808, 500), 0.f);
 	Renderer->DrawWidget(Target, Slate, FVector2D(808, 500), 0.f);
@@ -145,7 +145,7 @@ bool FFMCodexOutcomeHostTest::RunTest(const FString&)
 	T.bVisible = T.bNarrativeAvailable = true;
 	T.TitleLabel = TEXT("直塞"); T.RouteLabel = TEXT("单刀"); T.StageLabel = TEXT("挑射");
 	T.ResultTitle = TEXT("进球"); T.NarrativeHeadline = TEXT("哈弗茨挑射破门！");
-	T.PrimaryAction = S.PrimaryAction; T.PrimaryAction.Action.Label = TEXT("下一回合");
+	T.PrimaryAction = S.PrimaryAction; T.PrimaryAction.Action.Label = FText::FromString(TEXT("下一回合"));
 	Through->RefreshFromPresentation(T);
 	TestEqual(TEXT("Chip goal is never converted to goalkeeper prose"), Primary(*Through)->GetText().ToString(), T.NarrativeHeadline);
 	TestTrue(TEXT("Shared hosts use identical primary role"), Primary(*Shot)->GetCurrentDefaultTextStyle().Font.Size == Primary(*Through)->GetCurrentDefaultTextStyle().Font.Size);

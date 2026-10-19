@@ -100,7 +100,7 @@ struct FMCODEX_API FFMCodexUMGPrimaryActionViewModel
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,
 		Category = "Local Match|Primary Action")
-	FString Label;
+	FText Label;
 
 	bool IsSameActionAs(const FFMCodexUMGPrimaryActionViewModel& Other) const
 	{

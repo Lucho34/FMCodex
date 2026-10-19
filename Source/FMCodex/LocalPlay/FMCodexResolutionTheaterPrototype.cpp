@@ -1432,13 +1432,13 @@ void RefreshCrossBroadcast(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewMo
    :LOCTEXT("CrossDetails","悬停基础值查看明细").ToString());
 	Show(*Tree.FindWidget(TEXT("CrossBroadcastReason")),!P.bNarrativeAvailable && !Route);
 	auto* Status=Find<UTextBlock>(Tree,TEXT("TheaterStatus")); Status->SetAutoWrapText(true);
-	SetText(Tree,TEXT("TheaterStatus"),bPending?LOCTEXT("PendingRequest","操作已提交，等待确认").ToString()
-		:Route && !P.RouteResultLabel.IsEmpty()?LOCTEXT("CrossRouteConfirmed","路线已确认").ToString()
-  :P.bDiceRevealVisible?(ShotBroadcast && P.RollReel.bStaticResult && P.RollReel.bAuthoritativeValue
-   ?LOCTEXT("CutRollLanded","掷点已落定"):LOCTEXT("CrossRevealing","正在揭示掷点")).ToString()
-		:Screen.Interaction.Category==C::RollCrossRoute && !Screen.bActionWaitPromptReadOnly?LOCTEXT("CrossAutoReady","等待掷点").ToString()
-		:Screen.bMirrorActionWaitPrompt?Screen.ActionWaitActorText.ToString()+TEXT("\n")+Screen.ActionWaitActionText.ToString()
-		:FFMCodexPlayerUIPresentationText::MatchScreenLabel(Screen.Interaction.ExpectedActorLabel).ToString());
+	Status->SetText(bPending ? FFMCodexPlayerUIPresentationText::ActionAcknowledgementPending()
+		: Route && !P.RouteResultLabel.IsEmpty() ? LOCTEXT("CrossRouteConfirmed","路线已确认")
+		: P.bDiceRevealVisible ? (ShotBroadcast && P.RollReel.bStaticResult && P.RollReel.bAuthoritativeValue
+			? FFMCodexPlayerUIPresentationText::DiceSettled() : FFMCodexPlayerUIPresentationText::DiceRevealing())
+		: Screen.Interaction.Category==C::RollCrossRoute && !Screen.bActionWaitPromptReadOnly ? LOCTEXT("CrossAutoReady","等待掷点")
+		: Screen.bMirrorActionWaitPrompt ? FText::FromString(Screen.ActionWaitActorText.ToString()+TEXT("\n")+Screen.ActionWaitActionText.ToString())
+		: FFMCodexPlayerUIPresentationText::MatchScreenLabel(Screen.Interaction.ExpectedActorLabel));
 	Show(*Status,true);
 	if(ShotBroadcast)
 	{
@@ -1584,13 +1584,13 @@ void RefreshThroughBallEvent(UWidgetTree& Tree, const FFMCodexUMGMatchScreenView
 	Show(*Tree.FindWidget(TEXT("TheaterPrimaryBounds")),bAction);
 	Find<UButton>(Tree,TEXT("TheaterContinue"))->SetIsEnabled(bAction);
 	Find<UButton>(Tree,TEXT("TheaterContinue"))->SetBackgroundColor(FLinearColor::White);
-	Find<UTextBlock>(Tree,TEXT("TheaterContinueLabel"))->SetText(FText::FromString(P.PrimaryAction.Action.Label));
+	Find<UTextBlock>(Tree,TEXT("TheaterContinueLabel"))->SetText(P.PrimaryAction.Action.Label);
 	for (const auto Name:{TEXT("TheaterDiceIcon"),TEXT("TheaterRollLeading")}) Show(*Tree.FindWidget(Name),true);
 	for (const auto Name:{TEXT("TheaterNextIcon"),TEXT("TheaterNextTrailing")}) Show(*Tree.FindWidget(Name),false);
 	FText Status=FFMCodexPlayerUIPresentationText::MatchScreenLabel(Screen.Interaction.ExpectedActorLabel);
 	if (Screen.bMirrorActionWaitPrompt && !bRolling)
 		Status=FText::Format(LOCTEXT("EventWait","{0}  {1}"),Screen.ActionWaitActorText,Screen.ActionWaitActionText);
-	if (bRequestPending) Status=LOCTEXT("PendingRequest","操作已提交，等待确认");
+	if (bRequestPending) Status=FFMCodexPlayerUIPresentationText::ActionAcknowledgementPending();
 	Find<UTextBlock>(Tree,TEXT("TheaterStatus"))->SetText(Status);
 	Tree.FindWidget(TEXT("TheaterStatus"))->SetVisibility(bRolling?ESlateVisibility::Hidden:ESlateVisibility::SelfHitTestInvisible);
 	RefreshReel(Tree,P.RollReel);
@@ -1835,11 +1835,10 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 		|| (Category==C::RollShortFreeKickDirectDefense || Category==C::RollLongFreeKickDirectDefense) || (Category==C::RollShortFreeKickAngled || Category==C::RollLongFreeKickPower) || Category==C::RollPenaltyDirectAttack || Category==C::RollPenaltyDirectDefense || Category==C::RollPenaltyPanenka || Category==C::RollCornerParticipantSelection || Category==C::RollCornerRoute || Category==C::RollCornerAttack || Category==C::RollCornerDefense
 		|| (bThroughFormula && Category!=C::AdvanceAfterTerminal);
 	Find<UTextBlock>(Tree,TEXT("TheaterContinueLabel"))->SetText(bConfirm?LOCTEXT("NearConfirm","确认主罚球员"):Category==C::RollCrossAttack ? LOCTEXT("AttackRoll","进攻方掷点")
-		: Category==C::RollCrossDefense ? LOCTEXT("DefenseRoll","防守方掷点")
 		: Category==C::RollCrossRoute ? LOCTEXT("RouteRoll","判定路线")
 		: (Category==C::RollShortFreeKickAngled || Category==C::RollLongFreeKickPower) ? LOCTEXT("NearPairRoll","掷两枚骰子")
 		: Category==C::RollPenaltyPanenka ? LOCTEXT("PenaltySingleRoll","掷一枚骰子")
-		: bFinal ? LOCTEXT("NextAttack","下一回合") : FText::FromString(P.PrimaryAction.Action.Label));
+		: bFinal ? LOCTEXT("NextAttack","下一回合") : P.PrimaryAction.Action.Label);
 	Find<UButton>(Tree,TEXT("TheaterContinue"))->SetBackgroundColor(FLinearColor::White);
 	Show(*Tree.FindWidget(TEXT("TheaterDiceIcon")),bRoll);
 	Show(*Tree.FindWidget(TEXT("TheaterNextIcon")),!bRoll);
@@ -1966,7 +1965,7 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 	}
 	if (bRequestPending)
 	{
-		Status=LOCTEXT("PendingRequest","操作已提交，等待确认").ToString();
+		Status=FFMCodexPlayerUIPresentationText::ActionAcknowledgementPending().ToString();
 		bHelperOnlyNamesRollOwner=false;
 	}
 	if (bCornerResolution) Status.ReplaceInline(TEXT("低平球"),TEXT("低球"));
@@ -2046,7 +2045,7 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 					Unavailable=FText::Format(LOCTEXT("ShotUnavailable","当前不可选择{0}"),
 						bDirect?LOCTEXT("NearDirect","直接射门"):LOCTEXT("ShotDeadCorner","射向死角")).ToString();
 			}
-			SetText(Tree,TEXT("TheaterDetail"),bRequestPending?LOCTEXT("PendingRequest","操作已提交，等待确认").ToString()
+			SetText(Tree,TEXT("TheaterDetail"),bRequestPending?FFMCodexPlayerUIPresentationText::ActionAcknowledgementPending().ToString()
 				:Screen.bActionWaitPromptReadOnly?LOCTEXT("ShotWaiting","等待进攻方选择射门方式").ToString()
 				:!Unavailable.IsEmpty()?Unavailable:LOCTEXT("ShotChoose","选择本次射门方式").ToString());
 			Show(*Tree.FindWidget(TEXT("TheaterDetail")),true);
@@ -2114,7 +2113,7 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGMatchScreenViewModel& Screen,
 			}
 			SetText(Tree,TEXT("TheaterDetail"),LOCTEXT("OneOnOneChoose","已形成单刀，选择射门方式").ToString());
 			Show(*Tree.FindWidget(TEXT("TheaterDetail")),true);
-			SetText(Tree,TEXT("TheaterStatus"),bRequestPending?LOCTEXT("PendingRequest","操作已提交，等待确认").ToString():Screen.bMirrorActionWaitPrompt
+			SetText(Tree,TEXT("TheaterStatus"),bRequestPending?FFMCodexPlayerUIPresentationText::ActionAcknowledgementPending().ToString():Screen.bMirrorActionWaitPrompt
 				?Screen.ActionWaitActorText.ToString()+TEXT("  ")+Screen.ActionWaitActionText.ToString()
 				:FFMCodexPlayerUIPresentationText::MatchScreenLabel(Screen.Interaction.ExpectedActorLabel).ToString());
 		}

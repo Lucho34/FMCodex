@@ -451,7 +451,7 @@ void Refresh(UWidgetTree& Tree, const FFMCodexUMGInlineFormulaSurfaceViewModel& 
 	Find<UTextBlock>(Tree,TEXT("BroadcastActionContext"))->SetText(bAction && bRoll
 		? Category == C::RollCrossAttack ? LOCTEXT("AttackTurn","轮到进攻方掷点") : LOCTEXT("DefenseTurn","轮到防守方掷点")
 		: P.bDiceRevealVisible ? LOCTEXT("Processing","正在结算") : FText::FromString(P.StatusLabel));
-	Find<UTextBlock>(Tree,TEXT("BroadcastContinueLabel"))->SetText(bRoll ? LOCTEXT("RollCTA","掷点") : FText::FromString(P.PrimaryAction.Action.Label));
+	Find<UTextBlock>(Tree,TEXT("BroadcastContinueLabel"))->SetText(bRoll ? LOCTEXT("RollCTA","掷点") : P.PrimaryAction.Action.Label);
 	Show(*Tree.FindWidget(TEXT("BroadcastDiceIcon")),bRoll);
 }
 }

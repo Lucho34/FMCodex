@@ -117,6 +117,10 @@ public:
 	static FText LongShotDeadCornerOutcomeHint();
 	static FText ShotAttackRollAction();
 	static FText ShotDefenseRollAction();
+	/** Shared presentation statuses; no gameplay state is derived from these texts. */
+	static FText ActionAcknowledgementPending();
+	static FText DiceRevealing();
+	static FText DiceSettled();
 	static FText ShotPairedRollAction();
 	static FText CutInsideTitle();
 	static FText CutInsideBranchChoiceStage();
